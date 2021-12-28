@@ -1,4 +1,6 @@
 [requires]
+glfw/3.3.6
+glew/2.2.0
 
 [generators]
 cmake
