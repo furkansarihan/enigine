@@ -22,6 +22,8 @@ add_executable( enigine
                 src/shader/shader.h
                 src/file_manager/file_manager.cpp
                 src/file_manager/file_manager.h
+                src/camera/camera.cpp
+                src/camera/camera.h
                 # assets
                 src/assets/simple-shader.vs 
                 src/assets/simple-shader.fs )

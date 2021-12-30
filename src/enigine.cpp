@@ -3,32 +3,35 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "shader/shader.h"
 #include "file_manager/file_manager.h"
+#include "camera/camera.h"
 
-static void glfw_error_callback(int error, const char *description)
+static void glfwErrorCallback(int error, const char *description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-static void print_start_info()
+static void printStartInfo()
 {
     // current date/time based on current system
     time_t now = time(0);
-    char *date_time = ctime(&now);
+    char *dateTime = ctime(&now);
     // version, format -> x.xx.xxx
     std::string version("000001");
 
     std::cout << "enigine_version: " << version << std::endl;
     std::cout << "cpp_version: " << __cplusplus << std::endl;
-    std::cout << "started_at: " << date_time << std::endl;
+    std::cout << "started_at: " << dateTime << std::endl;
 }
 
-void create_triangle(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
+void createTriangle(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
 {
     // create the triangle
-    float triangle_vertices[] = {
+    float triangleVertices[] = {
         0.0f, 0.25f, 0.0f,    // position vertex 1
         1.0f, 0.0f, 0.0f,     // color vertex 1
         0.25f, -0.25f, 0.0f,  // position vertex 1
@@ -36,16 +39,15 @@ void create_triangle(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
         -0.25f, -0.25f, 0.0f, // position vertex 1
         0.0f, 0.0f, 1.0f,     // color vertex 1
     };
-    unsigned int triangle_indices[] = {
-        0, 1, 2};
+    unsigned int triangleIndices[] = {0, 1, 2};
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_vertices), triangle_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangle_indices), triangle_indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangleIndices), triangleIndices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
@@ -54,12 +56,35 @@ void create_triangle(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
     glBindVertexArray(0);
 }
 
+void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
+{
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        editorCamera->processKeyboard(FORWARD, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        editorCamera->processKeyboard(BACKWARD, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        editorCamera->processKeyboard(LEFT, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        editorCamera->processKeyboard(RIGHT, deltaTime);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    print_start_info();
+    printStartInfo();
 
     // Setup window
-    glfwSetErrorCallback(glfw_error_callback);
+    glfwSetErrorCallback(glfwErrorCallback);
     if (!glfwInit())
         return 1;
 
@@ -95,33 +120,62 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    int screen_width, screen_height;
-    glfwGetFramebufferSize(window, &screen_width, &screen_height);
-    glViewport(0, 0, screen_width, screen_height);
+    int screenWidth, screenHeight;
+    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+    glViewport(0, 0, screenWidth, screenHeight);
 
     // Create geometries
     unsigned int vbo, vao, ebo;
-    create_triangle(vbo, vao, ebo);
+    createTriangle(vbo, vao, ebo);
 
     // Init shader
-    Shader triangle_shader;
-    triangle_shader.init(FileManager::read("assets/simple-shader.vs"), FileManager::read("assets/simple-shader.fs"));
+    Shader triangleShader;
+    triangleShader.init(FileManager::read("assets/simple-shader.vs"), FileManager::read("assets/simple-shader.fs"));
+
+    // Camera
+    Camera *editorCamera = new Camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+
+    // Triangle model matrix
+    glm::mat4 model = glm::mat4(1.0f);
+
+    // Time
+    float deltaTime = 0.0f; // Time between current frame and last frame
+    float lastFrame = 0.0f; // Time of last frame
 
     while (!glfwWindowShouldClose(window))
     {
+        // Poll events
         glfwPollEvents();
-        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-        glClear(GL_COLOR_BUFFER_BIT);
 
-        // render geometries
-        triangle_shader.use();
+        // Clear window
+        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Update projection
+        glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+        projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+
+        // Calculate deltaTime
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // Process input
+        processCameraInput(window, editorCamera, deltaTime);
+
+        // Calculate Model-View-Projection matrix
+        glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model;
+
+        // Render geometries
+        triangleShader.use();
+        triangleShader.setMat4("mvp", mvp);
+
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
+        // Swap buffers
         glfwSwapBuffers(window);
     }
 

@@ -1,18 +1,14 @@
 #version 330 core
 
-layout (location = 0) in vec3 position;
+layout (location = 0) in vec3 vertexPosition_modelspace;
 layout (location = 1) in vec3 color;
 
 out vec3 vertexColor;
 
-uniform float rotation;
-uniform vec2 translation;
+uniform mat4 mvp;
 
 void main()
 {
-	vec2 rotated_pos;
-	rotated_pos.x = translation.x + position.x*cos(rotation) - position.y*sin(rotation);
-	rotated_pos.y = translation.y + position.x*sin(rotation) + position.y*cos(rotation);
-    gl_Position = vec4(rotated_pos.x, rotated_pos.y, position.z, 1.0);
-	vertexColor = color;
+    gl_Position = mvp * vec4(vertexPosition_modelspace, 1.0);
+    vertexColor = color;
 }
