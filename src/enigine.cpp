@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#include "external/imgui/imgui.h"
+
 #include "shader/shader.h"
 #include "file_manager/file_manager.h"
 #include "camera/camera.h"
@@ -79,6 +81,29 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
+static void showOverlay(bool *p_open)
+{
+    const float DISTANCE = 10.0f;
+    static int corner = 0;
+    ImGuiIO &io = ImGui::GetIO();
+    if (corner != -1)
+    {
+        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
+        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    }
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+    if (ImGui::Begin("overlay", p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        if (ImGui::IsMousePosValid())
+            ImGui::Text("Mouse Position: (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+        else
+            ImGui::Text("Mouse Position: <invalid>");
+        ImGui::Text("FPS: %.1f", io.Framerate);
+    }
+    ImGui::End();
+}
+
 int main(int argc, char **argv)
 {
     printStartInfo();
@@ -143,10 +168,25 @@ int main(int argc, char **argv)
     float deltaTime = 0.0f; // Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    ImGui::StyleColorsDark();
+
+    // Setup Dear ImGui Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    bool show_overlay = true;
+
     while (!glfwWindowShouldClose(window))
     {
         // Poll events
         glfwPollEvents();
+
+        // Process input
+        processCameraInput(window, editorCamera, deltaTime);
 
         // Clear window
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
@@ -161,13 +201,9 @@ int main(int argc, char **argv)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Process input
-        processCameraInput(window, editorCamera, deltaTime);
-
-        // Calculate Model-View-Projection matrix
-        glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model;
-
         // Render geometries
+        glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
+
         triangleShader.use();
         triangleShader.setMat4("mvp", mvp);
 
@@ -175,11 +211,23 @@ int main(int argc, char **argv)
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        // Render UI
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        showOverlay(&show_overlay);
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // Swap buffers
         glfwSwapBuffers(window);
     }
 
-    // Cleanup
+    // Cleanup imgui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    // Cleanup glfw
     glfwDestroyWindow(window);
     glfwTerminate();
 

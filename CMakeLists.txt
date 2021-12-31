@@ -8,6 +8,7 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # CONFIG option is important so that CMake doesnt search for modules into the default modules directory
+find_package(imgui CONFIG)
 find_package(glfw3 CONFIG)
 find_package(glew CONFIG)
 
@@ -24,6 +25,13 @@ add_executable( enigine
                 src/file_manager/file_manager.h
                 src/camera/camera.cpp
                 src/camera/camera.h
+                # external
+                src/external/imgui/imgui.h
+                src/external/imgui/src/imgui_impl_glfw.cpp
+                src/external/imgui/src/imgui_impl_glfw.h
+                src/external/imgui/src/imgui_impl_opengl3.cpp
+                src/external/imgui/src/imgui_impl_opengl3.h
+                src/external/imgui/src/imgui_impl_opengl3_loader.h
                 # assets
                 src/assets/simple-shader.vs 
                 src/assets/simple-shader.fs )
