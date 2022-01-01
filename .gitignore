@@ -43,3 +43,6 @@ tmp/
 .pydevproject
 .settings/*
 .ropeproject/*
+
+# 3d object assets
+!src/assets/models/*.obj

@@ -11,6 +11,11 @@
 #include "shader/shader.h"
 #include "file_manager/file_manager.h"
 #include "camera/camera.h"
+#include "model/model.h"
+
+bool firstMove = true;
+float lastX;
+float lastY;
 
 static void glfwErrorCallback(int error, const char *description)
 {
@@ -28,34 +33,6 @@ static void printStartInfo()
     std::cout << "enigine_version: " << version << std::endl;
     std::cout << "cpp_version: " << __cplusplus << std::endl;
     std::cout << "started_at: " << dateTime << std::endl;
-}
-
-void createTriangle(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
-{
-    // create the triangle
-    float triangleVertices[] = {
-        0.0f, 0.25f, 0.0f,    // position vertex 1
-        1.0f, 0.0f, 0.0f,     // color vertex 1
-        0.25f, -0.25f, 0.0f,  // position vertex 1
-        0.0f, 1.0f, 0.0f,     // color vertex 1
-        -0.25f, -0.25f, 0.0f, // position vertex 1
-        0.0f, 0.0f, 1.0f,     // color vertex 1
-    };
-    unsigned int triangleIndices[] = {0, 1, 2};
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangleIndices), triangleIndices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -79,9 +56,33 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     {
         editorCamera->processKeyboard(RIGHT, deltaTime);
     }
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        if (firstMove)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMove = false;
+        }
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+        lastX = xpos;
+        lastY = ypos;
+        editorCamera->processMouseMovement(xoffset, yoffset, true);
+    }
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+    {
+        firstMove = true;
+    }
 }
 
-static void showOverlay(bool *p_open)
+static void showOverlay(Camera *editorCamera, float deltaTime, bool *p_open)
 {
     const float DISTANCE = 10.0f;
     static int corner = 0;
@@ -96,10 +97,15 @@ static void showOverlay(bool *p_open)
     if (ImGui::Begin("overlay", p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         if (ImGui::IsMousePosValid())
-            ImGui::Text("Mouse Position: (%.1f,%.1f)", io.MousePos.x, io.MousePos.y);
+            ImGui::Text("Mouse Position: (%.1f, %.1f)", io.MousePos.x, io.MousePos.y);
         else
             ImGui::Text("Mouse Position: <invalid>");
         ImGui::Text("FPS: %.1f", io.Framerate);
+        ImGui::Separator();
+        ImGui::Text("Camera");
+        ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
+        ImGui::Text("pitch: %.1f", editorCamera->pitch);
+        ImGui::Text("yaw: %.1f", editorCamera->yaw);
     }
     ImGui::End();
 }
@@ -149,16 +155,20 @@ int main(int argc, char **argv)
     glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
     glViewport(0, 0, screenWidth, screenHeight);
 
+    // Enable depth test, z-buffer
+    glEnable(GL_DEPTH_TEST);
+    // Accept fragment if it closer to the camera than the former one
+    glDepthFunc(GL_LESS);
+
     // Create geometries
-    unsigned int vbo, vao, ebo;
-    createTriangle(vbo, vao, ebo);
+    Model cube("assets/models/cube.obj");
 
     // Init shader
-    Shader triangleShader;
-    triangleShader.init(FileManager::read("assets/simple-shader.vs"), FileManager::read("assets/simple-shader.fs"));
+    Shader simpleShader;
+    simpleShader.init(FileManager::read("assets/shaders/simple-shader.vs"), FileManager::read("assets/shaders/simple-shader.fs"));
 
     // Camera
-    Camera *editorCamera = new Camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
     // Triangle model matrix
@@ -204,18 +214,16 @@ int main(int argc, char **argv)
         // Render geometries
         glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
 
-        triangleShader.use();
-        triangleShader.setMat4("mvp", mvp);
+        simpleShader.use();
+        simpleShader.setMat4("mvp", mvp);
 
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        cube.draw(simpleShader);
 
         // Render UI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(&show_overlay);
+        showOverlay(editorCamera, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

@@ -25,6 +25,10 @@ add_executable( enigine
                 src/file_manager/file_manager.h
                 src/camera/camera.cpp
                 src/camera/camera.h
+                src/mesh/mesh.cpp
+                src/mesh/mesh.h
+                src/model/model.cpp
+                src/model/model.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
@@ -32,15 +36,19 @@ add_executable( enigine
                 src/external/imgui/src/imgui_impl_opengl3.cpp
                 src/external/imgui/src/imgui_impl_opengl3.h
                 src/external/imgui/src/imgui_impl_opengl3_loader.h
+                src/external/stb_image/stb_image.h
                 # assets
-                src/assets/simple-shader.vs 
-                src/assets/simple-shader.fs )
+                src/assets/shaders/simple-shader.vs 
+                src/assets/shaders/simple-shader.fs
+                src/assets/models/cube.obj )
 
 add_custom_command(TARGET enigine
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/simple-shader.vs ${PROJECT_BINARY_DIR}/assets/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/simple-shader.fs ${PROJECT_BINARY_DIR}/assets/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/shaders
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/models
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/simple-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/simple-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cube.obj ${PROJECT_BINARY_DIR}/assets/models/
 )
 
 target_link_libraries(enigine ${CONAN_LIBS})

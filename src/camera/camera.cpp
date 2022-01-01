@@ -1,12 +1,12 @@
 #include "camera.h"
 
 // Constructor with vectors
-Camera::Camera(glm::vec3 _position, glm::vec3 _worldUp, float _yaw, float _pitch) : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY)
+Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch) : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY)
 {
-    position = _position;
-    worldUp = _worldUp;
-    yaw = _yaw;
-    pitch = _pitch;
+    this->position = position;
+    this->worldUp = worldUp;
+    this->yaw = yaw;
+    this->pitch = pitch;
     updateCameraVectors();
 }
 
@@ -33,7 +33,6 @@ void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
     if (direction == RIGHT)
         position += right * velocity;
 
-    std::cout << "Camera.position: " << glm::to_string(position) << std::endl;
 }
 
 // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
@@ -66,7 +65,7 @@ void Camera::updateCameraVectors()
     _front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     _front.y = sin(glm::radians(pitch));
     _front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front = glm::normalize(front);
+    front = glm::normalize(_front);
     // Also re-calculate the Right and Up vector
     right = glm::normalize(glm::cross(front, worldUp)); // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
     up = glm::normalize(glm::cross(right, front));

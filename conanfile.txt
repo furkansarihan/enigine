@@ -3,6 +3,7 @@ glfw/3.3.6
 glew/2.2.0
 glm/0.9.9.8
 imgui/1.86
+assimp/5.1.0
 
 [generators]
 cmake

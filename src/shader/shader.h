@@ -13,6 +13,8 @@ class Shader
 {
 public:
     Shader();
+    ~Shader();
+    unsigned int id;
     void init(const std::string &vertexCode, const std::string &fragmentCode);
     void use();
     void setBool(const std::string &name, bool value) const;
@@ -33,7 +35,7 @@ private:
     void checkLinkingErr();
     void compile();
     void link();
-    unsigned int vertexId_, fragmentId_, id_;
+    unsigned int vertexId_, fragmentId_;
     std::string vertexCode_;
     std::string fragmentCode_;
 };
