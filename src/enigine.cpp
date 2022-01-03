@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 
     // Init shader
     Shader simpleShader;
-    simpleShader.init(FileManager::read("assets/shaders/simple-shader.vs"), FileManager::read("assets/shaders/simple-shader.fs"));
+    simpleShader.init(FileManager::read("assets/shaders/light-shader.vs"), FileManager::read("assets/shaders/light-shader.fs"));
 
     // Camera
     Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
@@ -173,6 +173,9 @@ int main(int argc, char **argv)
 
     // Triangle model matrix
     glm::mat4 model = glm::mat4(1.0f);
+
+    // Light source position
+    glm::vec3 lightPosition = glm::vec3(-4.0f, 4.0f, -2.0f);
 
     // Time
     float deltaTime = 0.0f; // Time between current frame and last frame
@@ -215,7 +218,11 @@ int main(int argc, char **argv)
         glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
 
         simpleShader.use();
-        simpleShader.setMat4("mvp", mvp);
+        simpleShader.setMat4("MVP", mvp);
+        simpleShader.setMat4("M", model);
+        simpleShader.setMat4("V", editorCamera->getViewMatrix());
+        simpleShader.setVec3("MaterialDiffuseColor", glm::vec3(0.4f, 0.7f, 0.9f));
+        simpleShader.setVec3("LightPosition_worldspace", lightPosition);
 
         cube.draw(simpleShader);
 
