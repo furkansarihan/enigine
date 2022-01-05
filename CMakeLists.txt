@@ -42,7 +42,13 @@ add_executable( enigine
                 src/assets/shaders/simple-shader.fs
                 src/assets/shaders/light-shader.vs 
                 src/assets/shaders/light-shader.fs
-                src/assets/models/cube.obj )
+                src/assets/shaders/normal-shader.vs 
+                src/assets/shaders/normal-shader.fs
+                src/assets/models/cube.obj
+                src/assets/models/sphere.obj
+                src/assets/models/sphere.mtl
+                src/assets/models/sphere_diffuse.jpg
+                src/assets/models/sphere_normal.png )
 
 add_custom_command(TARGET enigine
     POST_BUILD
@@ -52,7 +58,13 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/simple-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/light-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/light-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/normal-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/normal-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cube.obj ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.obj ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.mtl ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_diffuse.jpg ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_normal.png ${PROJECT_BINARY_DIR}/assets/models/
 )
 
 target_link_libraries(enigine ${CONAN_LIBS})

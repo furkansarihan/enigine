@@ -17,6 +17,13 @@ bool firstMove = true;
 float lastX;
 float lastY;
 
+// Light source position
+glm::vec3 lightPosition = glm::vec3(-3.0f, 7.0f, 6.0f);
+// Light color
+static float lightColor[3] = {1.0f, 1.0f, 0.9f};
+// Light power
+static float lightPower = 70.0;
+
 static void glfwErrorCallback(int error, const char *description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
@@ -57,7 +64,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
         editorCamera->processKeyboard(RIGHT, deltaTime);
     }
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
@@ -76,7 +83,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
         editorCamera->processMouseMovement(xoffset, yoffset, true);
     }
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
     {
         firstMove = true;
     }
@@ -106,6 +113,25 @@ static void showOverlay(Camera *editorCamera, float deltaTime, bool *p_open)
         ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
         ImGui::Text("pitch: %.1f", editorCamera->pitch);
         ImGui::Text("yaw: %.1f", editorCamera->yaw);
+        ImGui::Separator();
+        ImGui::Text("Light");
+        float x = lightPosition.x;
+        float y = lightPosition.y;
+        float z = lightPosition.z;
+        if (ImGui::DragFloat("X", &x, 0.1f))
+        {
+            lightPosition = glm::vec3(x, y, z);
+        }
+        if (ImGui::DragFloat("Y", &y, 0.1))
+        {
+            lightPosition = glm::vec3(x, y, z);
+        }
+        if (ImGui::DragFloat("Z", &z, 0.1))
+        {
+            lightPosition = glm::vec3(x, y, z);
+        }
+        ImGui::DragFloat("power", &lightPower, 0.1);
+        ImGui::ColorEdit3("color", lightColor);
     }
     ImGui::End();
 }
@@ -159,13 +185,21 @@ int main(int argc, char **argv)
     glEnable(GL_DEPTH_TEST);
     // Accept fragment if it closer to the camera than the former one
     glDepthFunc(GL_LESS);
+    // Trasparency
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Create geometries
     Model cube("assets/models/cube.obj");
+    Model sphere("assets/models/sphere.obj");
 
     // Init shader
+    Shader normalShader;
+    normalShader.init(FileManager::read("assets/shaders/normal-shader.vs"), FileManager::read("assets/shaders/normal-shader.fs"));
+
     Shader simpleShader;
-    simpleShader.init(FileManager::read("assets/shaders/light-shader.vs"), FileManager::read("assets/shaders/light-shader.fs"));
+    simpleShader.init(FileManager::read("assets/shaders/simple-shader.vs"), FileManager::read("assets/shaders/simple-shader.fs"));
 
     // Camera
     Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
@@ -173,9 +207,6 @@ int main(int argc, char **argv)
 
     // Triangle model matrix
     glm::mat4 model = glm::mat4(1.0f);
-
-    // Light source position
-    glm::vec3 lightPosition = glm::vec3(-4.0f, 4.0f, -2.0f);
 
     // Time
     float deltaTime = 0.0f; // Time between current frame and last frame
@@ -216,14 +247,24 @@ int main(int argc, char **argv)
 
         // Render geometries
         glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
+        glm::mat4 mv = editorCamera->getViewMatrix() * model;
+        glm::mat3 ModelView3x3Matrix = glm::mat3(mv);
 
+        normalShader.use();
+        normalShader.setMat4("MVP", mvp);
+        normalShader.setMat4("M", model);
+        normalShader.setMat4("V", editorCamera->getViewMatrix());
+        normalShader.setMat3("MV3x3", ModelView3x3Matrix);
+        normalShader.setVec3("LightPosition_worldspace", lightPosition);
+        normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
+        normalShader.setFloat("LightPower", lightPower);
+        sphere.draw(normalShader);
+
+        // Draw light source
+        mvp = projection * editorCamera->getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), lightPosition);
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
-        simpleShader.setMat4("M", model);
-        simpleShader.setMat4("V", editorCamera->getViewMatrix());
-        simpleShader.setVec3("MaterialDiffuseColor", glm::vec3(0.4f, 0.7f, 0.9f));
-        simpleShader.setVec3("LightPosition_worldspace", lightPosition);
-
+        simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
         cube.draw(simpleShader);
 
         // Render UI
