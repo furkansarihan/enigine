@@ -24,6 +24,8 @@ add_executable( enigine
                 src/mesh/mesh.h
                 src/model/model.cpp
                 src/model/model.h
+                src/sound_engine/sound_engine.cpp
+                src/sound_engine/sound_engine.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
