@@ -4,13 +4,8 @@ project(enigine)
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 
-SET(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# CONFIG option is important so that CMake doesnt search for modules into the default modules directory
-find_package(imgui CONFIG)
-find_package(glfw3 CONFIG)
-find_package(glew CONFIG)
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
@@ -37,23 +32,13 @@ add_executable( enigine
                 src/external/imgui/src/imgui_impl_opengl3.h
                 src/external/imgui/src/imgui_impl_opengl3_loader.h
                 src/external/stb_image/stb_image.h
-                # assets
-                src/assets/shaders/simple-shader.vs 
-                src/assets/shaders/simple-shader.fs
-                src/assets/shaders/light-shader.vs 
-                src/assets/shaders/light-shader.fs
-                src/assets/shaders/normal-shader.vs 
-                src/assets/shaders/normal-shader.fs
-                src/assets/models/cube.obj
-                src/assets/models/sphere.obj
-                src/assets/models/sphere.mtl
-                src/assets/models/sphere_diffuse.jpg
-                src/assets/models/sphere_normal.png )
+                src/external/dr_wav/dr_wav.h )
 
 add_custom_command(TARGET enigine
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/shaders
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/models
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/assets/sounds
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/simple-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/simple-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/light-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
@@ -65,6 +50,8 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.mtl ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_diffuse.jpg ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_normal.png ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/sounds/rain-loop-1648m.wav ${PROJECT_BINARY_DIR}/assets/sounds/
 )
 
 target_link_libraries(enigine ${CONAN_LIBS})
+target_compile_features(enigine PRIVATE cxx_std_20)

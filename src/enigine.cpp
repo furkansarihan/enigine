@@ -1,17 +1,137 @@
 #include <iostream>
 #include <ctime>
+#include <bit>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <AL/al.h>
+#include <AL/alc.h>
 
 #include "external/imgui/imgui.h"
+#define DR_WAV_IMPLEMENTATION
+#include "external/dr_wav/dr_wav.h"
 
 #include "shader/shader.h"
 #include "file_manager/file_manager.h"
 #include "camera/camera.h"
 #include "model/model.h"
+
+#define alCall(function, ...) alCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
+#define alcCall(function, device, ...) alcCallImpl(__FILE__, __LINE__, function, device, __VA_ARGS__)
+
+bool check_al_errors(const std::string &filename, const std::uint_fast32_t line)
+{
+    ALenum error = alGetError();
+    if (error != AL_NO_ERROR)
+    {
+        std::cerr << "***ERROR*** (" << filename << ": " << line << ")\n";
+        switch (error)
+        {
+        case AL_INVALID_NAME:
+            std::cerr << "AL_INVALID_NAME: a bad name (ID) was passed to an OpenAL function";
+            break;
+        case AL_INVALID_ENUM:
+            std::cerr << "AL_INVALID_ENUM: an invalid enum value was passed to an OpenAL function";
+            break;
+        case AL_INVALID_VALUE:
+            std::cerr << "AL_INVALID_VALUE: an invalid value was passed to an OpenAL function";
+            break;
+        case AL_INVALID_OPERATION:
+            std::cerr << "AL_INVALID_OPERATION: the requested operation is not valid";
+            break;
+        case AL_OUT_OF_MEMORY:
+            std::cerr << "AL_OUT_OF_MEMORY: the requested operation resulted in OpenAL running out of memory";
+            break;
+        default:
+            std::cerr << "UNKNOWN AL ERROR: " << error;
+        }
+        std::cerr << std::endl;
+        return false;
+    }
+    return true;
+}
+
+template <typename alFunction, typename... Params>
+auto alCallImpl(const char *filename,
+                const std::uint_fast32_t line,
+                alFunction function,
+                Params... params)
+    -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, decltype(function(params...))>
+{
+    auto ret = function(std::forward<Params>(params)...);
+    check_al_errors(filename, line);
+    return ret;
+}
+
+template <typename alFunction, typename... Params>
+auto alCallImpl(const char *filename,
+                const std::uint_fast32_t line,
+                alFunction function,
+                Params... params)
+    -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>
+{
+    function(std::forward<Params>(params)...);
+    return check_al_errors(filename, line);
+}
+
+bool check_alc_errors(const std::string &filename, const std::uint_fast32_t line, ALCdevice *device)
+{
+    ALCenum error = alcGetError(device);
+    if (error != ALC_NO_ERROR)
+    {
+        std::cerr << "***ERROR*** (" << filename << ": " << line << ")\n";
+        switch (error)
+        {
+        case ALC_INVALID_VALUE:
+            std::cerr << "ALC_INVALID_VALUE: an invalid value was passed to an OpenAL function";
+            break;
+        case ALC_INVALID_DEVICE:
+            std::cerr << "ALC_INVALID_DEVICE: a bad device was passed to an OpenAL function";
+            break;
+        case ALC_INVALID_CONTEXT:
+            std::cerr << "ALC_INVALID_CONTEXT: a bad context was passed to an OpenAL function";
+            break;
+        case ALC_INVALID_ENUM:
+            std::cerr << "ALC_INVALID_ENUM: an unknown enum value was passed to an OpenAL function";
+            break;
+        case ALC_OUT_OF_MEMORY:
+            std::cerr << "ALC_OUT_OF_MEMORY: an unknown enum value was passed to an OpenAL function";
+            break;
+        default:
+            std::cerr << "UNKNOWN ALC ERROR: " << error;
+        }
+        std::cerr << std::endl;
+        return false;
+    }
+    return true;
+}
+
+template <typename alcFunction, typename... Params>
+auto alcCallImpl(const char *filename,
+                 const std::uint_fast32_t line,
+                 alcFunction function,
+                 ALCdevice *device,
+                 Params... params)
+    -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>
+{
+    function(std::forward<Params>(params)...);
+    return check_alc_errors(filename, line, device);
+}
+
+template <typename alcFunction, typename ReturnType, typename... Params>
+auto alcCallImpl(const char *filename,
+                 const std::uint_fast32_t line,
+                 alcFunction function,
+                 ReturnType &returnValue,
+                 ALCdevice *device,
+                 Params... params)
+    -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, bool>
+{
+    returnValue = function(std::forward<Params>(params)...);
+    return check_alc_errors(filename, line, device);
+}
 
 bool firstMove = true;
 float lastX;
@@ -89,7 +209,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(Camera *editorCamera, float deltaTime, bool *p_open)
+static void showOverlay(Camera *editorCamera, ALuint source, float deltaTime, bool *p_open)
 {
     const float DISTANCE = 10.0f;
     static int corner = 0;
@@ -132,6 +252,72 @@ static void showOverlay(Camera *editorCamera, float deltaTime, bool *p_open)
         }
         ImGui::DragFloat("power", &lightPower, 0.1);
         ImGui::ColorEdit3("color", lightColor);
+        ImGui::Separator();
+        ImGui::Text("Audio");
+        ALint state = AL_PLAYING;
+        alCall(alGetSourcei, source, AL_SOURCE_STATE, &state);
+
+        if (state == AL_PLAYING)
+        {
+            if (ImGui::Button("state: playing"))
+            {
+                alCall(alSourcePause, source);
+            }
+        }
+        else if (state == AL_PAUSED)
+        {
+            if (ImGui::Button("state: paused"))
+            {
+                alCall(alSourcePlay, source);
+            }
+        }
+        else if (state == AL_STOPPED)
+        {
+            if (ImGui::Button("state: stopped"))
+            {
+                alCall(alSourcePlay, source);
+            }
+        }
+        else
+        {
+            ImGui::Text("state: unknown");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("reset"))
+        {
+            alCall(alSourcef, source, AL_GAIN, 1.0f);
+            alCall(alSourcef, source, AL_PITCH, 1.0f);
+        }
+
+        ALfloat gain;
+        alCall(alGetSourcef, source, AL_GAIN, &gain);
+        if (ImGui::SliderFloat("gain", &gain, 0.0f, 1.0f, "%.3f"))
+        {
+            alCall(alSourcef, source, AL_GAIN, gain);
+        }
+
+        ALfloat pitch;
+        alCall(alGetSourcef, source, AL_PITCH, &pitch);
+        if (ImGui::SliderFloat("pitch", &pitch, 0.5f, 2.0f, "%.3f"))
+        {
+            alCall(alSourcef, source, AL_PITCH, pitch);
+        }
+
+        ALint looping;
+        alCall(alGetSourcei, source, AL_LOOPING, &looping);
+        bool isLooping = looping == AL_TRUE;
+        if (ImGui::Checkbox("looping", &isLooping))
+        {
+            if (looping == AL_TRUE)
+            {
+                alCall(alSourcei, source, AL_LOOPING, AL_FALSE);
+            }
+            else
+            {
+                alCall(alSourcei, source, AL_LOOPING, AL_TRUE);
+            }
+        }
+        
     }
     ImGui::End();
 }
@@ -158,8 +344,8 @@ int main(int argc, char **argv)
     const char *glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
     // Create window with graphics context
@@ -189,6 +375,92 @@ int main(int argc, char **argv)
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Init OpenAL
+    ALCdevice *openALDevice = alcOpenDevice(nullptr);
+    if (!openALDevice)
+    {
+        std::cerr << "ERROR: Could not open audio device" << std::endl;
+        return 0;
+    }
+
+    ALCcontext *openALContext;
+    if (!alcCall(alcCreateContext, openALContext, openALDevice, openALDevice, nullptr) || !openALContext)
+    {
+        std::cerr << "ERROR: Could not create audio context" << std::endl;
+        return 0;
+    }
+    ALCboolean contextMadeCurrent = false;
+    if (!alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, openALContext) || contextMadeCurrent != ALC_TRUE)
+    {
+        std::cerr << "ERROR: Could not make audio context current" << std::endl;
+        return 0;
+    }
+
+    // Read audio file
+    drwav wav;
+    if (!drwav_init_file(&wav, "assets/sounds/rain-loop-1648m.wav", NULL))
+    {
+        std::cerr << "ERROR: dr_wav could not init audio file" << std::endl;
+        return 0;
+    }
+
+    std::cout << "Audio channels: " << wav.channels << std::endl;
+    std::cout << "Audio sample rate: " << wav.sampleRate << std::endl;
+    std::cout << "Audio total PCM Frame count: " << wav.totalPCMFrameCount << std::endl;
+    std::cout << "Audio bits per sample: " << wav.bitsPerSample << std::endl;
+
+    ALenum format;
+    if (wav.channels == 1 && wav.bitsPerSample == 8)
+        format = AL_FORMAT_MONO8;
+    else if (wav.channels == 1 && wav.bitsPerSample == 16)
+        format = AL_FORMAT_MONO16;
+    else if (wav.channels == 2 && wav.bitsPerSample == 8)
+        format = AL_FORMAT_STEREO8;
+    else if (wav.channels == 2 && wav.bitsPerSample == 16)
+        format = AL_FORMAT_STEREO16;
+    else
+    {
+        std::cerr
+            << "ERROR: unrecognised wave format: "
+            << wav.channels << " channels, "
+            << wav.bitsPerSample << " bitsPerSample" << std::endl;
+        return 0;
+    }
+
+    // Create audio buffer
+    ALuint buffer;
+    alCall(alGenBuffers, 1, &buffer);
+
+    if (format == AL_FORMAT_MONO8 || format == AL_FORMAT_STEREO8)
+    {
+        int32_t size = (size_t)wav.totalPCMFrameCount * wav.channels * sizeof(int8_t);
+        int8_t *pSampleData = (int8_t *)malloc(size);
+        drwav_read_pcm_frames(&wav, wav.totalPCMFrameCount, pSampleData);
+        alCall(alBufferData, buffer, format, pSampleData, size, wav.sampleRate);
+        drwav_uninit(&wav);
+    }
+    else if (format == AL_FORMAT_MONO16 || format == AL_FORMAT_STEREO16)
+    {
+        int32_t size = (size_t)wav.totalPCMFrameCount * wav.channels * sizeof(int16_t);
+        int16_t *pSampleData = (int16_t *)malloc(size);
+        drwav_read_pcm_frames_s16(&wav, wav.totalPCMFrameCount, pSampleData);
+        alCall(alBufferData, buffer, format, pSampleData, size, wav.sampleRate);
+        drwav_uninit(&wav);
+    }
+    
+    // Init audio source
+    ALuint source;
+    alCall(alGenSources, 1, &source);
+    alCall(alSourcef, source, AL_PITCH, 1);
+    alCall(alSourcef, source, AL_GAIN, 1.0f);
+    alCall(alSource3f, source, AL_POSITION, 0, 0, 0);
+    alCall(alSource3f, source, AL_VELOCITY, 0, 0, 0);
+    alCall(alSourcei, source, AL_LOOPING, AL_TRUE);
+    alCall(alSourcei, source, AL_BUFFER, buffer);
+    alCall(alListener3f, AL_POSITION, 4.0f, 4.0f, 4.0f);
+
+    alCall(alSourcePlay, source);
 
     // Create geometries
     Model cube("assets/models/cube.obj");
@@ -223,6 +495,7 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     bool show_overlay = true;
+    std::vector<float> listenerOrientation;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -231,6 +504,17 @@ int main(int argc, char **argv)
 
         // Process input
         processCameraInput(window, editorCamera, deltaTime);
+
+        // Update audio listener
+        alCall(alListener3f, AL_POSITION, editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
+        listenerOrientation.clear();
+        listenerOrientation.push_back(editorCamera->front.x);
+        listenerOrientation.push_back(editorCamera->front.y);
+        listenerOrientation.push_back(editorCamera->front.z);
+        listenerOrientation.push_back(editorCamera->up.x);
+        listenerOrientation.push_back(editorCamera->up.y);
+        listenerOrientation.push_back(editorCamera->up.z);
+        alCall(alListenerfv, AL_ORIENTATION, listenerOrientation.data());
 
         // Clear window
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
@@ -271,13 +555,23 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(editorCamera, deltaTime, &show_overlay);
+        showOverlay(editorCamera, source, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Swap buffers
         glfwSwapBuffers(window);
     }
+
+    // Cleanup OpenAL
+    alCall(alDeleteSources, 1, &source);
+    alCall(alDeleteBuffers, 1, &buffer);
+
+    alcCall(alcMakeContextCurrent, contextMadeCurrent, openALDevice, nullptr);
+    alcCall(alcDestroyContext, openALDevice, openALContext);
+
+    ALCboolean closed;
+    alcCall(alcCloseDevice, closed, openALDevice, openALDevice);
 
     // Cleanup imgui
     ImGui_ImplOpenGL3_Shutdown();
