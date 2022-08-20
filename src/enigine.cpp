@@ -14,10 +14,14 @@
 #include "camera/camera.h"
 #include "model/model.h"
 #include "sound_engine/sound_engine.h"
+#include "physics_world/physics_world.h"
 
 bool firstMove = true;
 float lastX;
 float lastY;
+
+// Sphere position
+glm::vec3 spherePosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
 // Light source position
 glm::vec3 lightPosition = glm::vec3(-3.0f, 7.0f, 6.0f);
@@ -188,6 +192,9 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, SoundSou
         {
             soundEngine->setSourceLooping(soundSource, looping ? AL_FALSE : AL_TRUE);
         }
+        ImGui::Separator();
+        ImGui::Text("Sphere");
+        ImGui::Text("position: (%.1f, %.1f, %.1f)", spherePosition.x, spherePosition.y, spherePosition.z);
     }
     ImGui::End();
 }
@@ -271,6 +278,14 @@ int main(int argc, char **argv)
 
     soundEngine.playSource(soundSource);
 
+    // Init Physics
+    PhysicsWorld physicsWorld;
+
+    btRigidBody *groundBody = physicsWorld.getBoxBody(0, btVector3(50.0f, 50.0f, 50.0f), btVector3(0, -50, 0));
+    // set ground bouncy
+    groundBody->setRestitution(0.5f);
+    btRigidBody *sphereBody = physicsWorld.getSphereBody(1.0f, 0.5f, btVector3(0, 20, 0));
+
     // Create geometries
     Model cube("assets/models/cube.obj");
     Model sphere("assets/models/sphere.obj");
@@ -286,12 +301,9 @@ int main(int argc, char **argv)
     Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
-    // Triangle model matrix
-    glm::mat4 model = glm::mat4(1.0f);
-
     // Time
-    float deltaTime = 0.0f; // Time between current frame and last frame
-    float lastFrame = 0.0f; // Time of last frame
+    float deltaTime = 0.0f;                 // Time between current frame and last frame
+    float lastFrame = (float)glfwGetTime(); // Time of last frame
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -308,6 +320,23 @@ int main(int argc, char **argv)
 
     while (!glfwWindowShouldClose(window))
     {
+        // Calculate deltaTime
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // Update Physics
+        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 10);
+
+        // Syncronize with Physics
+        if (sphereBody && sphereBody->getMotionState())
+        {
+            btTransform trans;
+            sphereBody->getMotionState()->getWorldTransform(trans);
+            spherePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
+            soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
+        }
+
         // Poll events
         glfwPollEvents();
 
@@ -333,12 +362,9 @@ int main(int argc, char **argv)
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
         projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
-        // Calculate deltaTime
-        float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
+        // TODO: Render rigid body shapes
         // Render geometries
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
         glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
         glm::mat4 mv = editorCamera->getViewMatrix() * model;
         glm::mat3 ModelView3x3Matrix = glm::mat3(mv);

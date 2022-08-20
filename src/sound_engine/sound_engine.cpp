@@ -10,6 +10,7 @@ SoundEngine::SoundEngine()
 {
 }
 
+// TODO: delete sources
 SoundEngine::~SoundEngine()
 {
     alcCall(alcMakeContextCurrent, this->contextMadeCurrent, this->openALDevice, nullptr);
@@ -280,6 +281,11 @@ void SoundEngine::setSourcePitch(const SoundSource soundSource, const float pitc
 void SoundEngine::setSourceLooping(const SoundSource soundSource, const ALint looping)
 {
     alCall(alSourcei, soundSource.sourceId, AL_LOOPING, looping);
+}
+
+void SoundEngine::setSourcePosition(const SoundSource soundSource, const float x, const float y, const float z)
+{
+    alCall(alSource3f, soundSource.sourceId, AL_POSITION, x, y, z);
 }
 
 void SoundEngine::setListenerPosition(const float x, const float y, const float z)

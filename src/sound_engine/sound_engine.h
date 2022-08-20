@@ -37,6 +37,7 @@ public:
     void setSourceGain(const SoundSource soundSource, const float gain);
     void setSourcePitch(const SoundSource soundSource, const float pitch);
     void setSourceLooping(const SoundSource soundSource, const ALint looping);
+    void setSourcePosition(const SoundSource soundSource, const float x, const float y, const float z);
 
     // Listener
     void setListenerPosition(const float x, const float y, const float z);

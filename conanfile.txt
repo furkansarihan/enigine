@@ -5,6 +5,7 @@ glm/cci.20220420
 imgui/1.86
 assimp/5.1.0
 openal/1.22.2
+bullet3/3.24
 
 [generators]
 cmake

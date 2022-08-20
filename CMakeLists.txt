@@ -26,6 +26,8 @@ add_executable( enigine
                 src/model/model.h
                 src/sound_engine/sound_engine.cpp
                 src/sound_engine/sound_engine.h
+                src/physics_world/physics_world.cpp
+                src/physics_world/physics_world.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
