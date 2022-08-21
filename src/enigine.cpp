@@ -15,14 +15,14 @@
 #include "model/model.h"
 #include "sound_engine/sound_engine.h"
 #include "physics_world/physics_world.h"
+#include "physics_world/debug_drawer/debug_drawer.h"
 
 bool firstMove = true;
 float lastX;
 float lastY;
 
 // Sphere position
-glm::vec3 spherePosition = glm::vec3(0.0f, 0.0f, 0.0f);
-
+glm::vec3 spherePosition = glm::vec3(0.0f, 20.0f, 0.0f);
 // Light source position
 glm::vec3 lightPosition = glm::vec3(-3.0f, 7.0f, 6.0f);
 // Light color
@@ -95,7 +95,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     const float DISTANCE = 10.0f;
     static int corner = 0;
@@ -193,6 +193,13 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, SoundSou
             soundEngine->setSourceLooping(soundSource, looping ? AL_FALSE : AL_TRUE);
         }
         ImGui::Separator();
+        ImGui::Text("Physics");
+        bool showWireframe = debugDrawer->getDebugMode();
+        if (ImGui::Checkbox("wireframe", &showWireframe))
+        {
+            debugDrawer->setDebugMode(showWireframe ? 1 : 0);
+        }
+        ImGui::Separator();
         ImGui::Text("Sphere");
         ImGui::Text("position: (%.1f, %.1f, %.1f)", spherePosition.x, spherePosition.y, spherePosition.z);
     }
@@ -276,15 +283,20 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
     soundEngine.playSource(soundSource);
 
     // Init Physics
     PhysicsWorld physicsWorld;
 
-    btRigidBody *groundBody = physicsWorld.getBoxBody(0, btVector3(50.0f, 50.0f, 50.0f), btVector3(0, -50, 0));
+    DebugDrawer debugDrawer;
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
+    physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
+
+    btRigidBody *groundBody = physicsWorld.getBoxBody(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
     // set ground bouncy
     groundBody->setRestitution(0.5f);
-    btRigidBody *sphereBody = physicsWorld.getSphereBody(1.0f, 0.5f, btVector3(0, 20, 0));
+    btRigidBody *sphereBody = physicsWorld.getSphereBody(1.0f, 1.0f, btVector3(spherePosition.x, spherePosition.y, spherePosition.z));
 
     // Create geometries
     Model cube("assets/models/cube.obj");
@@ -296,6 +308,9 @@ int main(int argc, char **argv)
 
     Shader simpleShader;
     simpleShader.init(FileManager::read("assets/shaders/simple-shader.vs"), FileManager::read("assets/shaders/simple-shader.fs"));
+
+    Shader lineShader;
+    lineShader.init(FileManager::read("assets/shaders/line-shader.vs"), FileManager::read("assets/shaders/line-shader.fs"));
 
     // Camera
     Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
@@ -318,6 +333,9 @@ int main(int argc, char **argv)
     bool show_overlay = true;
     std::vector<float> listenerOrientation;
 
+    // Debug Drawer objects
+    unsigned int vbo, vao, ebo;
+
     while (!glfwWindowShouldClose(window))
     {
         // Calculate deltaTime
@@ -327,6 +345,10 @@ int main(int argc, char **argv)
 
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 10);
+
+        // Update Debug Drawer
+        debugDrawer.getLines().clear();
+        physicsWorld.dynamicsWorld->debugDrawWorld();
 
         // Syncronize with Physics
         if (sphereBody && sphereBody->getMotionState())
@@ -362,7 +384,6 @@ int main(int argc, char **argv)
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
         projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
-        // TODO: Render rigid body shapes
         // Render geometries
         glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
         glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
@@ -386,11 +407,66 @@ int main(int argc, char **argv)
         simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
         cube.draw(simpleShader);
 
+        // Draw physics debug lines
+        std::vector<DebugDrawer::Line> &lines = debugDrawer.getLines();
+        std::vector<GLfloat> vertices;
+        std::vector<GLuint> indices;
+        unsigned int indexI = 0;
+
+        for (std::vector<DebugDrawer::Line>::iterator it = lines.begin(); it != lines.end(); it++)
+        {
+            DebugDrawer::Line l = (*it);
+            vertices.push_back(l.a.x);
+            vertices.push_back(l.a.y);
+            vertices.push_back(l.a.z);
+
+            vertices.push_back(l.color.x);
+            vertices.push_back(l.color.y);
+            vertices.push_back(l.color.z);
+
+            vertices.push_back(l.b.x);
+            vertices.push_back(l.b.y);
+            vertices.push_back(l.b.z);
+
+            vertices.push_back(l.color.x);
+            vertices.push_back(l.color.y);
+            vertices.push_back(l.color.z);
+
+            indices.push_back(indexI);
+            indices.push_back(indexI + 1);
+            indexI += 2;
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+
+        mvp = projection * editorCamera->getViewMatrix() * glm::mat4(1.0f);
+        lineShader.use();
+        lineShader.setMat4("MVP", mvp);
+
+        glBindVertexArray(vao);
+        glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
         // Render UI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(editorCamera, &soundEngine, soundSource, deltaTime, &show_overlay);
+        showOverlay(editorCamera, &soundEngine, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

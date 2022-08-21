@@ -28,6 +28,8 @@ add_executable( enigine
                 src/sound_engine/sound_engine.h
                 src/physics_world/physics_world.cpp
                 src/physics_world/physics_world.h
+                src/physics_world/debug_drawer/debug_drawer.cpp
+                src/physics_world/debug_drawer/debug_drawer.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
@@ -49,6 +51,8 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/light-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/normal-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/normal-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/line-shader.vs ${PROJECT_BINARY_DIR}/assets/shaders/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/shaders/line-shader.fs ${PROJECT_BINARY_DIR}/assets/shaders/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cube.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.mtl ${PROJECT_BINARY_DIR}/assets/models/
