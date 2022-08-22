@@ -313,7 +313,7 @@ int main(int argc, char **argv)
     lineShader.init(FileManager::read("assets/shaders/line-shader.vs"), FileManager::read("assets/shaders/line-shader.fs"));
 
     // Camera
-    Camera *editorCamera = new Camera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
+    Camera editorCamera(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -30.0f);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 
     // Time
@@ -363,17 +363,17 @@ int main(int argc, char **argv)
         glfwPollEvents();
 
         // Process input
-        processCameraInput(window, editorCamera, deltaTime);
+        processCameraInput(window, &editorCamera, deltaTime);
 
         // Update audio listener
-        soundEngine.setListenerPosition(editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
+        soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
         listenerOrientation.clear();
-        listenerOrientation.push_back(editorCamera->front.x);
-        listenerOrientation.push_back(editorCamera->front.y);
-        listenerOrientation.push_back(editorCamera->front.z);
-        listenerOrientation.push_back(editorCamera->up.x);
-        listenerOrientation.push_back(editorCamera->up.y);
-        listenerOrientation.push_back(editorCamera->up.z);
+        listenerOrientation.push_back(editorCamera.front.x);
+        listenerOrientation.push_back(editorCamera.front.y);
+        listenerOrientation.push_back(editorCamera.front.z);
+        listenerOrientation.push_back(editorCamera.up.x);
+        listenerOrientation.push_back(editorCamera.up.y);
+        listenerOrientation.push_back(editorCamera.up.z);
         soundEngine.setListenerOrientation(&listenerOrientation);
 
         // Clear window
@@ -386,14 +386,14 @@ int main(int argc, char **argv)
 
         // Render geometries
         glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
-        glm::mat4 mvp = projection * editorCamera->getViewMatrix() * model; // Model-View-Projection matrix
-        glm::mat4 mv = editorCamera->getViewMatrix() * model;
+        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * model; // Model-View-Projection matrix
+        glm::mat4 mv = editorCamera.getViewMatrix() * model;
         glm::mat3 ModelView3x3Matrix = glm::mat3(mv);
 
         normalShader.use();
         normalShader.setMat4("MVP", mvp);
         normalShader.setMat4("M", model);
-        normalShader.setMat4("V", editorCamera->getViewMatrix());
+        normalShader.setMat4("V", editorCamera.getViewMatrix());
         normalShader.setMat3("MV3x3", ModelView3x3Matrix);
         normalShader.setVec3("LightPosition_worldspace", lightPosition);
         normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
         sphere.draw(normalShader);
 
         // Draw light source
-        mvp = projection * editorCamera->getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), lightPosition);
+        mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), lightPosition);
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
         simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
@@ -454,7 +454,7 @@ int main(int argc, char **argv)
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
 
-        mvp = projection * editorCamera->getViewMatrix() * glm::mat4(1.0f);
+        mvp = projection * editorCamera.getViewMatrix() * glm::mat4(1.0f);
         lineShader.use();
         lineShader.setMat4("MVP", mvp);
 
@@ -466,7 +466,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(editorCamera, &soundEngine, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&editorCamera, &soundEngine, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
