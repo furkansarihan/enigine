@@ -65,6 +65,12 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/4096x4096.png ${PROJECT_BINARY_DIR}/assets/images/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/4096x4096-normal.png ${PROJECT_BINARY_DIR}/assets/images/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/4096x4096-color.png ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/water-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/sand-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/stone-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/grass-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/rock-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/images/snow-1.jpg ${PROJECT_BINARY_DIR}/assets/images/
 )
 
 target_link_libraries(enigine ${CONAN_LIBS})

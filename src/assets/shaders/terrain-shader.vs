@@ -2,20 +2,22 @@
 
 layout (location = 0) in vec2 gridPos;
 
-uniform mat4 WorldViewProjMatrix;
-uniform float ZScaleFactor;
-uniform vec4 ScaleFactor;
-uniform vec3 RotateFactor;
-uniform vec4 FineTextureBlockOrigin; 
-uniform vec2 AlphaOffset;
-uniform vec3 ViewerPos;
+uniform mat4 worldViewProjMatrix;
+uniform float zscaleFactor;
+uniform vec4 scaleFactor;
+uniform vec4 fineTextureBlockOrigin; 
+uniform vec2 alphaOffset;
+uniform vec3 viewerPos;
 // transition width (chosen to be n/10) ? [0, n-1] : range of clipmap grid
-uniform float OneOverWidth; 
+uniform float oneOverWidth; 
+uniform vec2 terrainSize;
 
-uniform vec2 UvOffset;
+uniform vec2 uvOffset;
 
-uniform usampler2D ElevationSampler;
+uniform usampler2D elevationSampler;
 
+out float _height; // based on world coorinates
+out vec2 _tuv; // texture coordinates
 out vec2 _uv; // coordinates for normal-map lookup
 out vec2 _zalpha; // coordinates for elevation-map lookup
 out float _distance; // vertex distance to the camera
@@ -23,21 +25,21 @@ out float _distance; // vertex distance to the camera
 void main()
 {
     // convert from grid xy to world xy coordinates
-    //  ScaleFactor.xy: grid spacing of current level // scale
-    //  ScaleFactor.zw: origin of current block within world // translate
-    vec2 worldPos = gridPos * ScaleFactor.xy + ScaleFactor.zw;
+    //  scaleFactor.xy: grid spacing of current level // scale
+    //  scaleFactor.zw: origin of current block within world // translate
+    vec2 worldPos = gridPos * scaleFactor.xy + scaleFactor.zw;
 
     // compute coordinates for vertex texture
     //  FineBlockOrig.xy: 1/(w, h) of texture // normalized size
     //  FineBlockOrig.zw: origin of block in texture // translate       
-    // vec2 uv = vec2(gridPos * FineTextureBlockOrigin.xy + FineTextureBlockOrigin.zw) + UvOffset;
-    // vec2 uv = gridPos * FineTextureBlockOrigin.xy + FineTextureBlockOrigin.zw;
-    vec2 uv = worldPos * FineTextureBlockOrigin.xy + UvOffset;
+    // vec2 uv = vec2(gridPos * fineTextureBlockOrigin.xy + fineTextureBlockOrigin.zw) + uvOffset;
+    // vec2 uv = gridPos * fineTextureBlockOrigin.xy + fineTextureBlockOrigin.zw;
+    vec2 uv = worldPos * fineTextureBlockOrigin.xy + uvOffset;
 
     // https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Texture_lookup_functions
     // sample the vertex texture
-    // float zf_zd = texture(ElevationSampler, vec4(uv, 0, 1));
-    float zf_zd = texture(ElevationSampler, uv).r;
+    // float zf_zd = texture(elevationSampler, vec4(uv, 0, 1));
+    float zf_zd = texture(elevationSampler, uv).r;
 
     // TODO: texture format
     // normalize
@@ -56,15 +58,20 @@ void main()
     // The desired property is that evaluates to 0 
     // except in the transition region, 
     // where it ramps up linearly to reach 1 at the outer perimeter.
-    vec2 alpha = clamp((abs(worldPos - ViewerPos.xz) - AlphaOffset) * OneOverWidth, 0, 1);
+    vec2 alpha = clamp((abs(worldPos - viewerPos.xz) - alphaOffset) * oneOverWidth, 0, 1);
     alpha.x = max(alpha.x, alpha.y);
 
     float z = zf + alpha.x * zd;
-    z = z * ZScaleFactor;
+    z = z * zscaleFactor;
 
-    gl_Position = WorldViewProjMatrix * vec4(worldPos.x, zf_zd * ZScaleFactor, worldPos.y, 1);
+    gl_Position = worldViewProjMatrix * vec4(worldPos.x, zf_zd * zscaleFactor, worldPos.y, 1);
 
+    float x = uv.x * terrainSize.x;
+    float y = uv.y * terrainSize.y;
+
+    _height = zf_zd * zscaleFactor;
+    _tuv = vec2(x, y);
     _uv = uv;
     _zalpha = vec2(0.5 + z/1600, alpha.x);
-    _distance = clamp(abs(distance(vec3(worldPos.x, zf_zd * ZScaleFactor, worldPos.y), ViewerPos)), 0, 10000);
+    _distance = clamp(abs(distance(vec3(worldPos.x, zf_zd * zscaleFactor, worldPos.y), viewerPos)), 0, 10000);
 }
