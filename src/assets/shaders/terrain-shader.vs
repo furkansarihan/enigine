@@ -14,7 +14,7 @@ uniform vec2 terrainSize;
 
 uniform vec2 uvOffset;
 
-uniform usampler2D elevationSampler;
+uniform sampler2D elevationSampler;
 
 out float _height; // based on world coorinates
 out vec2 _tuv; // texture coordinates

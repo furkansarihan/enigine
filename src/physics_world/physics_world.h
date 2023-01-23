@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "btBulletDynamicsCommon.h"
+#include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
 
 class PhysicsWorld
 {
@@ -14,8 +15,10 @@ public:
     PhysicsWorld();
     ~PhysicsWorld();
     btDiscreteDynamicsWorld *dynamicsWorld;
-    btRigidBody *getBoxBody(const btScalar mass, const btVector3 &size, const btVector3 &position);
-    btRigidBody *getSphereBody(const btScalar mass, const btScalar radius, const btVector3 &position);
+    btRigidBody *createBox(const btScalar mass, const btVector3 &size, const btVector3 &position);
+    btRigidBody *createSphere(const btScalar mass, const btScalar radius, const btVector3 &position);
+    btRigidBody *createTerrain(const int width, const int height, const float* heightfieldData, 
+        btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges);
 
 private:
     void init();

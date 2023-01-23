@@ -53,17 +53,36 @@ void PhysicsWorld::init()
 }
 
 // TODO: reuse shapes
-btRigidBody *PhysicsWorld::getBoxBody(const btScalar mass, const btVector3 &size, const btVector3 &position)
+btRigidBody *PhysicsWorld::createBox(const btScalar mass, const btVector3 &size, const btVector3 &position)
 {
     btCollisionShape *shape = new btBoxShape(size);
     return this->createRigidBody(shape, mass, position);
 }
 
 // TODO: reuse shapes
-btRigidBody *PhysicsWorld::getSphereBody(const btScalar mass, const btScalar radius, const btVector3 &position)
+btRigidBody *PhysicsWorld::createSphere(const btScalar mass, const btScalar radius, const btVector3 &position)
 {
     btCollisionShape *shape = new btSphereShape(radius);
     return this->createRigidBody(shape, mass, position);
+}
+
+btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float* heightfieldData, 
+    btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges)
+{
+    btHeightfieldTerrainShape *shape = new btHeightfieldTerrainShape(
+        width,
+        height,
+		heightfieldData,
+		minHeight,
+        maxHeight,
+        upAxis,
+        flipQuadEdges
+    );
+    
+    // TODO: scale the shape
+    // TODO: position
+
+    return this->createRigidBody(shape, 0, btVector3(0, 0, 0));
 }
 
 btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position)

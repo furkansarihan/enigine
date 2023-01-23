@@ -49,23 +49,23 @@ void main()
         outColor = vec4(wireColor, 1 * normalRate);
     } else {
         // outColor = vec4(texture(textureSampler, _tuv).rgb * s, 1); // sampler2D
-        if (_height < 4) {
+        if (_height == 0) {
             int index = 0; // water
             outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1); // sampler2DArray
-        } else if (_height >= 4 && _height < 8) {
-            vec3 mergedColor = transitionRegion(0, 1, 8, 4);
+        } else if (_height >= 0 && _height < 0.5) {
+            vec3 mergedColor = transitionRegion(0, 1, 0.5, 0.5);
             outColor = vec4(mergedColor * s, 1);
-        } else if (_height < 12) {
+        } else if (_height < 1) {
             int index = 1; // sand
             outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
-        } else if (_height >= 12 && _height < 16) {
-            vec3 mergedColor = transitionRegion(1, 2, 16, 4);
+        } else if (_height >= 1 && _height < 2) {
+            vec3 mergedColor = transitionRegion(1, 2, 2, 1);
             outColor = vec4(mergedColor * s, 1);
-        } else if (_height < 20) {
+        } else if (_height < 8) {
             int index = 2; // stone
             outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
-        } else if (_height >= 20 && _height < 24) {
-            vec3 mergedColor = transitionRegion(2, 3, 24, 4);
+        } else if (_height >= 8 && _height < 9) {
+            vec3 mergedColor = transitionRegion(2, 3, 9, 1);
             outColor = vec4(mergedColor * s, 1);
         } else if (_height < 50) {
             int index = 3; // grass

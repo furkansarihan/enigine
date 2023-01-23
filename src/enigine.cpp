@@ -24,7 +24,7 @@ float lastX;
 float lastY;
 
 // Sphere
-glm::vec3 spherePosition = glm::vec3(0.0f, 20.0f, 0.0f);
+glm::vec3 spherePosition = glm::vec3(80.0f, 200.0f, 80.0f);
 // Light
 glm::vec3 lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
 static float lightColor[3] = {1.0f, 1.0f, 0.9f};
@@ -36,7 +36,7 @@ static bool wireframe = false;
 // Terrain
 glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 static int level = 9;
-static float scaleFactor = 1.0f;
+static float scaleFactor = 255.0f;
 static float fogMaxDist = 6600.0f;
 static float fogMinDist = 1000.0f;
 static float fogColor[3] = {0.46f, 0.71f, 0.98f};
@@ -44,6 +44,9 @@ glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
 glm::vec2 alphaOffset = glm::vec2(0.0f, 0.0f);
 static float oneOverWidth = 1.5f;
 static float rotate = 0.0f;
+// Physics
+btRigidBody *sphereBody;
+btRigidBody *terrainBody;
 
 static void glfwErrorCallback(int error, const char *description)
 {
@@ -226,14 +229,48 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
         }
         ImGui::Separator();
         ImGui::Text("Physics");
-        bool showWireframe = debugDrawer->getDebugMode();
-        if (ImGui::Checkbox("wireframe", &showWireframe))
+        bool debugEnabled = debugDrawer->getDebugMode();
+        if (ImGui::Checkbox("wireframe", &debugEnabled))
         {
-            debugDrawer->setDebugMode(showWireframe ? 1 : 0);
+            debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawAabb : btIDebugDraw::DBG_NoDebug);
         }
+        int lines = debugDrawer->getLines().size();
+        ImGui::DragInt("lines", &lines);
         ImGui::Separator();
         ImGui::Text("Sphere");
-        ImGui::Text("position: (%.1f, %.1f, %.1f)", spherePosition.x, spherePosition.y, spherePosition.z);
+        // ImGui::Text("position: (%.1f, %.1f, %.1f)", spherePosition.x, spherePosition.y, spherePosition.z);
+        float sX = sphereBody->getWorldTransform().getOrigin().getX();
+        float sY = sphereBody->getWorldTransform().getOrigin().getY();
+        float sZ = sphereBody->getWorldTransform().getOrigin().getZ();
+        if (ImGui::DragFloat("sX", &sX, 0.1f))
+        {
+            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (ImGui::DragFloat("sY", &sY, 0.1))
+        {
+            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (ImGui::DragFloat("sZ", &sZ, 0.1))
+        {
+            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (ImGui::Button("jump"))
+        {
+            sphereBody->setActivationState(1);
+            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+            sphereBody->setAngularVelocity(btVector3(0, 0, 0));
+            sphereBody->applyCentralForce(btVector3(1000, 1000, 1000));
+        }
+        float scaleX = terrainBody->getCollisionShape()->getLocalScaling().getX();
+        float scaleY = terrainBody->getCollisionShape()->getLocalScaling().getY();
+        float scaleZ = terrainBody->getCollisionShape()->getLocalScaling().getZ();
+        if (ImGui::DragFloat("scaleY", &scaleY, 10.0))
+        {
+            terrainBody->getCollisionShape()->setLocalScaling(btVector3(scaleX, scaleY, scaleZ));
+        }
         ImGui::Separator();
         ImGui::Text("Terrain");
         ImGui::Checkbox("wirewrame", &wireframe);
@@ -474,13 +511,13 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawAabb);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
-    btRigidBody *groundBody = physicsWorld.getBoxBody(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
+    btRigidBody *groundBody = physicsWorld.createBox(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
     // set ground bouncy
     groundBody->setRestitution(0.5f);
-    btRigidBody *sphereBody = physicsWorld.getSphereBody(1.0f, 1.0f, btVector3(spherePosition.x, spherePosition.y, spherePosition.z));
+    sphereBody = physicsWorld.createSphere(1.0f, 1.0f, btVector3(spherePosition.x, spherePosition.y, spherePosition.z));
 
     // Create geometries
     Model cube("assets/models/cube.obj");
@@ -558,7 +595,7 @@ int main(int argc, char **argv)
     unsigned int textureID;
     glGenTextures(1, &textureID);
     int width, height, nrComponents;
-    unsigned char *data = stbi_load("assets/images/4096x4096.png", &width, &height, &nrComponents, 1);
+    float *data = stbi_loadf("assets/images/4096x4096.png", &width, &height, &nrComponents, 1);
     if (data == nullptr)
     {
         fprintf(stderr, "Failed to read heightmap\n");
@@ -578,14 +615,28 @@ int main(int argc, char **argv)
         format = GL_RGBA;
 
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, data);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    stbi_image_free(data);
+    // Terrain Physics
+    terrainBody = physicsWorld.createTerrain(
+        width,
+        height,
+		data,
+		0,
+        1,
+        1,
+        false
+    );
+
+    // TODO: bound to terrain scale factor
+    terrainBody->getWorldTransform().setOrigin(btVector3(width/2, scaleFactor/2 + 0.5, height/2));
+    terrainBody->getCollisionShape()->setLocalScaling(btVector3(1, scaleFactor, 1));
+
     // buffer normalMapSampler texture
     unsigned int ntextureID;
     glGenTextures(1, &ntextureID);
@@ -1062,6 +1113,9 @@ int main(int argc, char **argv)
         // Swap buffers
         glfwSwapBuffers(window);
     }
+
+    // Clean Physics
+    stbi_image_free(data);
 
     // Cleanup OpenAL
     soundEngine.deleteSource(soundSource);
