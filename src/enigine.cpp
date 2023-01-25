@@ -17,13 +17,14 @@
 #include "sound_engine/sound_engine.h"
 #include "physics_world/physics_world.h"
 #include "physics_world/debug_drawer/debug_drawer.h"
+#include "terrain/terrain.h"
 
 #include "external/stb_image/stb_image.h"
 
 enum ProjectionMode
 {
-   Perspective,
-   Ortho,
+    Perspective,
+    Ortho,
 };
 
 bool firstMove = true;
@@ -41,23 +42,10 @@ ProjectionMode projectionMode = ProjectionMode::Perspective;
 static float near = 0.1;
 static float far = 10000.0;
 static int speed = 20;
-static bool wireframe = false;
 static float degree = 45;
 static float scaleOrtho = 1.0;
-// Terrain
-glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
-static int level = 9;
-static float scaleFactor = 255.0f;
-static float fogMaxDist = 6600.0f;
-static float fogMinDist = 1000.0f;
-static float fogColor[3] = {0.46f, 0.71f, 0.98f};
-glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
-glm::vec2 alphaOffset = glm::vec2(0.0f, 0.0f);
-static float oneOverWidth = 1.5f;
-static float rotate = 0.0f;
 // Physics
 btRigidBody *sphereBody;
-btRigidBody *terrainBody;
 // System Monitor
 task_basic_info t_info;
 
@@ -80,12 +68,13 @@ static void printStartInfo()
 }
 
 // TODO: support other platforms than macOS
-static void refreshSystemMonitor() {
+static void refreshSystemMonitor()
+{
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
     task_info(mach_task_self(),
-        TASK_BASIC_INFO, (task_info_t)&t_info,
-        &t_info_count);
+              TASK_BASIC_INFO, (task_info_t)&t_info,
+              &t_info_count);
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -136,7 +125,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     const float DISTANCE = 10.0f;
     static int corner = 0;
@@ -166,10 +155,12 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
         ImGui::DragFloat("degree", &degree, 0.01f);
         ImGui::DragInt("speed", &speed, 10);
         ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
-        if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective)) {
+        if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective))
+        {
             projectionMode = ProjectionMode::Perspective;
         }
-        if (ImGui::RadioButton("ortho", projectionMode == ProjectionMode::Ortho)) {
+        if (ImGui::RadioButton("ortho", projectionMode == ProjectionMode::Ortho))
+        {
             projectionMode = ProjectionMode::Ortho;
         }
         if (ImGui::Button("jump-position-1"))
@@ -188,27 +179,14 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
         }
         ImGui::Separator();
         ImGui::Text("Light");
-        float x = lightPosition.x;
-        float y = lightPosition.y;
-        float z = lightPosition.z;
-        if (ImGui::DragFloat("X", &x, 0.1f))
-        {
-            lightPosition = glm::vec3(x, y, z);
-        }
-        if (ImGui::DragFloat("Y", &y, 0.1))
-        {
-            lightPosition = glm::vec3(x, y, z);
-        }
-        if (ImGui::DragFloat("Z", &z, 0.1))
-        {
-            lightPosition = glm::vec3(x, y, z);
-        }
+        ImGui::DragFloat("X", &lightPosition.x, 0.1f);
+        ImGui::DragFloat("Y", &lightPosition.y, 0.1);
+        ImGui::DragFloat("Z", &lightPosition.z, 0.1);
         ImGui::DragFloat("power", &lightPower, 0.1);
         ImGui::ColorEdit3("color", lightColor);
         ImGui::Separator();
         ImGui::Text("Audio");
         ALint state = soundEngine->getSourceState(soundSource);
-
         if (state == AL_PLAYING)
         {
             if (ImGui::Button("state: playing"))
@@ -240,19 +218,16 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
             soundEngine->setSourceGain(soundSource, 1.0f);
             soundEngine->setSourcePitch(soundSource, 1.0f);
         }
-
         ALfloat gain = soundEngine->getSourceGain(soundSource);
         if (ImGui::SliderFloat("gain", &gain, 0.0f, 1.0f, "%.3f"))
         {
             soundEngine->setSourceGain(soundSource, gain);
         }
-
         ALfloat pitch = soundEngine->getSourcePitch(soundSource);
         if (ImGui::SliderFloat("pitch", &pitch, 0.5f, 2.0f, "%.3f"))
         {
             soundEngine->setSourcePitch(soundSource, pitch);
         }
-
         ALint looping = soundEngine->getSourceLooping(soundSource);
         bool isLooping = looping == AL_TRUE;
         if (ImGui::Checkbox("looping", &isLooping))
@@ -296,167 +271,31 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
             sphereBody->setAngularVelocity(btVector3(0, 0, 0));
             sphereBody->applyCentralForce(btVector3(1000, 1000, 1000));
         }
-        float scaleX = terrainBody->getCollisionShape()->getLocalScaling().getX();
-        float scaleY = terrainBody->getCollisionShape()->getLocalScaling().getY();
-        float scaleZ = terrainBody->getCollisionShape()->getLocalScaling().getZ();
+        float scaleX = terrain->terrainBody->getCollisionShape()->getLocalScaling().getX();
+        float scaleY = terrain->terrainBody->getCollisionShape()->getLocalScaling().getY();
+        float scaleZ = terrain->terrainBody->getCollisionShape()->getLocalScaling().getZ();
         if (ImGui::DragFloat("scaleY", &scaleY, 10.0))
         {
-            terrainBody->getCollisionShape()->setLocalScaling(btVector3(scaleX, scaleY, scaleZ));
+            terrain->terrainBody->getCollisionShape()->setLocalScaling(btVector3(scaleX, scaleY, scaleZ));
         }
         ImGui::Separator();
         ImGui::Text("Terrain");
-        ImGui::Checkbox("wirewrame", &wireframe);
-        ImGui::DragInt("level", &level);
-        ImGui::DragFloat("scale factor", &scaleFactor, 0.05f);
-        ImGui::DragFloat("fogMaxDist", &fogMaxDist, 100.0f);
-        ImGui::DragFloat("fogMinDist", &fogMinDist, 100.0f);
-        ImGui::ColorEdit3("fogColor", fogColor);
+        ImGui::Checkbox("wirewrame", &terrain->wireframe);
+        ImGui::DragInt("level", &terrain->level);
+        ImGui::DragFloat("scale factor", &terrain->scaleFactor, 0.05f);
+        ImGui::DragFloat("fogMaxDist", &terrain->fogMaxDist, 100.0f);
+        ImGui::DragFloat("fogMinDist", &terrain->fogMinDist, 100.0f);
+        ImGui::ColorEdit4("fogColor", &terrain->fogColor[0]);
         ImGui::Text("center");
-        x = terrainCenter.x;
-        y = terrainCenter.y;
-        z = terrainCenter.z;
-        if (ImGui::DragFloat("terrainCenter-X", &x, 1.0f))
-        {
-            terrainCenter = glm::vec3(x, y, z);
-        }
-        if (ImGui::DragFloat("terrainCenter-Z", &z, 1.0))
-        {
-            terrainCenter = glm::vec3(x, y, z);
-        }
-        float uvx = uvOffset.x;
-        float uvy = uvOffset.y;
-        if (ImGui::DragFloat("uvOffset-X", &uvx, 0.001f))
-        {
-            uvOffset = glm::vec2(uvx, uvy);
-        }
-        if (ImGui::DragFloat("uvOffset-Y", &uvy, 0.001))
-        {
-            uvOffset = glm::vec2(uvx, uvy);
-        }
-        float aox = alphaOffset.x;
-        float aoy = alphaOffset.y;
-        if (ImGui::DragFloat("alphaOffset-X", &aox, 1.000f))
-        {
-            alphaOffset = glm::vec2(aox, aoy);
-        }
-        if (ImGui::DragFloat("alphaOffset-Y", &aoy, 1.000))
-        {
-            alphaOffset = glm::vec2(aox, aoy);
-        }
-        ImGui::DragFloat("oneOverWidth", &oneOverWidth, 0.01f);
-        ImGui::DragFloat("rotate", &rotate, 0.01f);
+        ImGui::DragFloat("terrainCenter-X", &terrain->terrainCenter.x, 1.0f);
+        ImGui::DragFloat("terrainCenter-Z", &terrain->terrainCenter.z, 1.0);
+        ImGui::DragFloat("uvOffset-X", &terrain->uvOffset.x, 0.001f);
+        ImGui::DragFloat("uvOffset-Y", &terrain->uvOffset.y, 0.001);
+        ImGui::DragFloat("alphaOffset-X", &terrain->alphaOffset.x, 1.000f);
+        ImGui::DragFloat("alphaOffset-Y", &terrain->alphaOffset.y, 1.000);
+        ImGui::DragFloat("oneOverWidth", &terrain->oneOverWidth, 0.01f);
     }
     ImGui::End();
-}
-
-// https://stackoverflow.com/a/9194117/11601515
-// multiple is a power of 2
-int roundUp(int numToRound, int multiple)
-{
-    assert(multiple && ((multiple & (multiple - 1)) == 0));
-    return (numToRound + multiple - 1) & -multiple;
-}
-
-void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
-{
-    std::vector<float> vertices;
-    std::vector<int> indices;
-
-    for (int i = 0; i < m; i++)
-    {
-        // vertices
-        for (int j = 0; j < n; j++)
-        {
-            vertices.push_back(i);
-            vertices.push_back(j);
-        }
-        // indices
-        if (i == m - 1)
-        {
-            break;
-        }
-        int length = n;
-        for (int t = 0; t < n - 1; t++)
-        {
-            int start = n * i + t;
-            indices.push_back(start);
-            indices.push_back(start + 1);
-            indices.push_back(start + length);
-            indices.push_back(start + 1);
-            indices.push_back(start + length);
-            indices.push_back(start + length + 1);
-        }
-    }
-
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
-{
-    std::vector<float> vertices;
-    std::vector<int> indices;
-    // --
-    for (int i = 0; i < size; i++)
-    {
-        vertices.push_back(i);
-        vertices.push_back(0);
-    }
-    // --|
-    for (int i = 0; i < size; i++)
-    {
-        vertices.push_back(size);
-        vertices.push_back(i);
-    }
-    // --|
-    // --|
-    for (int i = size; i > 0; i--)
-    {
-        vertices.push_back(i);
-        vertices.push_back(size);
-    }
-    // |--|
-    // |--|
-    for (int i = size; i > 0; i--)
-    {
-        vertices.push_back(0);
-        vertices.push_back(i);
-    }
-    int half = vertices.size() / 2;
-    for (int i = 0; i <= half - 2; i += 2)
-    {
-        indices.push_back(i);
-        indices.push_back(i + 1);
-        if (i != half - 2)
-        {
-            indices.push_back(i + 2);
-        }
-        else
-        {
-            indices.push_back(0);
-        }
-    }
-
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 int main(int argc, char **argv)
@@ -592,177 +431,9 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     bool show_overlay = true;
-    std::vector<float> listenerOrientation;
 
-    // int n = 255;
-    int m = 64; // m = (n+1)/4
-
-    // create mxm
-    unsigned int vbo_mxm, vao_mxm, ebo_mxm;
-    createMesh(m, m, vbo_mxm, vao_mxm, ebo_mxm);
-    // TODO: 1 vao for mx3 and 3mx - rotate
-    // create mx3
-    unsigned int vbo_mx3, vao_mx3, ebo_mx3;
-    createMesh(m, 3, vbo_mx3, vao_mx3, ebo_mx3);
-    // create 3xm
-    unsigned int vbo_3xm, vao_3xm, ebo_3xm;
-    createMesh(3, m, vbo_3xm, vao_3xm, ebo_3xm);
-    // TODO: 1 vao for vbo_2m1x2 and vbo_2x2m1 - rotate - mirror
-    // create (2m + 1)x2
-    unsigned int vbo_2m1x2, vao_2m1x2, ebo_2m1x2;
-    createMesh(2 * m + 1, 2, vbo_2m1x2, vao_2m1x2, ebo_2m1x2);
-    // create 2x(2m + 1)
-    unsigned int vbo_2x2m1, vao_2x2m1, ebo_2x2m1;
-    createMesh(2, 2 * m + 1, vbo_2x2m1, vao_2x2m1, ebo_2x2m1);
-    // create outer degenerate triangles
-    unsigned int vbo_0, vao_0, ebo_0;
-    createOuterCoverMesh(4 * (m - 1) + 2, vbo_0, vao_0, ebo_0);
-
-    // 3x3 - finer center
-    unsigned int vbo_3x3, vao_3x3, ebo_3x3;
-    createMesh(3, 3, vbo_3x3, vao_3x3, ebo_3x3);
-    // 2x2 - outside of terrain
-    unsigned int vbo_2x2, vao_2x2, ebo_2x2;
-    createMesh(2, 2, vbo_2x2, vao_2x2, ebo_2x2);
-
-    // buffer elevationSampler texture
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    int width, height, nrComponents;
-    float *data = stbi_loadf("assets/images/4096x4096.png", &width, &height, &nrComponents, 1);
-    if (data == nullptr)
-    {
-        fprintf(stderr, "Failed to read heightmap\n");
-        return 0;
-    }
-
-    std::cout << "width: " << width << std::endl;
-    std::cout << "height: " << height << std::endl;
-    std::cout << "nrComponents: " << nrComponents << std::endl;
-
-    GLenum format;
-    if (nrComponents == 1)
-        format = GL_RED;
-    else if (nrComponents == 3)
-        format = GL_RGB;
-    else if (nrComponents == 4)
-        format = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Terrain Physics
-    terrainBody = physicsWorld.createTerrain(
-        width,
-        height,
-		data,
-		0,
-        1,
-        1,
-        false
-    );
-
-    // TODO: bound to terrain scale factor
-    terrainBody->getWorldTransform().setOrigin(btVector3(width/2, scaleFactor/2 + 0.5, height/2));
-    terrainBody->getCollisionShape()->setLocalScaling(btVector3(1, scaleFactor, 1));
-
-    // buffer normalMapSampler texture
-    unsigned int ntextureID;
-    glGenTextures(1, &ntextureID);
-    int nwidth, nheight, nnrComponents;
-    unsigned char *ndata = stbi_load("assets/images/4096x4096-normal.png", &nwidth, &nheight, &nnrComponents, 0);
-    if (ndata == nullptr)
-    {
-        fprintf(stderr, "Failed to read heightmap\n");
-        return 0;
-    }
-
-    std::cout << "nwidth: " << nwidth << std::endl;
-    std::cout << "nheight: " << nheight << std::endl;
-    std::cout << "nnrComponents: " << nnrComponents << std::endl;
-
-    GLenum nformat;
-    if (nnrComponents == 1)
-        nformat = GL_RED;
-    else if (nnrComponents == 3)
-        nformat = GL_RGB;
-    else if (nnrComponents == 4)
-        nformat = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, ntextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, nformat, nwidth, nheight, 0, nformat, GL_UNSIGNED_BYTE, ndata);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    stbi_image_free(ndata);
-
-    unsigned int ttextureID;
-    glGenTextures(1, &ttextureID);
-    int twidth, theight, tnrComponents;
-    int nrTextures = 6;
-
-    unsigned char *tdata0 = stbi_load("assets/images/water-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata1 = stbi_load("assets/images/sand-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata2 = stbi_load("assets/images/stone-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata3 = stbi_load("assets/images/grass-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata4 = stbi_load("assets/images/rock-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata5 = stbi_load("assets/images/snow-1.jpg", &twidth, &theight, &tnrComponents, 0);
-
-    if (tdata0 == nullptr || tdata1 == nullptr || tdata2 == nullptr || tdata3 == nullptr || tdata4 == nullptr || tdata5 == nullptr)
-    {
-        fprintf(stderr, "Failed to read textures\n");
-        return 0;
-    }
-
-    std::cout << "twidth: " << twidth << std::endl;
-    std::cout << "theight: " << theight << std::endl;
-    std::cout << "tnrComponents: " << tnrComponents << std::endl;
-
-    GLenum tformat;
-    if (tnrComponents == 1)
-        tformat = GL_RED;
-    else if (tnrComponents == 3)
-        tformat = GL_RGB;
-    else if (tnrComponents == 4)
-        tformat = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
-    
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_SRGB8, twidth, theight, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata0);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 1, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata1);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 2, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata2);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 3, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata3);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 4, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata4);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 5, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata5);
-    
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-    stbi_image_free(tdata0);
-    stbi_image_free(tdata1);
-    stbi_image_free(tdata2);
-    stbi_image_free(tdata3);
-    stbi_image_free(tdata4);
-    stbi_image_free(tdata5);
-
-    float w = 1.0 / width;
-    float h = 1.0 / height;
-
-    std::cout << "w: " << w << std::endl;
-    std::cout << "h: " << h << std::endl;
+    // Terrain
+    Terrain terrain(&physicsWorld);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -798,7 +469,7 @@ int main(int argc, char **argv)
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
-        listenerOrientation.clear();
+        std::vector<float> listenerOrientation;
         listenerOrientation.push_back(editorCamera.front.x);
         listenerOrientation.push_back(editorCamera.front.y);
         listenerOrientation.push_back(editorCamera.front.z);
@@ -818,7 +489,7 @@ int main(int argc, char **argv)
         if (projectionMode == ProjectionMode::Perspective)
         {
             projection = glm::perspective(degree, (float)screenWidth / (float)screenHeight, near, far);
-        } 
+        }
         else
         {
             projection = glm::ortho(0.0f, (float)screenWidth, 0.0f, (float)screenHeight, near, far);
@@ -842,250 +513,7 @@ int main(int argc, char **argv)
         sphere.draw(normalShader);
 
         // Render terrain
-        terrainShader.use();
-        terrainShader.setFloat("zscaleFactor", scaleFactor);
-        terrainShader.setVec3("viewerPos", editorCamera.position);
-        terrainShader.setFloat("oneOverWidth", oneOverWidth);
-        terrainShader.setVec2("alphaOffset", alphaOffset);
-        terrainShader.setVec3("lightDirection", lightPosition);
-        terrainShader.setVec2("uvOffset", uvOffset);
-        terrainShader.setVec2("terrainSize", glm::vec2(width, height));
-        terrainShader.setFloat("fogMaxDist", fogMaxDist);
-        terrainShader.setFloat("fogMinDist", fogMinDist);
-        terrainShader.setVec4("fogColor", glm::vec4(fogColor[0], fogColor[1], fogColor[2], 1.0f));
-
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "elevationSampler"), 0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "normalMapSampler"), 1);
-        glBindTexture(GL_TEXTURE_2D, ntextureID);
-
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 2);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
-
-        // for each level
-        int lastRoundX, lastRoundZ = 0;
-        for (int i = 1; i < level; i++)
-        {
-            // set param for each footprint
-            int scale = pow(2, i - 1);
-
-            int X = -1 * (2 * m * scale) + (int)editorCamera.position.x + (int)terrainCenter.x;
-            int Z = -1 * (2 * m * scale) + (int)editorCamera.position.z + (int)terrainCenter.z;
-
-            int x = roundUp(X, scale * 2);
-            int z = roundUp(Z, scale * 2);
-
-            // draw each mxm
-            glm::mat4 model = editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(scaleFactor, scaleFactor, scaleFactor)), terrainCenter);
-            glm::mat4 mvp = projection * editorCamera.getViewMatrix(); // * model;
-            terrainShader.setMat4("worldViewProjMatrix", mvp);
-
-            if (i % 3 == 0)
-            {
-                terrainShader.setVec3("wireColor", glm::vec3(1, 0.522, 0.522));
-            }
-            else if (i % 3 == 1)
-            {
-                terrainShader.setVec3("wireColor", glm::vec3(0.522, 1, 0.682));
-            }
-            else
-            {
-                terrainShader.setVec3("wireColor", glm::vec3(0.522, 0.827, 1));
-            }
-
-            if (wireframe)
-            {
-                terrainShader.setBool("wireframe", true);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            }
-            else
-            {
-                terrainShader.setBool("wireframe", false);
-            }
-
-            int sizeMM = scale * (m - 1);
-            int size2 = scale * 2;
-            
-            // mxm
-            int mmIndices = m * (m - 1) * 6;
-
-            glBindVertexArray(vao_mxm);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, x, z));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * z));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * z));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * z));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 2 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 3 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 3 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z + sizeMM * 3 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * (z + sizeMM * 3 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 3 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 3 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 3 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 3 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 2 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 2 + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            // fine level mxm
-            if (i == 1)
-            {
-                terrainShader.setVec3("wireColor", glm::vec3(1, 1, 1));
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM)));
-                glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM + size2, z + sizeMM));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + 2 * sizeMM + size2), h * (z + sizeMM)));
-                glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + 2 * sizeMM + size2));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + 2 * sizeMM + size2)));
-                glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM + size2, z + 2 * sizeMM + size2));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + 2 * sizeMM + size2), h * (z + 2 * sizeMM + size2)));
-                glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-                glBindVertexArray(vao_3x3);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM, z + 2 * sizeMM));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + 2 * sizeMM), h * (z + 2 * sizeMM)));
-                glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-            }
-            
-            
-            // 3xm
-            int indices3M = 2 * (m - 1) * 6;
-
-            glBindVertexArray(vao_3xm);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * z));
-            glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z + sizeMM * 3 + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM * 3 + size2)));
-            glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-            // fine level 3xm
-            if (i == 1)
-            {
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z + sizeMM));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM)));
-                glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z + sizeMM * 2 + size2));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM * 2 + size2)));
-                glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-            }
-
-            
-            // mx3
-            glBindVertexArray(vao_mx3);
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 2)));
-            glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2)));
-            glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-            if (i == 1)
-            {
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 2));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 2)));
-                glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-                terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z + sizeMM * 2));
-                terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * (z + sizeMM * 2)));
-                glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-            }
-            
-            if (i != 1)
-            {
-                // 2m1x2
-                int indices212 = 2 * m * 6;
-
-                glBindVertexArray(vao_2m1x2);
-
-                if (lastRoundZ == z + sizeMM)
-                {
-                    terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 3 + size2 - scale));
-                    terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 3 + size2 - scale)));
-                }
-                else
-                {
-                    terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM));
-                    terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM)));
-                }
-                glDrawElements(GL_TRIANGLES, indices212, GL_UNSIGNED_INT, 0);
-
-                glBindVertexArray(vao_2x2m1);
-                if (lastRoundX == x + sizeMM)
-                {
-                    terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2 - scale, z + sizeMM));
-                    terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (z + sizeMM * 3 + size2 - scale), h * (x + sizeMM)));
-                }
-                else
-                {
-                    terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM));
-                    terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM)));
-                }
-                glDrawElements(GL_TRIANGLES, indices212, GL_UNSIGNED_INT, 0);
-            }
-
-            // outer degenerate triangles
-            int indicesOuter = 4 * (m - 1) * 3 * 4;
-
-            terrainShader.setVec3("wireColor", glm::vec3(0, 1, 1));
-            glBindVertexArray(vao_0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, x, z));
-            glDrawElements(GL_TRIANGLES, indicesOuter, GL_UNSIGNED_INT, 0);
-
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            lastRoundX = x;
-            lastRoundZ = z;
-        }
+        terrain.draw(terrainShader, editorCamera.position, lightPosition, projection * editorCamera.getViewMatrix());
 
         // Draw light source
         mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), lightPosition);
@@ -1150,16 +578,13 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(&editorCamera, &soundEngine, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&editorCamera, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Swap buffers
         glfwSwapBuffers(window);
     }
-
-    // Clean Physics
-    stbi_image_free(data);
 
     // Cleanup OpenAL
     soundEngine.deleteSource(soundSource);

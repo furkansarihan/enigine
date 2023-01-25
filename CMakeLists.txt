@@ -30,6 +30,8 @@ add_executable( enigine
                 src/physics_world/physics_world.h
                 src/physics_world/debug_drawer/debug_drawer.cpp
                 src/physics_world/debug_drawer/debug_drawer.h
+                src/terrain/terrain.cpp
+                src/terrain/terrain.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
