@@ -20,6 +20,12 @@
 
 #include "external/stb_image/stb_image.h"
 
+enum ProjectionMode
+{
+   Perspective,
+   Ortho,
+};
+
 bool firstMove = true;
 float lastX;
 float lastY;
@@ -31,9 +37,13 @@ glm::vec3 lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
 static float lightColor[3] = {1.0f, 1.0f, 0.9f};
 static float lightPower = 70.0;
 // Camera
+ProjectionMode projectionMode = ProjectionMode::Perspective;
+static float near = 0.1;
 static float far = 10000.0;
 static int speed = 20;
 static bool wireframe = false;
+static float degree = 45;
+static float scaleOrtho = 1.0;
 // Terrain
 glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 static int level = 9;
@@ -151,8 +161,17 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
         ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
         ImGui::Text("pitch: %.1f", editorCamera->pitch);
         ImGui::Text("yaw: %.1f", editorCamera->yaw);
+        ImGui::DragFloat("near", &near, 10.0f);
         ImGui::DragFloat("far", &far, 10.0f);
+        ImGui::DragFloat("degree", &degree, 0.01f);
         ImGui::DragInt("speed", &speed, 10);
+        ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
+        if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective)) {
+            projectionMode = ProjectionMode::Perspective;
+        }
+        if (ImGui::RadioButton("ortho", projectionMode == ProjectionMode::Ortho)) {
+            projectionMode = ProjectionMode::Ortho;
+        }
         if (ImGui::Button("jump-position-1"))
         {
             editorCamera->position = glm::vec3(2584.9f, 87.3f, 890.4f);
@@ -557,7 +576,6 @@ int main(int argc, char **argv)
 
     // Camera
     Camera editorCamera(glm::vec3(0.0f, 240.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), 35.0f, -5.0f);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, far);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -795,7 +813,17 @@ int main(int argc, char **argv)
 
         // Update projection
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-        projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / (float)screenHeight, 0.1f, far);
+        glm::mat4 projection;
+
+        if (projectionMode == ProjectionMode::Perspective)
+        {
+            projection = glm::perspective(degree, (float)screenWidth / (float)screenHeight, near, far);
+        } 
+        else
+        {
+            projection = glm::ortho(0.0f, (float)screenWidth, 0.0f, (float)screenHeight, near, far);
+            projection = glm::scale(projection, glm::vec3(scaleOrtho, scaleOrtho, 1));
+        }
 
         // Render geometries
         glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
