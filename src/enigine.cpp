@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ctime>
 #include <bit>
+#include <mach/mach.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -47,6 +48,8 @@ static float rotate = 0.0f;
 // Physics
 btRigidBody *sphereBody;
 btRigidBody *terrainBody;
+// System Monitor
+task_basic_info t_info;
 
 static void glfwErrorCallback(int error, const char *description)
 {
@@ -64,6 +67,15 @@ static void printStartInfo()
     std::cout << "enigine_version: " << version << std::endl;
     std::cout << "cpp_version: " << __cplusplus << std::endl;
     std::cout << "started_at: " << dateTime << std::endl;
+}
+
+// TODO: support other platforms than macOS
+static void refreshSystemMonitor() {
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+
+    task_info(mach_task_self(),
+        TASK_BASIC_INFO, (task_info_t)&t_info,
+        &t_info_count);
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -133,6 +145,7 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, DebugDra
         else
             ImGui::Text("Mouse Position: <invalid>");
         ImGui::Text("FPS: %.1f", io.Framerate);
+        ImGui::Text("RAM: %d", (int)t_info.resident_size);
         ImGui::Separator();
         ImGui::Text("Camera");
         ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
@@ -519,6 +532,12 @@ int main(int argc, char **argv)
     groundBody->setRestitution(0.5f);
     sphereBody = physicsWorld.createSphere(1.0f, 1.0f, btVector3(spherePosition.x, spherePosition.y, spherePosition.z));
 
+    // Physics debug drawer objects
+    unsigned int vbo, vao, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
     // Create geometries
     Model cube("assets/models/cube.obj");
     Model sphere("assets/models/sphere.obj");
@@ -556,9 +575,6 @@ int main(int argc, char **argv)
 
     bool show_overlay = true;
     std::vector<float> listenerOrientation;
-
-    // Debug Drawer objects
-    unsigned int vbo, vao, ebo;
 
     // int n = 255;
     int m = 64; // m = (n+1)/4
@@ -732,10 +748,19 @@ int main(int argc, char **argv)
 
     while (!glfwWindowShouldClose(window))
     {
+        // System monitor
+        refreshSystemMonitor();
+
         // Calculate deltaTime
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        // Poll events
+        glfwPollEvents();
+
+        // Process input
+        processCameraInput(window, &editorCamera, deltaTime);
 
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 10);
@@ -752,12 +777,6 @@ int main(int argc, char **argv)
             spherePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
             soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
         }
-
-        // Poll events
-        glfwPollEvents();
-
-        // Process input
-        processCameraInput(window, &editorCamera, deltaTime);
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -1077,9 +1096,6 @@ int main(int argc, char **argv)
             indexI += 2;
         }
 
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
         glBindVertexArray(vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
