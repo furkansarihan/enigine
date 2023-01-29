@@ -18,6 +18,7 @@
 #include "physics_world/physics_world.h"
 #include "physics_world/debug_drawer/debug_drawer.h"
 #include "terrain/terrain.h"
+#include "vehicle/vehicle.h"
 
 #include "external/stb_image/stb_image.h"
 
@@ -34,7 +35,7 @@ float lastY;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 200.0f, 80.0f);
 // Light
-glm::vec3 lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
+glm::vec3 lightPosition = glm::vec3(0.0f, 300.0f, 0.0f);
 static float lightColor[3] = {1.0f, 1.0f, 0.9f};
 static float lightPower = 70.0;
 // Camera
@@ -44,6 +45,7 @@ static float far = 10000.0;
 static int speed = 20;
 static float degree = 45;
 static float scaleOrtho = 1.0;
+static bool followVehicle = true;
 // Physics
 btRigidBody *sphereBody;
 // System Monitor
@@ -125,7 +127,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     const float DISTANCE = 10.0f;
     static int corner = 0;
@@ -155,6 +157,7 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, Terrain 
         ImGui::DragFloat("degree", &degree, 0.01f);
         ImGui::DragInt("speed", &speed, 10);
         ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
+        ImGui::Checkbox("followVehicle", &followVehicle);
         if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective))
         {
             projectionMode = ProjectionMode::Perspective;
@@ -176,6 +179,22 @@ static void showOverlay(Camera *editorCamera, SoundEngine *soundEngine, Terrain 
             editorCamera->pitch = -3.5f;
             editorCamera->yaw = 315.7f;
             lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
+        }
+        ImGui::Separator();
+        ImGui::Text("Vehicle");
+        ImGui::Text("gVehicleSteering = %f", vehicle->gVehicleSteering);
+        ImGui::DragFloat("steeringClamp", &vehicle->steeringClamp, 0.1f);
+        ImGui::DragFloat("maxEngineForce", &vehicle->maxEngineForce, 2.0f);
+        ImGui::DragFloat("accelerationVelocity", &vehicle->accelerationVelocity, 2.0f);
+        ImGui::DragFloat("breakingVelocity", &vehicle->breakingVelocity, 2.0f);
+        ImGui::DragFloat("steeringIncrement", &vehicle->steeringIncrement, 0.2f);
+        ImGui::DragFloat("steeringVelocity", &vehicle->steeringVelocity, 10.0f);
+        float mass = vehicle->m_carChassis->getMass();
+        if (ImGui::DragFloat("mass", &mass, 1.0f))
+        {
+            btVector3 interia;
+            vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
+            vehicle->m_carChassis->setMassProps(mass, interia);
         }
         ImGui::Separator();
         ImGui::Text("Light");
@@ -382,7 +401,7 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawAabb);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_NoDebug);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     btRigidBody *groundBody = physicsWorld.createBox(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
@@ -399,6 +418,7 @@ int main(int argc, char **argv)
     // Create geometries
     Model cube("assets/models/cube.obj");
     Model sphere("assets/models/sphere.obj");
+    Model wheel("assets/models/wheel.obj");
 
     // Init shader
     Shader normalShader;
@@ -414,7 +434,7 @@ int main(int argc, char **argv)
     terrainShader.init(FileManager::read("assets/shaders/terrain-shader.vs"), FileManager::read("assets/shaders/terrain-shader.fs"));
 
     // Camera
-    Camera editorCamera(glm::vec3(0.0f, 240.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), 35.0f, -5.0f);
+    Camera editorCamera(glm::vec3(13.0f, 6.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), 123.0f, -10.0f);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -435,6 +455,11 @@ int main(int argc, char **argv)
     // Terrain
     Terrain terrain(&physicsWorld);
 
+    // Vehicle
+    Vehicle vehicle(&physicsWorld, btVector3(1800, 10, 1800));
+    glfwSetWindowUserPointer(window, &vehicle);
+    glfwSetKeyCallback(window, vehicle.staticKeyCallback);
+
     while (!glfwWindowShouldClose(window))
     {
         // System monitor
@@ -452,7 +477,19 @@ int main(int argc, char **argv)
         processCameraInput(window, &editorCamera, deltaTime);
 
         // Update Physics
-        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 10);
+        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 2);
+        if (physicsWorld.dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
+        {
+            btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.dynamicsWorld->getConstraintSolver();
+            int numFallbacks = sol->getNumFallbacks();
+            if (numFallbacks)
+            {
+                static int totalFailures = 0;
+                totalFailures += numFallbacks;
+                printf("MLCP solver failed %d times, falling back to btSequentialImpulseSolver (SI)\n", totalFailures);
+            }
+            sol->setNumFallbacks(0);
+        }
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();
@@ -465,6 +502,14 @@ int main(int argc, char **argv)
             sphereBody->getMotionState()->getWorldTransform(trans);
             spherePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
             soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
+        }
+
+        if (followVehicle && vehicle.m_carChassis && vehicle.m_carChassis->getMotionState())
+        {
+            btTransform trans;
+            vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
+            glm::vec3 vehiclePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
+            editorCamera.position = glm::vec3(vehiclePosition.x + 6, vehiclePosition.y + 4, vehiclePosition.z - 6);
         }
 
         // Update audio listener
@@ -511,6 +556,34 @@ int main(int argc, char **argv)
         normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
         normalShader.setFloat("LightPower", lightPower);
         sphere.draw(normalShader);
+
+        // Vehicle
+        vehicle.update(window, deltaTime);
+
+        // Render vehicle
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        simpleShader.use();
+        glm::mat4 transform;
+        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
+        transform = glm::translate(transform, glm::vec3(0, 1, 0));
+        transform = glm::scale(transform, glm::vec3(0.8f, 0.3f, 2.8f));
+        simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
+        simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
+        cube.draw(simpleShader);
+
+        for (int i = 0; i < 4; i++)
+        {
+            btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
+            glm::mat4 transform;
+            body.getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
+            transform = glm::scale(transform, glm::vec3(1.0f, 1.0f, 1.0f));
+            simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
+            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
+            wheel.draw(simpleShader);
+        }
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // Render terrain
         terrain.draw(terrainShader, editorCamera.position, lightPosition, projection * editorCamera.getViewMatrix());
@@ -578,7 +651,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(&editorCamera, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

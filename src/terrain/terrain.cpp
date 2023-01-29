@@ -79,7 +79,6 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // TODO:
     // Physics
     terrainBody = physicsWorld->createTerrain(
         width,
@@ -91,7 +90,7 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
         false);
 
     // TODO: bound to terrain scale factor
-    terrainBody->getWorldTransform().setOrigin(btVector3(width / 2, scaleFactor / 2 + 0.5, height / 2));
+    terrainBody->getWorldTransform().setOrigin(btVector3(width / 2, scaleFactor / 2, height / 2));
     terrainBody->getCollisionShape()->setLocalScaling(btVector3(1, scaleFactor, 1));
 
     // buffer normalMapSampler texture

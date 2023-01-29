@@ -32,6 +32,8 @@ add_executable( enigine
                 src/physics_world/debug_drawer/debug_drawer.h
                 src/terrain/terrain.cpp
                 src/terrain/terrain.h
+                src/vehicle/vehicle.cpp
+                src/vehicle/vehicle.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
@@ -61,6 +63,8 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cube.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere.mtl ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/wheel.obj ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/wheel.mtl ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_diffuse.jpg ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_normal.png ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/sounds/rain-loop-1648m.wav ${PROJECT_BINARY_DIR}/assets/sounds/

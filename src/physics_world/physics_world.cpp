@@ -34,6 +34,8 @@ PhysicsWorld::~PhysicsWorld()
 
 void PhysicsWorld::init()
 {
+    this->useMCLPSolver = false;
+
     // collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
     this->collisionConfiguration = new btDefaultCollisionConfiguration();
 
@@ -43,10 +45,28 @@ void PhysicsWorld::init()
     // btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
     this->overlappingPairCache = new btDbvtBroadphase();
 
-    // the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-    this->solver = new btSequentialImpulseConstraintSolver;
+    if (useMCLPSolver)
+    {
+        btDantzigSolver *mlcp = new btDantzigSolver();
+        // btSolveProjectedGaussSeidel* mlcp = new btSolveProjectedGaussSeidel();
+        this->solver = new btMLCPSolver(mlcp);
+    }
+    else
+    {
+        // the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
+        this->solver = new btSequentialImpulseConstraintSolver();
+    }
 
     this->dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+
+    if (useMCLPSolver)
+    {
+        this->dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 1; // for direct solver it is better to have a small A matrix
+    }
+    else
+    {
+        this->dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 128; // for direct solver, it is better to solve multiple objects together, small batches have high overhead
+    }
 
     // default gravity
     dynamicsWorld->setGravity(btVector3(0, -10, 0));
@@ -66,19 +86,18 @@ btRigidBody *PhysicsWorld::createSphere(const btScalar mass, const btScalar radi
     return this->createRigidBody(shape, mass, position);
 }
 
-btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float* heightfieldData, 
-    btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges)
+btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float *heightfieldData,
+                                         btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges)
 {
     btHeightfieldTerrainShape *shape = new btHeightfieldTerrainShape(
         width,
         height,
-		heightfieldData,
-		minHeight,
+        heightfieldData,
+        minHeight,
         maxHeight,
         upAxis,
-        flipQuadEdges
-    );
-    
+        flipQuadEdges);
+
     // TODO: scale the shape
     // TODO: position
 
