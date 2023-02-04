@@ -46,6 +46,7 @@ static int speed = 20;
 static float degree = 45;
 static float scaleOrtho = 1.0;
 static bool followVehicle = true;
+glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
 // Physics
 btRigidBody *sphereBody;
 // System Monitor
@@ -129,12 +130,11 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
 
 static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
-    const float DISTANCE = 10.0f;
     static int corner = 0;
     ImGuiIO &io = ImGui::GetIO();
     if (corner != -1)
     {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
+        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x : 0, (corner & 2) ? io.DisplaySize.y : 0);
         ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
     }
@@ -186,11 +186,69 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::DragFloat("steeringClamp", &vehicle->steeringClamp, 0.1f);
         ImGui::DragFloat("maxEngineForce", &vehicle->maxEngineForce, 2.0f);
         ImGui::DragFloat("accelerationVelocity", &vehicle->accelerationVelocity, 2.0f);
+        ImGui::DragFloat("decreaseVelocity", &vehicle->decreaseVelocity, 2.0f);
         ImGui::DragFloat("breakingVelocity", &vehicle->breakingVelocity, 2.0f);
         ImGui::DragFloat("steeringIncrement", &vehicle->steeringIncrement, 0.2f);
         ImGui::DragFloat("steeringVelocity", &vehicle->steeringVelocity, 10.0f);
+        if (ImGui::DragFloat("lowerLimit", &vehicle->lowerLimit, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheels[i]->setLimit(2, vehicle->lowerLimit, vehicle->upperLimit);
+            }
+        }
+        if (ImGui::DragFloat("upperLimit", &vehicle->upperLimit, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheels[i]->setLimit(2, vehicle->lowerLimit, vehicle->upperLimit);
+            }
+        }
+        if (ImGui::DragFloat("wheel damping", &vehicle->damping, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheelBodies[i]->setDamping(vehicle->damping, vehicle->damping);
+            }
+        }
+        if (ImGui::DragFloat("wheel friction", &vehicle->friction, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheelBodies[i]->setFriction(vehicle->friction);
+            }
+        }
+        if (ImGui::DragFloat("wheel stifness", &vehicle->stifness, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheels[i]->setStiffness(2, vehicle->stifness);
+            }
+        }
+        if (ImGui::DragFloat("wheel damping", &vehicle->wheelDamping, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheels[i]->setDamping(2, vehicle->wheelDamping);
+            }
+        }
+        if (ImGui::DragFloat("wheel bounce", &vehicle->bounce, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheels[i]->setBounce(2, vehicle->bounce);
+            }
+        }
+        float restitution = vehicle->wheelBodies[0]->getRestitution();
+        if (ImGui::DragFloat("wheel restitution", &restitution, 0.1f))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                vehicle->wheelBodies[i]->setRestitution(restitution);
+            }
+        }
         float mass = vehicle->m_carChassis->getMass();
-        if (ImGui::DragFloat("mass", &mass, 1.0f))
+        if (ImGui::DragFloat("mass", &mass, 1.0f, 1, 10000))
         {
             btVector3 interia;
             vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
@@ -313,6 +371,11 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::DragFloat("alphaOffset-X", &terrain->alphaOffset.x, 1.000f);
         ImGui::DragFloat("alphaOffset-Y", &terrain->alphaOffset.y, 1.000);
         ImGui::DragFloat("oneOverWidth", &terrain->oneOverWidth, 0.01f);
+        float trestitution = terrain->terrainBody->getRestitution();
+        if (ImGui::DragFloat("terrain restitution", &trestitution, 0.1f))
+        {
+            terrain->terrainBody->setRestitution(trestitution);
+        }
     }
     ImGui::End();
 }
@@ -450,13 +513,13 @@ int main(int argc, char **argv)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    bool show_overlay = true;
+    bool show_overlay = false;
 
     // Terrain
     Terrain terrain(&physicsWorld);
 
     // Vehicle
-    Vehicle vehicle(&physicsWorld, btVector3(1800, 10, 1800));
+    Vehicle vehicle(&physicsWorld, btVector3(1700, 10, 1750));
     glfwSetWindowUserPointer(window, &vehicle);
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
 
@@ -509,7 +572,7 @@ int main(int argc, char **argv)
             btTransform trans;
             vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
             glm::vec3 vehiclePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-            editorCamera.position = glm::vec3(vehiclePosition.x + 6, vehiclePosition.y + 4, vehiclePosition.z - 6);
+            editorCamera.position = vehiclePosition + followDistance;
         }
 
         // Update audio listener

@@ -86,6 +86,27 @@ btRigidBody *PhysicsWorld::createSphere(const btScalar mass, const btScalar radi
     return this->createRigidBody(shape, mass, position);
 }
 
+// TODO: reuse shapes
+btRigidBody *PhysicsWorld::createCylinder(const btScalar mass, const btScalar axis, const btVector3 &halfExtend, const btVector3 &position)
+{
+    btCollisionShape *shape;
+
+    if (axis == 0)
+    {
+        shape = new btCylinderShapeX(halfExtend);
+    }
+    else if (axis == 2)
+    {
+        shape = new btCylinderShapeZ(halfExtend);
+    }
+    else
+    {
+        shape = new btCylinderShape(halfExtend);
+    }
+
+    return this->createRigidBody(shape, mass, position);
+}
+
 btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float *heightfieldData,
                                          btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges)
 {

@@ -27,6 +27,7 @@ public:
     PhysicsWorld *physicsWorld;
     btRigidBody *m_carChassis;
     btHinge2Constraint *wheels[4];
+    btRigidBody *wheelBodies[4];
 
     float gEngineForce;
     float accelerationVelocity;
@@ -40,6 +41,14 @@ public:
     float steeringClamp;
     float wheelRadius;
     float wheelWidth;
+
+    float lowerLimit;
+    float upperLimit;
+    float damping;
+    float friction;
+    float stifness;
+    float wheelDamping;
+    float bounce;
 
     void update(GLFWwindow *window, float deltaTime);
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);

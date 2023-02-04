@@ -6,6 +6,7 @@ uniform vec3 wireColor;
 uniform float fogMaxDist;
 uniform float fogMinDist;
 uniform vec4 fogColor;
+uniform vec2 terrainSize;
 
 uniform sampler2D normalMapSampler;
 uniform sampler2DArray textureSampler;
@@ -40,7 +41,7 @@ void main()
     // unpack coordinates from [0, 1] to [-1, +1] range, and renormalize.
     normal = normalize(normalfc.xyz * 2 - 1);
 
-    float s = clamp(dot(normal, lightDirection), 0.5, 1);
+    float s = clamp(dot(normal, lightDirection), 0.8, 1);
 
     vec4 outColor;
     if (wireframe) {

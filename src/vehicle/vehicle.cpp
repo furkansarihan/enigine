@@ -16,10 +16,10 @@ void Vehicle::initDefaultValues()
 {
     this->gEngineForce = 0.f;
     this->accelerationVelocity = 25.f;
-    this->decreaseVelocity = 5.f;
-    this->breakingVelocity = 30.f;
+    this->decreaseVelocity = 15.f;
+    this->breakingVelocity = 40.f;
 
-    this->maxEngineForce = 45.f;  // this should be engine/velocity dependent
+    this->maxEngineForce = 90.f;  // this should be engine/velocity dependent
     this->minEngineForce = -30.f; // this should be engine/velocity dependent
 
     this->gVehicleSteering = 0.f;
@@ -29,6 +29,14 @@ void Vehicle::initDefaultValues()
 
     this->wheelRadius = 0.5f;
     this->wheelWidth = 0.4f;
+
+    this->lowerLimit = -1;
+    this->upperLimit = 1;
+    this->damping = 0.2f;
+    this->friction = 2.5f;
+    this->stifness = 40.0f;
+    this->wheelDamping = 2.0f;
+    this->bounce = 0.0f;
 }
 
 void Vehicle::initVehicle()
@@ -58,13 +66,14 @@ void Vehicle::initVehicle()
     // m_carChassis->setDamping(0.8, 0.8);
 
     // TODO: get from physicsWorld
-    btCollisionShape *m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
+    // btCollisionShape *m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
 
+    float wheelGap = -0.25f;
     btVector3 wheelPos[4] = {
-        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(- 0.25), btScalar(2.5)),
-        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(- 0.25), btScalar(2.5)),
-        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(- 0.25), btScalar(-2.5)),
-        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(- 0.25), btScalar(-2.5))};
+        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(2.5)),
+        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(2.5)),
+        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(-2.5)),
+        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(-2.5))};
 
     for (int i = 0; i < 4; i++)
     {
@@ -79,18 +88,18 @@ void Vehicle::initVehicle()
         tr.setIdentity();
         tr.setOrigin(wheelPos[i]);
 
-        btRigidBody *pBodyB = physicsWorld->createRigidBody(m_wheelShape, wheelMass, tr.getOrigin());
-        pBodyB->setDamping(0.2, 0.2);
-        pBodyB->setFriction(10);
+        btRigidBody *pBodyB;
+        pBodyB = physicsWorld->createSphere(wheelMass, wheelRadius, tr.getOrigin());
+        // pBodyB = physicsWorld->createRigidBody(m_wheelShape, wheelMass, tr.getOrigin());
+        wheelBodies[i] = pBodyB;
+        pBodyB->setDamping(damping, damping);
+        pBodyB->setFriction(friction);
         pBodyB->setActivationState(DISABLE_DEACTIVATION);
         // add some data to build constraint frames
         btVector3 parentAxis(0.f, 1.f, 0.f);
         btVector3 childAxis(1.f, 0.f, 0.f);
         btVector3 anchor = tr.getOrigin();
         wheels[i] = new btHinge2Constraint(*pBodyA, *pBodyB, anchor, parentAxis, childAxis);
-
-        // wheels[i]->setLowerLimit(-SIMD_HALF_PI * 0.5f);
-        // wheels[i]->setUpperLimit(SIMD_HALF_PI * 0.5f);
 
         // add constraint to world
         physicsWorld->dynamicsWorld->addConstraint(wheels[i], true);
@@ -108,15 +117,15 @@ void Vehicle::initVehicle()
         wheels[i]->setParam(BT_CONSTRAINT_CFM, 0.15f, 2);
         wheels[i]->setParam(BT_CONSTRAINT_ERP, 0.35f, 2);
 
-        wheels[i]->setDamping(2, 2.0);
-        wheels[i]->setStiffness(2, 40.0);
+        wheels[i]->setLimit(2, lowerLimit, upperLimit);
+        wheels[i]->setBounce(2, bounce);
+        wheels[i]->setDamping(2, wheelDamping);
+        wheels[i]->setStiffness(2, stifness);
     }
 }
 
 void Vehicle::resetVehicle(btTransform tr)
 {
-    initDefaultValues();
-
     m_carChassis->setCenterOfMassTransform(tr);
     m_carChassis->setLinearVelocity(btVector3(0, 0, 0));
     m_carChassis->setAngularVelocity(btVector3(0, 0, 0));
@@ -132,7 +141,7 @@ void Vehicle::keyCallback(GLFWwindow *window, int key, int scancode, int action,
         tr.setOrigin(position);
         resetVehicle(tr);
     }
-    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+    else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
     {
         btTransform tr;
         tr.setIdentity();
