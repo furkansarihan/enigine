@@ -3,6 +3,8 @@
 layout (location = 0) in vec2 gridPos;
 
 uniform mat4 worldViewProjMatrix;
+uniform mat4 M;
+uniform mat4 V;
 uniform float zscaleFactor;
 uniform vec4 scaleFactor;
 uniform vec4 fineTextureBlockOrigin; 
@@ -11,8 +13,11 @@ uniform vec3 viewerPos;
 // transition width (chosen to be n/10) ? [0, n-1] : range of clipmap grid
 uniform float oneOverWidth; 
 uniform vec2 terrainSize;
-
 uniform vec2 uvOffset;
+
+// shadowmap
+uniform mat4 DepthBiasMVP;
+uniform vec3 lightDirection;
 
 uniform sampler2D elevationSampler;
 
@@ -21,6 +26,13 @@ out vec2 _tuv; // texture coordinates
 out vec2 _uv; // coordinates for normal-map lookup
 out vec2 _zalpha; // coordinates for elevation-map lookup
 out float _distance; // vertex distance to the camera
+
+// shadowmap
+out vec4 ShadowCoord;
+out vec3 Position_worldspace;
+out vec3 LightDirection_cameraspace;
+out vec3 EyeDirection_cameraspace;
+out vec3 Normal_cameraspace;
 
 void main()
 {
@@ -74,4 +86,13 @@ void main()
     _uv = uv;
     _zalpha = vec2(0.5 + z/1600, alpha.x);
     _distance = clamp(abs(distance(vec3(worldPos.x, zf_zd * zscaleFactor, worldPos.y), viewerPos)), 0, 10000);
+
+    // dhadowmap
+    vec3 vertexPosition_modelspace = vec3(worldPos.x, zf_zd * zscaleFactor, worldPos.y);
+
+	Position_worldspace = (M * vec4(vertexPosition_modelspace, 1)).xyz;
+    ShadowCoord = DepthBiasMVP * vec4(vertexPosition_modelspace, 1);
+	LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
+	EyeDirection_cameraspace = vec3(0,0,0) - ( V * M * vec4(vertexPosition_modelspace, 1)).xyz;
+    // Normal_cameraspace = (V * M * vec4(vertexNormal_modelspace, 0)).xyz; 
 }

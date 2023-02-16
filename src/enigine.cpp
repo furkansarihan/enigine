@@ -33,20 +33,34 @@ float lastX;
 float lastY;
 
 // Sphere
-glm::vec3 spherePosition = glm::vec3(80.0f, 200.0f, 80.0f);
+glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 // Light
-glm::vec3 lightPosition = glm::vec3(0.0f, 300.0f, 0.0f);
-static float lightColor[3] = {1.0f, 1.0f, 0.9f};
-static float lightPower = 70.0;
+glm::vec3 lightPosition = glm::vec3(1.8f, 1.2f, -0.7f);
+static float lightColor[3] = {0.1f, 0.1f, 0.1f};
+static float ambientColor[3] = {0.1f, 0.1f, 0.1f};
+static float specularColor[3] = {0.3f, 0.3f, 0.3f};
+static float lightPower = 10.0;
 // Camera
 ProjectionMode projectionMode = ProjectionMode::Perspective;
 static float near = 0.1;
 static float far = 10000.0;
-static int speed = 20;
+static int speed = 4;
+static int textureIndex = 0;
 static float degree = 45;
 static float scaleOrtho = 1.0;
-static bool followVehicle = true;
+static bool followVehicle = false;
+static bool drawShadowmap = true;
+static float bias = 0.005;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
+// Shaders
+Shader normalShader;
+Shader simpleShader;
+Shader depthShader;
+Shader simpleShadow;
+Shader terrainShader;
+Shader terrainShadow;
+Shader lineShader;
+Shader textureShader;
 // Physics
 btRigidBody *sphereBody;
 // System Monitor
@@ -78,6 +92,18 @@ static void refreshSystemMonitor()
     task_info(mach_task_self(),
               TASK_BASIC_INFO, (task_info_t)&t_info,
               &t_info_count);
+}
+
+void initShaders()
+{
+    normalShader.init(FileManager::read("../src/assets/shaders/normal-shader.vs"), FileManager::read("../src/assets/shaders/normal-shader.fs"));
+    simpleShader.init(FileManager::read("../src/assets/shaders/simple-shader.vs"), FileManager::read("../src/assets/shaders/simple-shader.fs"));
+    depthShader.init(FileManager::read("../src/assets/shaders/simple-shader.vs"), FileManager::read("../src/assets/shaders/depth-shader.fs"));
+    simpleShadow.init(FileManager::read("../src/assets/shaders/simple-shadow.vs"), FileManager::read("../src/assets/shaders/simple-shadow.fs"));
+    terrainShader.init(FileManager::read("../src/assets/shaders/terrain-shader.vs"), FileManager::read("../src/assets/shaders/terrain-shader.fs"));
+    terrainShadow.init(FileManager::read("../src/assets/shaders/terrain-shadow.vs"), FileManager::read("../src/assets/shaders/terrain-shadow.fs"));
+    lineShader.init(FileManager::read("../src/assets/shaders/line-shader.vs"), FileManager::read("../src/assets/shaders/line-shader.fs"));
+    textureShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/simple-texture.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -156,8 +182,11 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::DragFloat("far", &far, 10.0f);
         ImGui::DragFloat("degree", &degree, 0.01f);
         ImGui::DragInt("speed", &speed, 10);
+        ImGui::DragInt("textureIndex", &textureIndex, 1);
         ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
+        ImGui::DragFloat("bias", &bias, 0.001f);
         ImGui::Checkbox("followVehicle", &followVehicle);
+        ImGui::Checkbox("drawShadowmap", &drawShadowmap);
         if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective))
         {
             projectionMode = ProjectionMode::Perspective;
@@ -179,6 +208,19 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
             editorCamera->pitch = -3.5f;
             editorCamera->yaw = 315.7f;
             lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
+        }
+        ImGui::Separator();
+        ImGui::Text("Light");
+        ImGui::DragFloat("X", &lightPosition.x, 0.01f);
+        ImGui::DragFloat("Y", &lightPosition.y, 0.01);
+        ImGui::DragFloat("Z", &lightPosition.z, 0.01);
+        ImGui::DragFloat("power", &lightPower, 0.1);
+        ImGui::ColorEdit3("lightColor", lightColor);
+        ImGui::ColorEdit3("ambientColor", ambientColor);
+        ImGui::ColorEdit3("specularColor", specularColor);
+        if (ImGui::Button("refresh shaders"))
+        {
+            initShaders();
         }
         ImGui::Separator();
         ImGui::Text("Vehicle");
@@ -254,13 +296,6 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
             vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
             vehicle->m_carChassis->setMassProps(mass, interia);
         }
-        ImGui::Separator();
-        ImGui::Text("Light");
-        ImGui::DragFloat("X", &lightPosition.x, 0.1f);
-        ImGui::DragFloat("Y", &lightPosition.y, 0.1);
-        ImGui::DragFloat("Z", &lightPosition.z, 0.1);
-        ImGui::DragFloat("power", &lightPower, 0.1);
-        ImGui::ColorEdit3("color", lightColor);
         ImGui::Separator();
         ImGui::Text("Audio");
         ALint state = soundEngine->getSourceState(soundSource);
@@ -380,6 +415,62 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
     ImGui::End();
 }
 
+void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
+{
+    // TODO: fix stretch - aspect ratio
+    float size = 0.5f;
+
+    float topLeftX = 1 - size;
+    float topLeftY = -1 + size;
+
+    float topRightX = topLeftX + size;
+    float topRightY = topLeftY;
+    float bottomLeftX = topLeftX;
+    float bottomLeftY = topLeftY - size;
+    float bottomRightX = topRightX;
+    float bottomRightY = bottomLeftY;
+
+    // std::cout << "topLeftX:" << topLeftX << std::endl;
+    // std::cout << "topLeftY:" << topLeftY << std::endl;
+    // std::cout << "topRightX:" << topRightX << std::endl;
+    // std::cout << "topRightY:" << topRightY << std::endl;
+    // std::cout << "bottomLeftX:" << bottomLeftX << std::endl;
+    // std::cout << "bottomLeftY:" << bottomLeftY << std::endl;
+    // std::cout << "bottomRightX:" << bottomRightX << std::endl;
+    // std::cout << "bottomRightY:" << bottomRightY << std::endl;
+
+    float quad_vertices[] = {
+        // top left
+        topLeftX, topLeftY,
+        0.0f, 1.0f,
+        // bottom left
+        bottomLeftX, bottomLeftY,
+        0.0f, 0.0f,
+        // bottom right
+        bottomRightX, bottomRightY,
+        1.0f, 0.0f,
+        // top right
+        topRightX, topRightY,
+        1.0f, 1.0f};
+
+    unsigned int quad_indices[] = {
+        0, 1, 2, 0, 3, 2};
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
 int main(int argc, char **argv)
 {
     printStartInfo();
@@ -482,22 +573,13 @@ int main(int argc, char **argv)
     Model cube("assets/models/cube.obj");
     Model sphere("assets/models/sphere.obj");
     Model wheel("assets/models/wheel.obj");
+    Model cylinder("assets/models/cylinder.obj");
 
-    // Init shader
-    Shader normalShader;
-    normalShader.init(FileManager::read("assets/shaders/normal-shader.vs"), FileManager::read("assets/shaders/normal-shader.fs"));
-
-    Shader simpleShader;
-    simpleShader.init(FileManager::read("assets/shaders/simple-shader.vs"), FileManager::read("assets/shaders/simple-shader.fs"));
-
-    Shader lineShader;
-    lineShader.init(FileManager::read("assets/shaders/line-shader.vs"), FileManager::read("assets/shaders/line-shader.fs"));
-
-    Shader terrainShader;
-    terrainShader.init(FileManager::read("assets/shaders/terrain-shader.vs"), FileManager::read("assets/shaders/terrain-shader.fs"));
+    // Init shaders
+    initShaders();
 
     // Camera
-    Camera editorCamera(glm::vec3(13.0f, 6.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), 123.0f, -10.0f);
+    Camera editorCamera(glm::vec3(25.0f, 18.0f, 25.0f), glm::vec3(0.0f, 1.0f, 0.0f), 224.0f, -22.0f);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -522,6 +604,56 @@ int main(int argc, char **argv)
     Vehicle vehicle(&physicsWorld, btVector3(1700, 10, 1750));
     glfwSetWindowUserPointer(window, &vehicle);
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
+
+    // Shadowmap
+    // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    float shadowmapSize = 1024;
+
+    GLuint renderedTexture;
+    glGenTextures(1, &renderedTexture);
+    glBindTexture(GL_TEXTURE_2D, renderedTexture);
+
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    // depth
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, shadowmapSize, shadowmapSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // for sample2DShadow
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+    // Set "renderedTexture" as our colour attachement #0
+    // glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
+    // depth
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderedTexture, 0);
+
+    // Set the list of draw buffers.
+    // GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+    // glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+    // depth
+    glDrawBuffer(GL_NONE);
+
+    // Always check that our framebuffer is ok
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        fprintf(stderr, "Framebuffer creation error!\n");
+        return 0;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Shadowmap display quad
+    unsigned int q_vbo, q_vao, q_ebo;
+    createQuad(q_vbo, q_vao, q_ebo);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -648,8 +780,146 @@ int main(int argc, char **argv)
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        // Render terrain
-        terrain.draw(terrainShader, editorCamera.position, lightPosition, projection * editorCamera.getViewMatrix());
+        // Build shadowmap
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        GLfloat clearColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
+        GLfloat clearDepth[] = {1.0f};
+        GLint clearStencil[] = {0};
+
+        glClearBufferfv(GL_COLOR, 0, clearColor);
+        glClearBufferfv(GL_DEPTH, 0, clearDepth);
+        glClearBufferiv(GL_STENCIL, 0, clearStencil);
+        glViewport(0, 0, shadowmapSize, shadowmapSize);
+
+        // glm::vec3 lightInvDir = glm::vec3(0.5f, 2, 2);
+        glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, -20, 20);
+        glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        glm::mat4 depthVP = depthProjectionMatrix * depthViewMatrix;
+        // glm::mat4 depthVP = projection * editorCamera.getViewMatrix();
+
+        // TODO: cast terrain shadows
+        // terrain.draw(terrainShadow, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
+        //     lightPower, depthViewMatrix, depthProjectionMatrix, depthVP, near, far, 0);
+
+        {
+            // We don't use bias in the shader, but instead we draw back faces,
+            // which are already separated from the front faces by a small distance
+            // (if your geometry is made this way)
+            // glCullFace(GL_FRONT);
+
+            // Draw objects
+            glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+            // wall
+            glm::vec3 position = glm::vec3(0, 1.25, -9);
+            glm::vec3 scale = glm::vec3(10.0f, 4.0f, 1.0f);
+            glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            depthShader.use();
+            depthShader.setBool("DrawDepth", false);
+            depthShader.setMat4("MVP", depthVP * objectModel);
+            depthShader.setVec4("DiffuseColor", objectColor);
+            cube.draw(depthShader);
+
+            // ball
+            position = glm::vec3(0, 2, -1);
+            scale = glm::vec3(2.0f, 2.0f, 2.0f);
+            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            depthShader.use();
+            depthShader.setBool("DrawDepth", false);
+            depthShader.setMat4("MVP", depthVP * objectModel);
+            depthShader.setVec4("DiffuseColor", objectColor);
+            sphere.draw(depthShader);
+
+            // stick
+            position = glm::vec3(1, 4, 2);
+            scale = glm::vec3(4.0f, 1.0f, 1.0f);
+            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            depthShader.setMat4("MVP", depthVP * objectModel);
+            depthShader.setVec4("DiffuseColor", objectColor);
+            cylinder.draw(depthShader);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            // glCullFace(GL_BACK);
+        }
+
+        glViewport(0, 0, screenWidth, screenHeight);
+
+        // Draw shadowmap
+        if (drawShadowmap)
+        {
+            textureShader.use();
+
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(glGetUniformLocation(textureShader.id, "renderedTexture"), 0);
+            glBindTexture(GL_TEXTURE_2D, renderedTexture);
+
+            glBindVertexArray(q_vao);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
+
+        // Render scene
+        glm::mat4 biasMatrix(
+            0.5, 0.0, 0.0, 0.0,
+            0.0, 0.5, 0.0, 0.0,
+            0.0, 0.0, 0.5, 0.0,
+            0.5, 0.5, 0.5, 1.0);
+        glm::mat4 depthBiasVP = biasMatrix * depthVP;
+
+        terrain.draw(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
+                     lightPower, editorCamera.getViewMatrix(), projection, depthBiasVP, near, far, renderedTexture);
+
+        // draw objects
+        {
+            // Draw objects
+            glm::vec3 objectColor(0.6f, 0.6f, 0.6f);
+
+            simpleShadow.use();
+            simpleShadow.setFloat("biasMult", bias);
+            simpleShadow.setVec3("AmbientColor", glm::vec3(ambientColor[0], ambientColor[1], ambientColor[2]));
+            simpleShadow.setVec3("DiffuseColor", objectColor);
+            simpleShadow.setVec3("SpecularColor", glm::vec3(specularColor[0], specularColor[1], specularColor[2]));
+            simpleShadow.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
+            simpleShadow.setFloat("LightPower", lightPower);
+
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(glGetUniformLocation(simpleShadow.id, "ShadowMap"), 0);
+            glBindTexture(GL_TEXTURE_2D, renderedTexture);
+
+            // wall
+            glm::vec3 position = glm::vec3(0, 1.25, -9);
+            glm::vec3 scale = glm::vec3(10.0f, 4.0f, 1.0f);
+            glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
+            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
+            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
+            simpleShadow.setMat4("M", objectModel);
+            simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
+            cube.draw(simpleShadow);
+
+            // ball
+            position = glm::vec3(0, 2, -1);
+            scale = glm::vec3(2.0f, 2.0f, 2.0f);
+            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
+            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
+            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
+            simpleShadow.setMat4("M", objectModel);
+            simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
+            sphere.draw(simpleShadow);
+
+            // stick
+            position = glm::vec3(1, 4, 2);
+            scale = glm::vec3(4.0f, 1.0f, 1.0f);
+            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+            simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
+            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
+            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
+            simpleShadow.setMat4("M", objectModel);
+            simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
+            cylinder.draw(simpleShadow);
+        }
 
         // Draw light source
         mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), lightPosition);

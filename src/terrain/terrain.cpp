@@ -53,6 +53,7 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     glGenTextures(1, &textureID);
     int nrComponents;
     data = stbi_loadf("assets/images/4096x4096.png", &width, &height, &nrComponents, 1);
+    // data = stbi_loadf("assets/images/vehicle.png", &width, &height, &nrComponents, 1);
     if (data == nullptr)
     {
         fprintf(stderr, "Failed to read heightmap\n");
@@ -300,7 +301,8 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::mat4 viewProjection)
+void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower, 
+    glm::mat4 view, glm::mat4 projection, glm::mat4 depthBiasMvp, float near, float far, uint shadowmapId)
 {
     int m = resolution;
     // Render terrain
@@ -309,13 +311,20 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
     terrainShader.setVec3("viewerPos", cameraPosition);
     terrainShader.setFloat("oneOverWidth", oneOverWidth);
     terrainShader.setVec2("alphaOffset", alphaOffset);
-    // TODO:
     terrainShader.setVec3("lightDirection", lightPosition);
+    terrainShader.setVec3("lightColor", lightColor);
+    terrainShader.setFloat("lightPower", lightPower);
     terrainShader.setVec2("uvOffset", uvOffset);
     terrainShader.setVec2("terrainSize", glm::vec2(width, height));
     terrainShader.setFloat("fogMaxDist", fogMaxDist);
     terrainShader.setFloat("fogMinDist", fogMinDist);
     terrainShader.setVec4("fogColor", fogColor);
+
+    // shadowmap
+    terrainShader.setMat4("worldViewProjMatrix", projection * view);
+    terrainShader.setMat4("M", glm::mat4(1.0f));
+    terrainShader.setMat4("V", view);
+    terrainShader.setMat4("DepthBiasMVP", depthBiasMvp);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(terrainShader.id, "elevationSampler"), 0);
@@ -329,6 +338,10 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
     glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 2);
     glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
 
+    glActiveTexture(GL_TEXTURE0 + 3);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 3);
+    glBindTexture(GL_TEXTURE_2D, shadowmapId);
+
     // for each level
     int lastRoundX, lastRoundZ = 0;
     for (int i = 1; i < level; i++)
@@ -341,11 +354,6 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
 
         int x = roundUp(X, scale * 2);
         int z = roundUp(Z, scale * 2);
-
-        // draw each mxm
-        // glm::mat4 model = editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(scaleFactor, scaleFactor, scaleFactor)), terrainCenter);
-        // glm::mat4 mv = projection * editorCamera.getViewMatrix(); // * model;
-        terrainShader.setMat4("worldViewProjMatrix", viewProjection);
 
         if (i % 3 == 0)
         {

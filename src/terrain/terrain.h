@@ -37,7 +37,8 @@ public:
     float oneOverWidth;
     btRigidBody *terrainBody;
     // Functions
-    void draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::mat4 viewProjection);
+    void draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower, 
+        glm::mat4 view, glm::mat4 projection, glm::mat4 depthBiasMvp, float near, float far, uint shadowmapId);
 
 private:
     unsigned int vao_mxm, vao_mx3, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_3x3, vao_2x2;
