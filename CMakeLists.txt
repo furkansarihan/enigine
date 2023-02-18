@@ -34,6 +34,8 @@ add_executable( enigine
                 src/terrain/terrain.h
                 src/vehicle/vehicle.cpp
                 src/vehicle/vehicle.h
+                src/culling_manager/culling_manager.cpp
+                src/culling_manager/culling_manager.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
