@@ -22,6 +22,21 @@
 
 #include "external/stb_image/stb_image.h"
 
+struct frustum
+{
+    float near;
+    float far;
+    float fov;
+    float ratio;
+    glm::vec3 points[8];
+    glm::vec3 lightAABB[8];
+};
+
+glm::vec3 camPos(5, 0, 5);
+glm::vec3 camView(-1.0f, 0.0f, 0.0f);
+float camNear = 1.0f;
+float camFar = 20.0f;
+
 enum ProjectionMode
 {
     Perspective,
@@ -36,6 +51,7 @@ float lastY;
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 // Light
 glm::vec3 lightPosition = glm::vec3(1.8f, 1.2f, -0.7f);
+glm::vec3 lightLookAt = glm::vec3(0, 0, 0);
 static float lightColor[3] = {0.1f, 0.1f, 0.1f};
 static float ambientColor[3] = {0.1f, 0.1f, 0.1f};
 static float specularColor[3] = {0.3f, 0.3f, 0.3f};
@@ -195,25 +211,28 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         {
             projectionMode = ProjectionMode::Ortho;
         }
-        if (ImGui::Button("jump-position-1"))
-        {
-            editorCamera->position = glm::vec3(2584.9f, 87.3f, 890.4f);
-            editorCamera->pitch = 0.2f;
-            editorCamera->yaw = 137.2f;
-            lightPosition = glm::vec3(0.0f, 238.8f, 14.3f);
-        }
-        if (ImGui::Button("jump-position-2"))
-        {
-            editorCamera->position = glm::vec3(1024.0f, 137.0f, 2502.0f);
-            editorCamera->pitch = -3.5f;
-            editorCamera->yaw = 315.7f;
-            lightPosition = glm::vec3(0.0f, 200.0f, 0.0f);
-        }
         ImGui::Separator();
         ImGui::Text("Light");
         ImGui::DragFloat("X", &lightPosition.x, 0.01f);
-        ImGui::DragFloat("Y", &lightPosition.y, 0.01);
-        ImGui::DragFloat("Z", &lightPosition.z, 0.01);
+        ImGui::DragFloat("Y", &lightPosition.y, 0.01f);
+        ImGui::DragFloat("Z", &lightPosition.z, 0.01f);
+        ImGui::Text("camPos");
+        ImGui::DragFloat("camPosX", &camPos.x, 0.5f);
+        ImGui::DragFloat("camPosY", &camPos.y, 0.5f);
+        ImGui::DragFloat("camPosZ", &camPos.z, 0.5f);
+        ImGui::Text("camView");
+        ImGui::DragFloat("camViewX", &camView.x, 0.01f);
+        ImGui::DragFloat("camViewY", &camView.y, 0.01f);
+        ImGui::DragFloat("camViewZ", &camView.z, 0.01f);
+        camView = glm::normalize(camView);
+        ImGui::DragFloat("camNear", &camNear, 1);
+        ImGui::DragFloat("camFar", &camFar, 1);
+        ImGui::Separator();
+        ImGui::Text("Light - look at");
+        ImGui::DragFloat("llaX", &lightLookAt.x, 0.01f);
+        ImGui::DragFloat("llaY", &lightLookAt.y, 0.01);
+        ImGui::DragFloat("llaZ", &lightLookAt.z, 0.01);
+        ImGui::Separator();
         ImGui::DragFloat("power", &lightPower, 0.1);
         ImGui::ColorEdit3("lightColor", lightColor);
         ImGui::ColorEdit3("ambientColor", ambientColor);
@@ -471,6 +490,116 @@ void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
     glBindVertexArray(0);
 }
 
+// Compute the 8 corner points of the current view frustum
+void updateFrustumPoints(frustum &f, glm::vec3 &center, glm::vec3 &view_dir)
+{
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = normalize(cross(view_dir, up));
+
+    up = normalize(cross(right, view_dir));
+
+    // view_dir must be normalized
+    glm::vec3 fc = center + view_dir * f.far;
+    glm::vec3 nc = center + view_dir * f.near;
+
+    // TODO: why tan(fov/2) is not represents width?
+    float near_height = tan(f.fov / 2.0f) * f.near;
+    float near_width = near_height * f.ratio;
+    float far_height = tan(f.fov / 2.0f) * f.far;
+    float far_width = far_height * f.ratio;
+
+    f.points[0] = nc - up * near_height - right * near_width;
+    f.points[1] = nc + up * near_height - right * near_width;
+    f.points[2] = nc + up * near_height + right * near_width;
+    f.points[3] = nc - up * near_height + right * near_width;
+
+    f.points[4] = fc - up * far_height - right * far_width;
+    f.points[5] = fc + up * far_height - right * far_width;
+    f.points[6] = fc + up * far_height + right * far_width;
+    f.points[7] = fc - up * far_height + right * far_width;
+}
+
+// this function builds a projection matrix for rendering from the shadow's POV.
+// First, it computes the appropriate z-range and sets an orthogonal projection.
+// Then, it translates and scales it, so that it exactly captures the bounding box
+// of the current frustum slice
+glm::mat4 applyCropMatrix(glm::mat4 proj, glm::mat4 lightView, frustum &f)
+{
+    float maxX, maxY, maxZ, minX, minY, minZ;
+
+    glm::mat4 nv_mvp = lightView;
+    glm::vec4 transf;
+
+    // found min-max X, Y, Z
+    transf = nv_mvp * glm::vec4(f.points[0], 1.0f);
+    minX = transf.x;
+    maxX = transf.x;
+    minY = transf.y;
+    maxY = transf.y;
+    minZ = transf.z;
+    maxZ = transf.z;
+    for (int i = 1; i < 8; i++)
+    {
+        transf = nv_mvp * glm::vec4(f.points[i], 1.0f);
+
+        if (transf.z > maxZ)
+            maxZ = transf.z;
+        if (transf.z < minZ)
+            minZ = transf.z;
+
+        // eliminate the perspective - for point lights
+        transf.x /= transf.w;
+        transf.y /= transf.w;
+
+        if (transf.x > maxX)
+            maxX = transf.x;
+        if (transf.x < minX)
+            minX = transf.x;
+        if (transf.y > maxY)
+            maxY = transf.y;
+        if (transf.y < minY)
+            minY = transf.y;
+    }
+
+    // TODO: extend borders with scene elements
+
+    f.lightAABB[0] = glm::vec3(minX, minY, maxZ);
+    f.lightAABB[1] = glm::vec3(maxX, minY, maxZ);
+    f.lightAABB[2] = glm::vec3(maxX, maxY, maxZ);
+    f.lightAABB[3] = glm::vec3(minX, maxY, maxZ);
+
+    f.lightAABB[4] = glm::vec3(minX, minY, minZ);
+    f.lightAABB[5] = glm::vec3(maxX, minY, minZ);
+    f.lightAABB[6] = glm::vec3(maxX, maxY, minZ);
+    f.lightAABB[7] = glm::vec3(minX, maxY, minZ);
+
+    // TODO: why (-maxZ, -minZ)? direction is negative-z?
+    glm::mat4 projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -maxZ, -minZ);
+
+    nv_mvp = projection * nv_mvp;
+
+    float scaleX = 2.0f / (maxX - minX);
+    float scaleY = 2.0f / (maxY - minY);
+    float offsetX = -0.5f * (maxX + minX) * scaleX;
+    float offsetY = -0.5f * (maxY + minY) * scaleY;
+
+    // TODO: convert to these
+    // projection = glm::scale(projection, glm::vec3(scaleX, scaleY, 1));
+    // projection = glm::translate(projection, glm::vec3(offsetX, offsetY, 1));
+
+    glm::mat4 crop = glm::mat4(1.0f);
+    crop[0][0] = scaleX;
+    crop[1][1] = scaleY;
+    crop[0][3] = offsetX;
+    crop[1][3] = offsetY;
+    // TODO: why transpose?
+    crop = glm::transpose(crop);
+
+    projection = projection * crop;
+
+    return projection;
+}
+
 int main(int argc, char **argv)
 {
     printStartInfo();
@@ -624,8 +753,11 @@ int main(int argc, char **argv)
     // Poor filtering. Needed !
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // out of shadowmap bound - white - far away
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
     // for sample2DShadow
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
@@ -654,6 +786,18 @@ int main(int argc, char **argv)
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
     createQuad(q_vbo, q_vao, q_ebo);
+
+    // camera frustum
+    unsigned int c_vbo, c_vao, c_ebo;
+    glGenVertexArrays(1, &c_vao);
+    glGenBuffers(1, &c_vbo);
+    glGenBuffers(1, &c_ebo);
+
+    // light view frustum
+    unsigned int c_vbo_2, c_vao_2, c_ebo_2;
+    glGenVertexArrays(1, &c_vao_2);
+    glGenBuffers(1, &c_vbo_2);
+    glGenBuffers(1, &c_ebo_2);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -791,9 +935,18 @@ int main(int argc, char **argv)
         glClearBufferiv(GL_STENCIL, 0, clearStencil);
         glViewport(0, 0, shadowmapSize, shadowmapSize);
 
-        // glm::vec3 lightInvDir = glm::vec3(0.5f, 2, 2);
-        glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, -20, 20);
-        glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        // Build current frustum
+        frustum f;
+        f.near = camNear;
+        f.far = camFar;
+        f.ratio = (float)screenWidth / screenHeight;
+        f.fov = degree;
+
+        updateFrustumPoints(f, camPos, camView);
+        // updateFrustumPoints(f, editorCamera.position, editorCamera.front);
+
+        glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, lightLookAt, glm::vec3(0, 1, 0));
+        glm::mat4 depthProjectionMatrix = applyCropMatrix(projection, depthViewMatrix, f);
         glm::mat4 depthVP = depthProjectionMatrix * depthViewMatrix;
         // glm::mat4 depthVP = projection * editorCamera.getViewMatrix();
 
@@ -820,23 +973,28 @@ int main(int argc, char **argv)
             depthShader.setVec4("DiffuseColor", objectColor);
             cube.draw(depthShader);
 
-            // ball
-            position = glm::vec3(0, 2, -1);
-            scale = glm::vec3(2.0f, 2.0f, 2.0f);
+            // ground
+            position = glm::vec3(0, -1, 0.75);
+            scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
             depthShader.setBool("DrawDepth", false);
             depthShader.setMat4("MVP", depthVP * objectModel);
             depthShader.setVec4("DiffuseColor", objectColor);
-            sphere.draw(depthShader);
+            cube.draw(depthShader);
 
-            // stick
-            position = glm::vec3(1, 4, 2);
-            scale = glm::vec3(4.0f, 1.0f, 1.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            depthShader.setMat4("MVP", depthVP * objectModel);
-            depthShader.setVec4("DiffuseColor", objectColor);
-            cylinder.draw(depthShader);
+            // ball
+            for (int i = 0; i < 30; i++)
+            {
+                position = glm::vec3(0, 2, 3 * i);
+                scale = glm::vec3(2.0f, 2.0f, 2.0f);
+                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+                depthShader.use();
+                depthShader.setBool("DrawDepth", false);
+                depthShader.setMat4("MVP", depthVP * objectModel);
+                depthShader.setVec4("DiffuseColor", objectColor);
+                sphere.draw(depthShader);
+            }
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -867,8 +1025,8 @@ int main(int argc, char **argv)
             0.5, 0.5, 0.5, 1.0);
         glm::mat4 depthBiasVP = biasMatrix * depthVP;
 
-        terrain.draw(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
-                     lightPower, editorCamera.getViewMatrix(), projection, depthBiasVP, near, far, renderedTexture);
+        // terrain.draw(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
+        //              lightPower, editorCamera.getViewMatrix(), projection, depthBiasVP, near, far, renderedTexture);
 
         // draw objects
         {
@@ -898,27 +1056,30 @@ int main(int argc, char **argv)
             simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
             cube.draw(simpleShadow);
 
-            // ball
-            position = glm::vec3(0, 2, -1);
-            scale = glm::vec3(2.0f, 2.0f, 2.0f);
+            // ground
+            position = glm::vec3(0, -1, 0.75);
+            scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
             simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
             simpleShadow.setMat4("V", editorCamera.getViewMatrix());
             simpleShadow.setMat4("M", objectModel);
             simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
-            sphere.draw(simpleShadow);
+            cube.draw(simpleShadow);
 
-            // stick
-            position = glm::vec3(1, 4, 2);
-            scale = glm::vec3(4.0f, 1.0f, 1.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
-            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-            simpleShadow.setMat4("M", objectModel);
-            simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
-            cylinder.draw(simpleShadow);
+            // ball
+            for (int i = 0; i < 30; i++)
+            {
+                position = glm::vec3(0, 2, 3 * i);
+                scale = glm::vec3(2.0f, 2.0f, 2.0f);
+                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+                simpleShadow.setMat4("DepthBiasMVP", depthBiasVP * objectModel);
+                simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
+                simpleShadow.setMat4("V", editorCamera.getViewMatrix());
+                simpleShadow.setMat4("M", objectModel);
+                simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
+                sphere.draw(simpleShadow);
+            }
         }
 
         // Draw light source
@@ -979,6 +1140,80 @@ int main(int argc, char **argv)
         glBindVertexArray(vao);
         glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        // Draw frustum
+        {
+            GLuint indices[] = {
+                // Near plane
+                0, 1, 1, 2, 2, 3, 3, 0,
+                // Far plane
+                4, 5, 5, 6, 6, 7, 7, 4,
+                // Connections between planes
+                0, 4, 1, 5, 2, 6, 3, 7};
+
+            glBindVertexArray(c_vao);
+
+            glBindBuffer(GL_ARRAY_BUFFER, c_vbo);
+            glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(float), f.points, GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c_ebo);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, 24 * sizeof(float), indices, GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+
+            glm::mat4 mvp = projection * editorCamera.getViewMatrix();
+            simpleShader.use();
+            simpleShader.setMat4("MVP", mvp);
+            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
+
+            glBindVertexArray(c_vao);
+            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
+
+        applyCropMatrix(projection, depthViewMatrix, f);
+
+        // Draw light AABB
+        if (true)
+        {
+            // Define indices
+            GLuint indices[] = {
+                0, 1, 2, 2, 3, 0, // Front face
+                1, 5, 6, 6, 2, 1, // Right face
+                5, 4, 7, 7, 6, 5, // Back face
+                4, 0, 3, 3, 7, 4, // Left face
+                3, 2, 6, 6, 7, 3, // Top face
+                0, 1, 5, 5, 4, 0, // Bottom face
+            };
+
+            glBindVertexArray(c_vao_2);
+
+            glBindBuffer(GL_ARRAY_BUFFER, c_vbo_2);
+            glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(float), f.lightAABB, GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c_ebo_2);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(float), indices, GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+
+            glm::mat4 inverseViewMatrix = glm::inverse(depthViewMatrix);
+            glm::mat4 mvp = projection * editorCamera.getViewMatrix() * inverseViewMatrix;
+            simpleShader.use();
+            simpleShader.setMat4("MVP", mvp);
+            simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 0.4, 1.0, 0.2f));
+
+            glBindVertexArray(c_vao_2);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 0.0, 0.0, 1.0f));
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glBindVertexArray(0);
+        }
 
         // Render UI
         ImGui_ImplOpenGL3_NewFrame();
