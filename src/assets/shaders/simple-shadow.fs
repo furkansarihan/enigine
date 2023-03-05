@@ -83,7 +83,7 @@ void main()
     float visibility = 1.0;
 
     // 1. sampler2D basic
-    // float nearestOccluderDist = texture(ShadowMap, ShadowCoord.xy).x;
+    float nearestOccluderDist = texture(ShadowMap, ShadowCoord.xy).x;
     // float fragDist = ShadowCoord.z;
     // 
     // if (nearestOccluderDist < fragDist - bias){
@@ -100,17 +100,17 @@ void main()
     // }
 
     // 3. Poission sampling
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 8; i++) {
         // 1. simple
-        // if (texture(ShadowMap, ShadowCoord.xy + poissonDisk[i] / 700.0).x < ShadowCoord.z - bias) {
-        //     visibility -= 0.2;
-        // }
+        if (texture(ShadowMap, ShadowCoord.xy + poissonDisk[i] / 700.0).x < ShadowCoord.z - bias) {
+            visibility -= 0.02;
+        }
 
         // 2. advanced
         // use either :
 		//  - Always the same samples.
 		//    Gives a fixed pattern in the shadow, but no noise
-		int index = i;
+		// int index = i;
 		//  - A random sample, based on the pixel's screen location. 
 		//    No banding, but the shadow moves with the camera, which looks weird.
 		// int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
@@ -120,9 +120,15 @@ void main()
 		
 		// being fully in the shadow will eat up 4*0.2 = 0.8
 		// 0.2 potentially remain, which is quite dark.
-		visibility -= 0.2 * 
-            (1.0 - texture(ShadowMap, 
-                    vec2(ShadowCoord.xy + poissonDisk[index] / 700.0)).x);
+		// visibility -= 0.2 * 
+        //     (1.0 - texture(ShadowMap, 
+        //             vec2(ShadowCoord.xy + poissonDisk[index] / 700.0)).x);
+    }
+
+    // Z comparision doesn't work expected when two distance is too close to each other
+    // So, we're making fragment fully visible when it's far enough
+    if (nearestOccluderDist > 0.9) {
+        visibility = 1.0;
     }
 
     vec3 col =
@@ -135,5 +141,5 @@ void main()
     color = vec4(col, 1);
 
     // color = vec4(vec3(nearestOccluderDist), 1);
-    // color = vec4(texture(ShadowMap, ShadowCoord.xy).xyz, 1);
+    // color = vec4(vec3(fragDist), 1);
 }
