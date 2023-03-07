@@ -36,6 +36,8 @@ add_executable( enigine
                 src/vehicle/vehicle.h
                 src/culling_manager/culling_manager.cpp
                 src/culling_manager/culling_manager.h
+                src/shadowmap_manager/shadowmap_manager.cpp
+                src/shadowmap_manager/shadowmap_manager.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
@@ -59,6 +61,7 @@ add_custom_command(TARGET enigine
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/wheel.mtl ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cylinder.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/cylinder.mtl ${PROJECT_BINARY_DIR}/assets/models/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/suzanne.obj ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_diffuse.jpg ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/models/sphere_normal.png ${PROJECT_BINARY_DIR}/assets/models/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/assets/sounds/rain-loop-1648m.wav ${PROJECT_BINARY_DIR}/assets/sounds/

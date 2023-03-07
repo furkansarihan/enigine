@@ -2,7 +2,7 @@
 
 out vec4 color;
 
-uniform sampler2D ShadowMap;
+uniform sampler2DArray ShadowMap;
 
 uniform vec3 AmbientColor;
 uniform vec3 DiffuseColor;
@@ -11,8 +11,18 @@ uniform vec3 LightColor;
 uniform float LightPower;
 
 uniform float biasMult;
+uniform mat4 M;
+uniform mat4 CamV;
+uniform vec3 CamPos;
+uniform vec3 CamView;
+uniform vec4 FrustumDistances;
+uniform bool ShowCascade;
 
-in vec4 ShadowCoord;
+layout (std140) uniform matrices {
+    mat4 DepthBiasVP[3];
+};
+
+in vec3 VertexPosition_modelspace;
 in vec3 Position_worldspace;
 in vec3 LightDirection_cameraspace;
 in vec3 EyeDirection_cameraspace;
@@ -46,6 +56,27 @@ float random(vec3 seed, int i){
 
 void main()
 {
+    vec3 ambientColor = AmbientColor;
+
+    vec4 VertexPosition_worldspace = M * vec4(VertexPosition_modelspace, 1);
+    
+    vec3 v = VertexPosition_worldspace.xyz - CamPos;
+    float fragToCamDist = abs(dot(v, -CamView));
+
+    int index = 2;
+    if (fragToCamDist < FrustumDistances.x) {
+        index = 0;
+    } else if (fragToCamDist < FrustumDistances.y) {
+        index = 1;
+    }
+
+    if (ShowCascade) {
+        ambientColor[index] *= 0.8;
+    }
+
+    mat4 DepthBiasMVP = DepthBiasVP[index] * M;
+    vec4 ShadowCoord = DepthBiasMVP * vec4(VertexPosition_modelspace, 1);
+
     // color = vec4(DiffuseColor.xyz * visibility, 1);
 
     // vec3 LightColor = vec3(1,1,1);
@@ -83,7 +114,7 @@ void main()
     float visibility = 1.0;
 
     // 1. sampler2D basic
-    float nearestOccluderDist = texture(ShadowMap, ShadowCoord.xy).x;
+    float nearestOccluderDist = texture(ShadowMap, vec3(ShadowCoord.xy, index)).x;
     // float fragDist = ShadowCoord.z;
     // 
     // if (nearestOccluderDist < fragDist - bias){
@@ -102,7 +133,7 @@ void main()
     // 3. Poission sampling
     for (int i = 0; i < 8; i++) {
         // 1. simple
-        if (texture(ShadowMap, ShadowCoord.xy + poissonDisk[i] / 700.0).x < ShadowCoord.z - bias) {
+        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - bias) {
             visibility -= 0.02;
         }
 
@@ -133,7 +164,7 @@ void main()
 
     vec3 col =
         // Ambient : simulates indirect lighting
-        AmbientColor +
+        ambientColor +
         // Diffuse : "color" of the object
         visibility * DiffuseColor * LightColor * LightPower * cosTheta +
         // Specular : reflective highlight, like a mirror
