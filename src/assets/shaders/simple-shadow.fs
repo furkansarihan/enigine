@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 
 out vec4 color;
 
@@ -12,7 +12,6 @@ uniform float LightPower;
 
 uniform float biasMult;
 uniform mat4 M;
-uniform mat4 CamV;
 uniform vec3 CamPos;
 uniform vec3 CamView;
 uniform vec4 FrustumDistances;
@@ -58,16 +57,16 @@ void main()
 {
     vec3 ambientColor = AmbientColor;
 
-    vec4 VertexPosition_worldspace = M * vec4(VertexPosition_modelspace, 1);
-    
-    vec3 v = VertexPosition_worldspace.xyz - CamPos;
+    vec3 v = Position_worldspace - CamPos;
     float fragToCamDist = abs(dot(v, -CamView));
 
-    int index = 2;
+    int index = 4;
     if (fragToCamDist < FrustumDistances.x) {
         index = 0;
     } else if (fragToCamDist < FrustumDistances.y) {
         index = 1;
+    } else if (fragToCamDist < FrustumDistances.z) {
+        index = 2;
     }
 
     if (ShowCascade) {

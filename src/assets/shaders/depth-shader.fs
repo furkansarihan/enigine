@@ -1,8 +1,6 @@
-#version 330 core
+#version 410 core
 
 layout(location = 0) out float fragmentdepth;
-
-uniform vec4 DiffuseColor;
 
 void main()
 {

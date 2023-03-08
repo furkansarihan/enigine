@@ -10,9 +10,7 @@ uniform vec2 terrainSize;
 
 uniform sampler2D normalMapSampler;
 uniform sampler2DArray textureSampler;
-
-// shadowmap
-uniform sampler2D ShadowMap;
+uniform sampler2DArray ShadowMap;
 
 uniform mat4 M;
 uniform mat4 V;
@@ -23,6 +21,16 @@ uniform mat4 V;
 uniform vec3 LightColor;
 uniform float LightPower;
 
+uniform vec3 CamPos;
+uniform vec3 CamView;
+uniform vec4 FrustumDistances;
+uniform bool ShowCascade;
+uniform vec3 Bias;
+
+layout (std140) uniform matrices {
+    mat4 DepthBiasVP[3];
+};
+
 in float _height; // based on world coorinates
 in vec2 _tuv; // texture coordinates
 in vec2 _uv; // coordinates for normal-map lookup
@@ -30,11 +38,9 @@ in vec2 _zalpha; // coordinates for elevation-map lookup
 in float _distance; // vertex distance to the camera
 
 // shadowmap
-in vec4 ShadowCoord;
 in vec3 Position_worldspace;
 in vec3 LightDirection_cameraspace;
 in vec3 EyeDirection_cameraspace;
-// in vec3 Normal_cameraspace;
 
 out vec4 color;
 
@@ -76,6 +82,20 @@ vec3 transitionRegion(int from, int to, float regionEnd, float regionSize) {
 
 void main()
 {
+    vec3 v = Position_worldspace - CamPos;
+    float fragToCamDist = abs(dot(v, -CamView));
+
+    int index = 4;
+    if (fragToCamDist < FrustumDistances.x) {
+        index = 0;
+    } else if (fragToCamDist < FrustumDistances.y) {
+        index = 1;
+    } else if (fragToCamDist < FrustumDistances.z) {
+        index = 2;
+    }
+
+    vec4 ShadowCoord = DepthBiasVP[index] * vec4(Position_worldspace, 1);
+
     // do a texture lookup to get the normal in current level
     vec4 normalfc = texture(normalMapSampler, _uv);
     // normal_fc.xy contains normal at current (fine) level
@@ -109,14 +129,15 @@ void main()
     //  - Looking elsewhere -> < 1
     float cosAlpha = clamp(dot(E, R), 0, 1);
 
-    float bias = 0.05 * tan(acos(cosTheta));
-    bias = clamp(bias, 0, 0.05);
+    // float bias = 0.05 * tan(acos(cosTheta));
+    // bias = clamp(bias, 0, 0.05);
     // bias = 0.1;
 
     float visibility = 1.0;
 
     // 1. sampler2D basic
-    // float nearestOccluderDist = texture(ShadowMap, ShadowCoord.xy).x;
+    float nearestOccluderDist = texture(ShadowMap, vec3(ShadowCoord.xy, index)).x;
+    // vec4 outColor = vec4(vec3(nearestOccluderDist), 1.0);
     // float fragDist = ShadowCoord.z;
     // 
     // if (nearestOccluderDist < fragDist - bias){
@@ -133,12 +154,12 @@ void main()
     // }
 
     // 3. Poission sampling
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 8; i++) {
         // 1. simple
-        // float nearestOccluderDist = texture(ShadowMap, ShadowCoord.xy + poissonDisk[i] / 700.0).x;
-        // if (nearestOccluderDist < ShadowCoord.z - bias) {
-        //     visibility -= 0.2;
-        // }
+        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
+            visibility -= 0.02;
+        }
+
         // 2. simple2
         // use either :
 		//  - Always the same samples.
@@ -149,16 +170,20 @@ void main()
 		// int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
 		//  - A random sample, based on the pixel's position in world space.
 		//    The position is rounded to the millimeter to avoid too much aliasing
-		int index = int(16.0 * random(floor(Position_worldspace.xyz * 1000.0), i)) % 16;
+		// int index = int(16.0 * random(floor(Position_worldspace.xyz * 1000.0), i)) % 16;
 		
 		// being fully in the shadow will eat up 4*0.2 = 0.8
 		// 0.2 potentially remain, which is quite dark.
-		visibility -= 0.2 * (1.0 - texture(ShadowMap, vec2(ShadowCoord.xy + poissonDisk[index] / 700.0)).x);
+		// visibility -= 0.2 * (1.0 - texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[index] / 700.0, 2)).x);
     }
 
-    // TODO: check outside of shadowmap
+    // Z comparision doesn't work expected when two distance is too close to each other
+    // So, we're making fragment fully visible when it's far enough
+    if (nearestOccluderDist > 0.9) {
+        visibility = 1.0;
+    }
 
-    vec4 outColor;
+    vec4 outColor = vec4(0.8, 0.8, 0.8, 1.0);
     if (wireframe) {
         float distanceRate = (_distance / 10000);
         float normalRate = 1 - distanceRate;
@@ -214,6 +239,10 @@ void main()
     //     // visibility * SpecularColor * LightColor * LightPower * pow(cosAlpha, 5);
     // color = vec4(col, 1);
     outColor = vec4(visibility * DiffuseColor, 1);
+
+    if (ShowCascade) {
+        outColor[index] = 0.9;
+    }
 
     // fog
     float fogFactor = (fogMaxDist - _distance) / (fogMaxDist - fogMinDist);

@@ -301,11 +301,10 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower, 
-    glm::mat4 view, glm::mat4 projection, glm::mat4 depthBiasMvp, float near, float far, uint shadowmapId)
+void Terrain::drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
+                        glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
+                        bool showCascade, glm::vec3 bias)
 {
-    int m = resolution;
-    // Render terrain
     terrainShader.use();
     terrainShader.setFloat("zscaleFactor", scaleFactor);
     terrainShader.setVec3("viewerPos", cameraPosition);
@@ -324,7 +323,12 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
     terrainShader.setMat4("worldViewProjMatrix", projection * view);
     terrainShader.setMat4("M", glm::mat4(1.0f));
     terrainShader.setMat4("V", view);
-    terrainShader.setMat4("DepthBiasMVP", depthBiasMvp);
+
+    terrainShader.setVec3("CamPos", camPos);
+    terrainShader.setVec3("CamView", camView);
+    terrainShader.setVec4("FrustumDistances", frustumDistances);
+    terrainShader.setBool("ShowCascade", showCascade);
+    terrainShader.setVec3("Bias", bias);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(terrainShader.id, "elevationSampler"), 0);
@@ -340,7 +344,36 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
 
     glActiveTexture(GL_TEXTURE0 + 3);
     glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 3);
-    glBindTexture(GL_TEXTURE_2D, shadowmapId);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapId);
+
+    this->draw(terrainShader, cameraPosition);
+}
+
+// TODO: culling with furstum light aabb
+void Terrain::drawDepth(Shader terrainShadow, glm::vec3 cameraPosition, glm::mat4 view, glm::mat4 projection)
+{
+    terrainShadow.use();
+    terrainShadow.setFloat("zscaleFactor", scaleFactor);
+    terrainShadow.setVec3("viewerPos", cameraPosition);
+    terrainShadow.setFloat("oneOverWidth", oneOverWidth);
+    terrainShadow.setVec2("alphaOffset", alphaOffset);
+    terrainShadow.setVec2("uvOffset", uvOffset);
+    terrainShadow.setVec2("terrainSize", glm::vec2(width, height));
+
+    terrainShadow.setMat4("worldViewProjMatrix", projection * view);
+    terrainShadow.setMat4("M", glm::mat4(1.0f));
+    terrainShadow.setMat4("V", view);
+
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(terrainShadow.id, "elevationSampler"), 0);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    this->draw(terrainShadow, cameraPosition);
+}
+
+void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
+{
+    int m = resolution;
 
     // for each level
     int lastRoundX, lastRoundZ = 0;
@@ -349,8 +382,8 @@ void Terrain::draw(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lig
         // set param for each footprint
         int scale = pow(2, i - 1);
 
-        int X = -1 * (2 * m * scale) + (int)cameraPosition.x + (int)terrainCenter.x;
-        int Z = -1 * (2 * m * scale) + (int)cameraPosition.z + (int)terrainCenter.z;
+        int X = -1 * (2 * m * scale) + (int)viewerPos.x + (int)terrainCenter.x;
+        int Z = -1 * (2 * m * scale) + (int)viewerPos.z + (int)terrainCenter.z;
 
         int x = roundUp(X, scale * 2);
         int z = roundUp(Z, scale * 2);

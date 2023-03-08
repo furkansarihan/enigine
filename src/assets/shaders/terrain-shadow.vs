@@ -3,34 +3,19 @@
 layout (location = 0) in vec2 gridPos;
 
 uniform mat4 worldViewProjMatrix;
-uniform mat4 M;
-uniform mat4 V;
 uniform float zscaleFactor;
 uniform vec4 scaleFactor;
 uniform vec4 fineTextureBlockOrigin; 
 uniform vec2 alphaOffset;
 uniform vec3 viewerPos;
+uniform vec3 lightPos;
 // transition width (chosen to be n/10) ? [0, n-1] : range of clipmap grid
 uniform float oneOverWidth; 
 uniform vec2 terrainSize;
+
 uniform vec2 uvOffset;
 
-// shadowmap
-uniform vec3 lightDirection;
-
 uniform sampler2D elevationSampler;
-
-out float _height; // based on world coorinates
-out vec2 _tuv; // texture coordinates
-out vec2 _uv; // coordinates for normal-map lookup
-out vec2 _zalpha; // coordinates for elevation-map lookup
-out float _distance; // vertex distance to the camera
-
-// shadowmap
-out vec3 Position_worldspace;
-out vec3 LightDirection_cameraspace;
-out vec3 EyeDirection_cameraspace;
-out vec3 Normal_cameraspace;
 
 void main()
 {
@@ -68,26 +53,11 @@ void main()
     // The desired property is that evaluates to 0 
     // except in the transition region, 
     // where it ramps up linearly to reach 1 at the outer perimeter.
-    vec2 alpha = clamp((abs(worldPos - viewerPos.xz) - alphaOffset) * oneOverWidth, 0, 1);
+    vec2 alpha = clamp((abs(worldPos - lightPos.xz) - alphaOffset) * oneOverWidth, 0, 1);
     alpha.x = max(alpha.x, alpha.y);
 
     float z = zf + alpha.x * zd;
     z = z * zscaleFactor;
 
-    vec3 position_worldspace = vec3(worldPos.x, zf_zd * zscaleFactor, worldPos.y);
-
-    gl_Position = worldViewProjMatrix * vec4(position_worldspace, 1);
-
-    float x = uv.x * terrainSize.x;
-    float y = uv.y * terrainSize.y;
-
-    _height = zf_zd * zscaleFactor;
-    _tuv = vec2(x, y);
-    _uv = uv;
-    _zalpha = vec2(0.5 + z/1600, alpha.x);
-    _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
-
-	Position_worldspace = (M * vec4(position_worldspace, 1)).xyz;
-	LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
-	EyeDirection_cameraspace = vec3(0,0,0) - ( V * M * vec4(position_worldspace, 1)).xyz;
+    gl_Position = worldViewProjMatrix * vec4(worldPos.x, zf_zd * zscaleFactor, worldPos.y, 1);
 }

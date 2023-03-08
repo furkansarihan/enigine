@@ -37,10 +37,12 @@ std::vector<frustum> cascadeFrustums;
 int cascadeFrustumSize = 3;
 float splitWeight = 0.75f;
 float quadScale = 0.2f;
+float bias = 0.005;
+glm::vec3 terrainBias = glm::vec3(0.020, 0.023, 0.005);
 bool drawFrustum = true;
 bool drawAABB = false;
 bool drawShadowmap = true;
-bool showCascade = true;
+bool showCascade = false;
 
 glm::vec3 camPos(0, 0, -16);
 glm::vec3 camView(0.0f, 0.0f, 1.0f);
@@ -59,6 +61,8 @@ float lastY;
 
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
+glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
+float objScale = 1.0f;
 // Light
 glm::vec3 lightPosition = glm::vec3(1.8f, 1.2f, -0.7f);
 glm::vec3 lightLookAt = glm::vec3(0, 0, 0);
@@ -74,7 +78,6 @@ static int speed = 4;
 static float fov = 45;
 static float scaleOrtho = 1.0;
 static bool followVehicle = false;
-static float bias = 0.005;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
 // Shaders
 Shader normalShader;
@@ -126,7 +129,7 @@ void initShaders()
     depthShader.init(FileManager::read("../src/assets/shaders/simple-shader.vs"), FileManager::read("../src/assets/shaders/depth-shader.fs"));
     simpleShadow.init(FileManager::read("../src/assets/shaders/simple-shadow.vs"), FileManager::read("../src/assets/shaders/simple-shadow.fs"));
     terrainShader.init(FileManager::read("../src/assets/shaders/terrain-shader.vs"), FileManager::read("../src/assets/shaders/terrain-shader.fs"));
-    terrainShadow.init(FileManager::read("../src/assets/shaders/terrain-shadow.vs"), FileManager::read("../src/assets/shaders/terrain-shadow.fs"));
+    terrainShadow.init(FileManager::read("../src/assets/shaders/terrain-shadow.vs"), FileManager::read("../src/assets/shaders/depth-shader.fs"));
     lineShader.init(FileManager::read("../src/assets/shaders/line-shader.vs"), FileManager::read("../src/assets/shaders/line-shader.fs"));
     textureShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/simple-texture.fs"));
     textureArrayShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/texture-array.fs"));
@@ -209,7 +212,6 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::DragFloat("fov", &fov, 0.01f);
         ImGui::DragInt("speed", &speed, 10);
         ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
-        ImGui::DragFloat("bias", &bias, 0.001f);
         ImGui::Checkbox("followVehicle", &followVehicle);
         if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective))
         {
@@ -220,6 +222,8 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
             projectionMode = ProjectionMode::Ortho;
         }
         ImGui::Separator();
+        ImGui::DragFloat("objScale", &objScale, 0.1f);
+        ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
         ImGui::Checkbox("drawFrustum", &drawFrustum);
@@ -227,6 +231,14 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::Checkbox("showCascade", &showCascade);
         ImGui::DragFloat("quadScale", &quadScale, 0.1f);
         ImGui::DragFloat("splitWeight", &splitWeight, 0.01f);
+        ImGui::DragFloat("bias", &bias, 0.001f);
+        ImGui::DragFloat("terrainBias0", &terrainBias.x, 0.001f);
+        ImGui::DragFloat("terrainBias1", &terrainBias.y, 0.001f);
+        ImGui::DragFloat("terrainBias2", &terrainBias.z, 0.001f);
+        ImGui::Text("groundPos");
+        ImGui::DragFloat("groundPosX", &groundPos.x, 0.5f);
+        ImGui::DragFloat("groundPosY", &groundPos.y, 0.5f);
+        ImGui::DragFloat("groundPosZ", &groundPos.z, 0.5f);
         ImGui::Text("camPos");
         ImGui::DragFloat("camPosX", &camPos.x, 0.5f);
         ImGui::DragFloat("camPosY", &camPos.y, 0.5f);
@@ -775,8 +787,16 @@ int main(int argc, char **argv)
     // Shadowmap lookup matrices
     unsigned int ubo;
     glGenBuffers(1, &ubo);
-    GLuint uniformBlockIndex = glGetUniformBlockIndex(simpleShadow.id, "matrices");
-    glUniformBlockBinding(simpleShadow.id, uniformBlockIndex, 0);
+
+    GLuint uniformBlockIndex1 = glGetUniformBlockIndex(simpleShadow.id, "matrices");
+    glUniformBlockBinding(simpleShadow.id, uniformBlockIndex1, 0);
+
+    GLuint uniformBlockIndex2 = glGetUniformBlockIndex(terrainShader.id, "matrices");
+    glUniformBlockBinding(terrainShader.id, uniformBlockIndex2, 0);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * cascadeFrustumSize, NULL, GL_STREAM_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -925,17 +945,14 @@ int main(int argc, char **argv)
         buildCascadeFrustums(screenWidth, screenHeight);
 
         glm::mat4 depthVpMatrices[cascadeFrustumSize];
+        glm::mat4 depthPMatrices[cascadeFrustumSize];
         glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, lightLookAt, glm::vec3(0, 1, 0));
 
         for (int i = 0; i < cascadeFrustumSize; i++)
         {
-            glm::mat4 depthProjectionMatrix = applyCropMatrix(cascadeFrustums.at(i), depthViewMatrix);
-            depthVpMatrices[i] = depthProjectionMatrix * depthViewMatrix;
+            depthPMatrices[i] = applyCropMatrix(cascadeFrustums.at(i), depthViewMatrix);
+            depthVpMatrices[i] = depthPMatrices[i] * depthViewMatrix;
         }
-
-        // TODO: cast terrain shadows
-        // terrain.draw(terrainShadow, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
-        //     lightPower, depthViewMatrix, depthProjectionMatrix, depthVP, near, far, 0);
 
         shadowmapManager.bindFramebuffer();
         for (int i = 0; i < cascadeFrustumSize; i++)
@@ -947,10 +964,13 @@ int main(int argc, char **argv)
             // (if your geometry is made this way)
             // glCullFace(GL_FRONT);
 
+            // Draw terrain
+            terrain.drawDepth(terrainShadow, editorCamera.position, depthViewMatrix, depthPMatrices[i]);
+
             // Draw objects
             glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
 
-            glm::vec3 position = glm::vec3(0, 1, 0);
+            glm::vec3 position = glm::vec3(0, 2, 0);
             glm::vec3 scale = glm::vec3(4, 4, 4);
             glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
@@ -970,7 +990,7 @@ int main(int argc, char **argv)
             cube.draw(depthShader);
 
             // ground
-            position = glm::vec3(0, -1, 0.75);
+            position = groundPos;
             scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
@@ -983,6 +1003,19 @@ int main(int argc, char **argv)
             for (int i = 2; i < 30; i++)
             {
                 position = glm::vec3(0, 2, 3 * i);
+                scale = glm::vec3(2.0f, 2.0f, 2.0f);
+                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+                depthShader.use();
+                depthShader.setBool("DrawDepth", false);
+                depthShader.setMat4("MVP", depthVP * objectModel);
+                depthShader.setVec4("DiffuseColor", objectColor);
+                sphere.draw(depthShader);
+            }
+
+            // ball
+            for (int i = 2; i < 30; i++)
+            {
+                position = glm::vec3(-20, 2, 3 * i);
                 scale = glm::vec3(2.0f, 2.0f, 2.0f);
                 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
                 depthShader.use();
@@ -1060,8 +1093,11 @@ int main(int argc, char **argv)
         glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * cascadeFrustumSize, depthBiasVPMatrices, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
 
-        // terrain.draw(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
-        //              lightPower, editorCamera.getViewMatrix(), projection, depthBiasVP, near, far, renderedTexture);
+        terrain.drawColor(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
+                          lightPower, editorCamera.getViewMatrix(), projection, shadowmapManager.m_textureArray,
+                          // editorCamera.position, editorCamera.front,
+                          camPos, camView,
+                          frustumDistances, showCascade, terrainBias);
 
         // draw objects
         {
@@ -1075,7 +1111,6 @@ int main(int argc, char **argv)
             simpleShadow.setVec3("SpecularColor", glm::vec3(specularColor[0], specularColor[1], specularColor[2]));
             simpleShadow.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
             simpleShadow.setFloat("LightPower", lightPower);
-            simpleShadow.setMat4("CamV", camViewMatrix);
             simpleShadow.setVec3("CamPos", camPos);
             simpleShadow.setVec3("CamView", camView);
             // simpleShadow.setVec3("CamPos", editorCamera.position);
@@ -1085,10 +1120,10 @@ int main(int argc, char **argv)
 
             glActiveTexture(GL_TEXTURE0);
             glUniform1i(glGetUniformLocation(simpleShadow.id, "ShadowMap"), 0);
-            glBindTexture(GL_TEXTURE_2D, shadowmapManager.m_textureArray);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
 
             // suzanne
-            glm::vec3 position = glm::vec3(0, 1, 0);
+            glm::vec3 position = glm::vec3(0, 2, 0);
             glm::vec3 scale = glm::vec3(4, 4, 4);
             glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
@@ -1108,7 +1143,7 @@ int main(int argc, char **argv)
             cube.draw(simpleShadow);
 
             // ground
-            position = glm::vec3(0, -1, 0.75);
+            position = groundPos;
             scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
@@ -1121,6 +1156,19 @@ int main(int argc, char **argv)
             for (int i = 2; i < 30; i++)
             {
                 position = glm::vec3(0, 2, 3 * i);
+                scale = glm::vec3(2.0f, 2.0f, 2.0f);
+                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
+                simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
+                simpleShadow.setMat4("V", editorCamera.getViewMatrix());
+                simpleShadow.setMat4("M", objectModel);
+                simpleShadow.setVec3("LightInvDirection_worldspace", lightPosition);
+                sphere.draw(simpleShadow);
+            }
+
+            // ball
+            for (int i = 2; i < 30; i++)
+            {
+                position = glm::vec3(-20, 2, 3 * i);
                 scale = glm::vec3(2.0f, 2.0f, 2.0f);
                 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
                 simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
