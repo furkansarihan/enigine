@@ -35,12 +35,13 @@ public:
     glm::vec2 uvOffset;
     glm::vec2 alphaOffset;
     float oneOverWidth;
+    glm::vec3 shadowBias;
+    bool showCascade;
     btRigidBody *terrainBody;
     // Functions
     void drawDepth(Shader terrainShadow, glm::vec3 cameraPosition, glm::mat4 view, glm::mat4 projection);
     void drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
-                   glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
-                   bool showCascade, glm::vec3 bias);
+                   glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances);
 
 private:
     unsigned int vao_mxm, vao_mx3, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_3x3, vao_2x2;

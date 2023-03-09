@@ -38,6 +38,8 @@ add_executable( enigine
                 src/culling_manager/culling_manager.h
                 src/shadowmap_manager/shadowmap_manager.cpp
                 src/shadowmap_manager/shadowmap_manager.h
+                src/shadow_manager/shadow_manager.cpp
+                src/shadow_manager/shadow_manager.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp

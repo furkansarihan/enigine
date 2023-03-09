@@ -17,6 +17,8 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     uvOffset = glm::vec2(0.0f, 0.0f);
     alphaOffset = glm::vec2(0.0f, 0.0f);
     oneOverWidth = 1.5f;
+    shadowBias = glm::vec3(0.020, 0.023, 0.005);
+    showCascade = false;
 
     // int n = 255;
     int m = resolution; // m = (n+1)/4
@@ -302,8 +304,7 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
 }
 
 void Terrain::drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
-                        glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
-                        bool showCascade, glm::vec3 bias)
+                        glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances)
 {
     terrainShader.use();
     terrainShader.setFloat("zscaleFactor", scaleFactor);
@@ -328,7 +329,7 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec
     terrainShader.setVec3("CamView", camView);
     terrainShader.setVec4("FrustumDistances", frustumDistances);
     terrainShader.setBool("ShowCascade", showCascade);
-    terrainShader.setVec3("Bias", bias);
+    terrainShader.setVec3("Bias", shadowBias);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(terrainShader.id, "elevationSampler"), 0);

@@ -58,10 +58,11 @@ void main()
     vec3 ambientColor = AmbientColor;
 
     vec3 v = Position_worldspace - CamPos;
-    float fragToCamDist = abs(dot(v, -CamView));
+    float fragToCamDist = dot(v, CamView);
 
     int index = 4;
-    if (fragToCamDist < FrustumDistances.x) {
+    if (fragToCamDist < 0) {
+    } else if (fragToCamDist < FrustumDistances.x) {
         index = 0;
     } else if (fragToCamDist < FrustumDistances.y) {
         index = 1;
