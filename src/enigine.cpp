@@ -30,14 +30,10 @@ float bias = 0.005;
 bool drawFrustum = true;
 bool drawAABB = false;
 bool drawShadowmap = true;
-
-bool firstMove = true;
-float lastX;
-float lastY;
-
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
+// Light
 static float lightColor[3] = {0.1f, 0.1f, 0.1f};
 static float ambientColor[3] = {0.4f, 0.4f, 0.4f};
 static float specularColor[3] = {0.15f, 0.15f, 0.15f};
@@ -45,6 +41,9 @@ static float lightPower = 10.0;
 // Camera
 static bool followVehicle = false;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
+bool firstMove = true;
+float lastX;
+float lastY;
 // Shaders
 Shader normalShader;
 Shader simpleShader;
@@ -589,22 +588,12 @@ int main(int argc, char **argv)
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
 
     // Shadowmap
-    ShadowManager shadowManager;
+    std::vector<unsigned int> shaderIds;
+    shaderIds.push_back(simpleShadow.id);
+    shaderIds.push_back(terrainShadow.id);
+
+    ShadowManager shadowManager(shaderIds);
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
-
-    // Shadowmap lookup matrices
-    unsigned int ubo;
-    glGenBuffers(1, &ubo);
-
-    GLuint uniformBlockIndex1 = glGetUniformBlockIndex(simpleShadow.id, "matrices");
-    glUniformBlockBinding(simpleShadow.id, uniformBlockIndex1, 0);
-
-    GLuint uniformBlockIndex2 = glGetUniformBlockIndex(terrainShader.id, "matrices");
-    glUniformBlockBinding(terrainShader.id, uniformBlockIndex2, 0);
-
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * shadowManager.m_splitCount, NULL, GL_STREAM_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -858,36 +847,15 @@ int main(int argc, char **argv)
         }
 
         // Render scene
-        glm::mat4 biasMatrix(
-            0.5, 0.0, 0.0, 0.0,
-            0.0, 0.5, 0.0, 0.0,
-            0.0, 0.0, 0.5, 0.0,
-            0.5, 0.5, 0.5, 1.0);
-
-        // setup shadowmap lookup matrices
-        glm::mat4 depthBiasVPMatrices[shadowManager.m_splitCount];
-
-        glm::mat4 camViewMatrix = shadowManager.m_camera->getViewMatrix();
-        glm::vec4 frustumDistances;
-
-        for (int i = 0; i < shadowManager.m_splitCount; i++)
-        {
-            depthBiasVPMatrices[i] = biasMatrix * shadowManager.m_depthPMatrices[i] * depthViewMatrix;
-            frustumDistances[i] = shadowManager.m_frustums[i].far;
-        }
-
-        glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * shadowManager.m_splitCount, depthBiasVPMatrices, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
+        glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
         terrain.drawColor(terrainShader, editorCamera.position, shadowManager.m_lightPos, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
                           lightPower, editorCamera.getViewMatrix(), projection, shadowmapManager.m_textureArray,
                           shadowManager.m_camera->position, shadowManager.m_camera->front,
                           frustumDistances);
 
-        // draw objects
+        // Draw objects
         {
-            // Draw objects
             glm::vec3 objectColor(0.6f, 0.6f, 0.6f);
 
             simpleShadow.use();

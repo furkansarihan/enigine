@@ -1,14 +1,35 @@
 #include "shadow_manager.h"
 
-ShadowManager::ShadowManager()
+ShadowManager::ShadowManager(std::vector<unsigned int> shaderIds)
 {
     m_camera = new Camera(glm::vec3(0, 0, -16), glm::vec3(0, 1, 0), 90, 0, 1, 200);
+
+    m_shaderIds = shaderIds;
+
+    setupUBO();
 }
 
 ShadowManager::~ShadowManager()
 {
     m_frustums.clear();
     m_depthPMatrices.clear();
+}
+
+// Shadowmap lookup matrices
+void ShadowManager::setupUBO()
+{
+    glGenBuffers(1, &m_ubo);
+
+    for (int i = 0; i < m_shaderIds.size(); i++)
+    {
+        unsigned int shaderId = m_shaderIds.at(i);
+        GLuint uniformBlockIndex = glGetUniformBlockIndex(shaderId, "matrices");
+        glUniformBlockBinding(shaderId, uniformBlockIndex, 0);
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, m_ubo);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_splitCount, NULL, GL_STREAM_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 // TODO: update cam values
@@ -171,9 +192,38 @@ void ShadowManager::setup(float screenWidth, float screenHeight)
         glm::mat4 projection = applyCropMatrix(m_frustums.at(i), depthViewMatrix);
         m_depthPMatrices.push_back(projection);
     }
+
+    setupBiasMatrices(depthViewMatrix);
+}
+
+void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
+{
+    glm::mat4 depthBiasVPMatrices[m_splitCount];
+    glm::mat4 camViewMatrix = m_camera->getViewMatrix();
+
+    for (int i = 0; i < m_splitCount; i++)
+    {
+        depthBiasVPMatrices[i] = m_biasMatrix * m_depthPMatrices[i] * depthViewMatrix;
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, m_ubo);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_splitCount, depthBiasVPMatrices, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_ubo);
 }
 
 glm::mat4 ShadowManager::getDepthViewMatrix()
 {
     return glm::lookAt(m_lightPos, m_lightLookAt, glm::vec3(0, 1, 0));
+}
+
+glm::vec4 ShadowManager::getFrustumDistances()
+{
+    glm::vec4 frustumDistances;
+
+    for (int i = 0; i < m_splitCount; i++)
+    {
+        frustumDistances[i] = m_frustums[i].far;
+    }
+
+    return frustumDistances;
 }
