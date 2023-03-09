@@ -23,18 +23,26 @@ enum Camera_Movement
     RIGHT
 };
 
+enum ProjectionMode
+{
+    Perspective,
+    Ortho,
+};
+
 // Default camera values
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
-const float SPEED = 5.0f;
+const float SPEED = 50.0f;
 const float SENSITIVITY = 0.1f;
-const float ZOOM = 45.0f;
+const float FOV = 45.0f;
+const float NEAR = 1.0f;
+const float FAR = 10000.0f;
 
 class Camera
 {
 public:
     // Contructors
-    Camera(glm::vec3 position, glm::vec3 up, float yaw = YAW, float pitch = PITCH);
+    Camera(glm::vec3 position, glm::vec3 up, float yaw = YAW, float pitch = PITCH, float near = NEAR, float far = FAR);
     ~Camera();
     // Camera Attributes
     glm::vec3 position;
@@ -42,7 +50,11 @@ public:
     glm::vec3 up;
     glm::vec3 right;
     glm::vec3 worldUp;
-    glm::mat4 projection;
+    ProjectionMode projectionMode;
+    float near;
+    float far;
+    float fov;
+    float scaleOrtho;
     // Euler Angles
     float yaw;
     float pitch;
@@ -51,6 +63,7 @@ public:
     float mouseSensitivity;
     // Functions
     glm::mat4 getViewMatrix();
+    glm::mat4 getProjectionMatrix(float width, float height);
     void processKeyboard(Camera_Movement direction, float deltaTime);
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
 

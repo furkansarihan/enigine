@@ -1,12 +1,14 @@
 #include "camera.h"
 
 // Constructor with vectors
-Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch) : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY)
+Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, float near, float far) : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY), fov(FOV), scaleOrtho(1.0), projectionMode(ProjectionMode::Perspective)
 {
     this->position = position;
     this->worldUp = worldUp;
     this->yaw = yaw;
     this->pitch = pitch;
+    this->near = near;
+    this->far = far;
     updateCameraVectors();
 }
 
@@ -18,6 +20,18 @@ Camera::~Camera()
 glm::mat4 Camera::getViewMatrix()
 {
     return glm::lookAt(position, position + front, up);
+}
+
+glm::mat4 Camera::getProjectionMatrix(float width, float height)
+{
+    if (projectionMode == ProjectionMode::Ortho)
+    {
+        return glm::scale(glm::ortho(0.0f, width, 0.0f, height, near, far), glm::vec3(scaleOrtho, scaleOrtho, 1));
+    }
+    else
+    {
+        return glm::perspective(fov, width / height, near, far);
+    }
 }
 
 // Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
@@ -32,7 +46,6 @@ void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
         position -= right * velocity;
     if (direction == RIGHT)
         position += right * velocity;
-
 }
 
 // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.

@@ -44,16 +44,7 @@ bool drawAABB = false;
 bool drawShadowmap = true;
 bool showCascade = false;
 
-glm::vec3 camPos(0, 0, -16);
-glm::vec3 camView(0.0f, 0.0f, 1.0f);
-float camNear = 1.0f;
-float camFar = 200.0f;
-
-enum ProjectionMode
-{
-    Perspective,
-    Ortho,
-};
+Camera cascadeCamera(glm::vec3(0, 0, -16), glm::vec3(0, 1, 0), 90, 0, 1, 200);
 
 bool firstMove = true;
 float lastX;
@@ -62,7 +53,6 @@ float lastY;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
-float objScale = 1.0f;
 // Light
 glm::vec3 lightPosition = glm::vec3(1.8f, 1.2f, -0.7f);
 glm::vec3 lightLookAt = glm::vec3(0, 0, 0);
@@ -71,12 +61,6 @@ static float ambientColor[3] = {0.4f, 0.4f, 0.4f};
 static float specularColor[3] = {0.15f, 0.15f, 0.15f};
 static float lightPower = 10.0;
 // Camera
-ProjectionMode projectionMode = ProjectionMode::Perspective;
-static float near = 0.1;
-static float far = 10000.0;
-static int speed = 4;
-static float fov = 45;
-static float scaleOrtho = 1.0;
 static bool followVehicle = false;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
 // Shaders
@@ -137,7 +121,6 @@ void initShaders()
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
 {
-    deltaTime = deltaTime * speed;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         editorCamera->processKeyboard(FORWARD, deltaTime);
@@ -207,22 +190,20 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
         ImGui::Text("pitch: %.1f", editorCamera->pitch);
         ImGui::Text("yaw: %.1f", editorCamera->yaw);
-        ImGui::DragFloat("near", &near, 10.0f);
-        ImGui::DragFloat("far", &far, 10.0f);
-        ImGui::DragFloat("fov", &fov, 0.01f);
-        ImGui::DragInt("speed", &speed, 10);
-        ImGui::DragFloat("scaleOrtho", &scaleOrtho, 0.1f);
+        ImGui::DragFloat("near", &editorCamera->near, 10.0f);
+        ImGui::DragFloat("far", &editorCamera->far, 10.0f);
+        ImGui::DragFloat("fov", &editorCamera->fov, 0.01f);
+        ImGui::DragFloat("movementSpeed", &editorCamera->movementSpeed, 10.0f);
+        ImGui::DragFloat("scaleOrtho", &editorCamera->scaleOrtho, 0.1f);
         ImGui::Checkbox("followVehicle", &followVehicle);
-        if (ImGui::RadioButton("perspective", projectionMode == ProjectionMode::Perspective))
+        if (ImGui::RadioButton("perspective", editorCamera->projectionMode == ProjectionMode::Perspective))
         {
-            projectionMode = ProjectionMode::Perspective;
+            editorCamera->projectionMode = ProjectionMode::Perspective;
         }
-        if (ImGui::RadioButton("ortho", projectionMode == ProjectionMode::Ortho))
+        if (ImGui::RadioButton("ortho", editorCamera->projectionMode == ProjectionMode::Ortho))
         {
-            projectionMode = ProjectionMode::Ortho;
+            editorCamera->projectionMode = ProjectionMode::Ortho;
         }
-        ImGui::Separator();
-        ImGui::DragFloat("objScale", &objScale, 0.1f);
         ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
@@ -240,16 +221,15 @@ static void showOverlay(Camera *editorCamera, Vehicle *vehicle, SoundEngine *sou
         ImGui::DragFloat("groundPosY", &groundPos.y, 0.5f);
         ImGui::DragFloat("groundPosZ", &groundPos.z, 0.5f);
         ImGui::Text("camPos");
-        ImGui::DragFloat("camPosX", &camPos.x, 0.5f);
-        ImGui::DragFloat("camPosY", &camPos.y, 0.5f);
-        ImGui::DragFloat("camPosZ", &camPos.z, 0.5f);
-        ImGui::Text("camView");
-        ImGui::DragFloat("camViewX", &camView.x, 0.01f);
-        ImGui::DragFloat("camViewY", &camView.y, 0.01f);
-        ImGui::DragFloat("camViewZ", &camView.z, 0.01f);
-        camView = glm::normalize(camView);
-        ImGui::DragFloat("camNear", &camNear, 1);
-        ImGui::DragFloat("camFar", &camFar, 1, 26, 1000);
+        ImGui::DragFloat("camPosX", &cascadeCamera.position.x, 0.5f);
+        ImGui::DragFloat("camPosY", &cascadeCamera.position.y, 0.5f);
+        ImGui::DragFloat("camPosZ", &cascadeCamera.position.z, 0.5f);
+        // ImGui::Text("camView");
+        // ImGui::DragFloat("camViewX", &camView.x, 0.01f);
+        // ImGui::DragFloat("camViewY", &camView.y, 0.01f);
+        // ImGui::DragFloat("camViewZ", &camView.z, 0.01f);
+        ImGui::DragFloat("camNear", &cascadeCamera.near, 1);
+        ImGui::DragFloat("camFar", &cascadeCamera.far, 1, 26, 1000);
         ImGui::Separator();
         ImGui::Text("Light");
         ImGui::DragFloat("X", &lightPosition.x, 0.01f);
@@ -621,7 +601,7 @@ glm::mat4 applyCropMatrix(frustum &f, glm::mat4 lightView)
     return projection;
 }
 
-void buildCascadeFrustums(float screenWidth, float screenHeight)
+void buildCascadeFrustums(Camera *camera, float screenWidth, float screenHeight)
 {
     cascadeFrustums.clear();
 
@@ -631,18 +611,17 @@ void buildCascadeFrustums(float screenWidth, float screenHeight)
         // the 0.2f factor is important because we might get artifacts at
         // the screen borders.
         frustum frustum;
-        frustum.fov = fov + 0.2f;
+        frustum.fov = camera->fov + 0.2f;
         frustum.ratio = (double)screenWidth / (double)screenHeight;
 
         cascadeFrustums.push_back(frustum);
     }
 
-    updateSplitDist(camNear, camFar);
+    updateSplitDist(camera->near, camera->far);
 
     for (int i = 0; i < cascadeFrustumSize; i++)
     {
-        updateFrustumPoints(cascadeFrustums.at(i), camPos, camView);
-        // updateFrustumPoints(cascadeFrustums.at(i), editorCamera.position, editorCamera.front);
+        updateFrustumPoints(cascadeFrustums.at(i), camera->position, camera->front);
     }
 }
 
@@ -883,17 +862,7 @@ int main(int argc, char **argv)
 
         // Update projection
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-        glm::mat4 projection;
-
-        if (projectionMode == ProjectionMode::Perspective)
-        {
-            projection = glm::perspective(fov, (float)screenWidth / (float)screenHeight, near, far);
-        }
-        else
-        {
-            projection = glm::ortho(0.0f, (float)screenWidth, 0.0f, (float)screenHeight, near, far);
-            projection = glm::scale(projection, glm::vec3(scaleOrtho, scaleOrtho, 1));
-        }
+        glm::mat4 projection = editorCamera.getProjectionMatrix((float)screenWidth, (float)screenHeight);
 
         // Render geometries
         glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
@@ -942,7 +911,7 @@ int main(int argc, char **argv)
         // Shadowmap
 
         // Build cascade frustums
-        buildCascadeFrustums(screenWidth, screenHeight);
+        buildCascadeFrustums(&cascadeCamera, screenWidth, screenHeight);
 
         glm::mat4 depthVpMatrices[cascadeFrustumSize];
         glm::mat4 depthPMatrices[cascadeFrustumSize];
@@ -1080,7 +1049,7 @@ int main(int argc, char **argv)
         // setup shadowmap lookup matrices
         glm::mat4 depthBiasVPMatrices[cascadeFrustumSize];
 
-        glm::mat4 camViewMatrix = glm::lookAt(camPos, camView, glm::vec3(0, 1, 0));
+        glm::mat4 camViewMatrix = glm::lookAt(cascadeCamera.position, cascadeCamera.front, glm::vec3(0, 1, 0));
         glm::vec4 frustumDistances;
 
         for (int i = 0; i < cascadeFrustumSize; i++)
@@ -1096,7 +1065,7 @@ int main(int argc, char **argv)
         terrain.drawColor(terrainShader, editorCamera.position, lightPosition, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
                           lightPower, editorCamera.getViewMatrix(), projection, shadowmapManager.m_textureArray,
                           // editorCamera.position, editorCamera.front,
-                          camPos, camView,
+                          cascadeCamera.position, cascadeCamera.front,
                           frustumDistances, showCascade, terrainBias);
 
         // draw objects
@@ -1111,8 +1080,8 @@ int main(int argc, char **argv)
             simpleShadow.setVec3("SpecularColor", glm::vec3(specularColor[0], specularColor[1], specularColor[2]));
             simpleShadow.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
             simpleShadow.setFloat("LightPower", lightPower);
-            simpleShadow.setVec3("CamPos", camPos);
-            simpleShadow.setVec3("CamView", camView);
+            simpleShadow.setVec3("CamPos", cascadeCamera.position);
+            simpleShadow.setVec3("CamView", cascadeCamera.front);
             // simpleShadow.setVec3("CamPos", editorCamera.position);
             // simpleShadow.setVec3("CamView", editorCamera.front);
             simpleShadow.setVec4("FrustumDistances", frustumDistances);
