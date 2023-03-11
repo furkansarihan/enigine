@@ -88,7 +88,7 @@ void main()
     _zalpha = vec2(0.5 + z/1600, alpha.x);
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
-	Position_worldspace = position_worldspace;
-	LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
-	EyeDirection_cameraspace = vec3(0,0,0) - (V * vec4(position_worldspace, 1)).xyz;
+    Position_worldspace = position_worldspace;
+    LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
+    EyeDirection_cameraspace = vec3(0,0,0) - (V * vec4(position_worldspace, 1)).xyz;
 }

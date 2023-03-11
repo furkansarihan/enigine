@@ -48,9 +48,9 @@ vec2 poissonDisk[16] = vec2[](
 
 // Returns a random number based on a vec3 and an int.
 float random(vec3 seed, int i){
-	vec4 seed4 = vec4(seed,i);
-	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
-	return fract(sin(dot_product) * 43758.5453);
+    vec4 seed4 = vec4(seed,i);
+    float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+    return fract(sin(dot_product) * 43758.5453);
 }
 
 void main()
@@ -80,23 +80,23 @@ void main()
     // color = vec4(DiffuseColor.xyz * visibility, 1);
 
     // vec3 LightColor = vec3(1,1,1);
-	// float LightPower = 1.0;
-	
-	// Material properties
-	// vec3 DiffuseColor = texture( myTextureSampler, UV ).rgb;
-	// vec3 AmbientColor = vec3(0.1, 0.1, 0.1) * DiffuseColor;
-	// vec3 SpecularColor = vec3(0.3, 0.3, 0.3);
+    // float LightPower = 1.0;
+
+    // Material properties
+    // vec3 DiffuseColor = texture( myTextureSampler, UV ).rgb;
+    // vec3 AmbientColor = vec3(0.1, 0.1, 0.1) * DiffuseColor;
+    // vec3 SpecularColor = vec3(0.3, 0.3, 0.3);
 
     // Normal of the computed fragment, in camera space
-	vec3 n = normalize(Normal_cameraspace);
-	// Direction of the light (from the fragment to the light)
-	vec3 l = normalize(LightDirection_cameraspace);
-	// Cosine of the angle between the normal and the light direction, 
-	// clamped above 0
-	//  - light is at the vertical of the triangle -> 1
-	//  - light is perpendiular to the triangle -> 0
-	//  - light is behind the triangle -> 0
-	float cosTheta = clamp(dot(n, l), 0, 1);
+    vec3 n = normalize(Normal_cameraspace);
+    // Direction of the light (from the fragment to the light)
+    vec3 l = normalize(LightDirection_cameraspace);
+    // Cosine of the angle between the normal and the light direction, 
+    // clamped above 0
+    //  - light is at the vertical of the triangle -> 1
+    //  - light is perpendiular to the triangle -> 0
+    //  - light is behind the triangle -> 0
+    float cosTheta = clamp(dot(n, l), 0, 1);
 
     // Eye vector (towards the camera)
     vec3 E = normalize(EyeDirection_cameraspace);
@@ -139,19 +139,19 @@ void main()
 
         // 2. advanced
         // use either :
-		//  - Always the same samples.
-		//    Gives a fixed pattern in the shadow, but no noise
-		// int index = i;
-		//  - A random sample, based on the pixel's screen location. 
-		//    No banding, but the shadow moves with the camera, which looks weird.
-		// int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
-		//  - A random sample, based on the pixel's position in world space.
-		//    The position is rounded to the millimeter to avoid too much aliasing
-		// int index = int(16.0 * random(floor(Position_worldspace.xyz * 1000.0), i)) % 16;
-		
-		// being fully in the shadow will eat up 4*0.2 = 0.8
-		// 0.2 potentially remain, which is quite dark.
-		// visibility -= 0.2 * 
+        //  - Always the same samples.
+        //    Gives a fixed pattern in the shadow, but no noise
+        // int index = i;
+        //  - A random sample, based on the pixel's screen location. 
+        //    No banding, but the shadow moves with the camera, which looks weird.
+        // int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
+        //  - A random sample, based on the pixel's position in world space.
+        //    The position is rounded to the millimeter to avoid too much aliasing
+        // int index = int(16.0 * random(floor(Position_worldspace.xyz * 1000.0), i)) % 16;
+
+        // being fully in the shadow will eat up 4*0.2 = 0.8
+        // 0.2 potentially remain, which is quite dark.
+        // visibility -= 0.2 *
         //     (1.0 - texture(ShadowMap, 
         //             vec2(ShadowCoord.xy + poissonDisk[index] / 700.0)).x);
     }

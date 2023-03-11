@@ -26,7 +26,7 @@ void main()
     vec3 MaterialAmbientColor = vec3(0.2, 0.2, 0.2) * MaterialDiffuseColor;
     vec3 MaterialSpecularColor = vec3(0.3, 0.3, 0.3);
 
-	// Local normal, in tangent space. V tex coordinate is inverted because normal map is in TGA (not in DDS) for better quality
+    // Local normal, in tangent space. V tex coordinate is inverted because normal map is in TGA (not in DDS) for better quality
     vec3 TextureNormal_tangentspace = normalize(texture(texture_normal1, UV).rgb * 2.0 - 1.0);
 
     // Distance to the light
