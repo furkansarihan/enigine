@@ -44,7 +44,7 @@ public:
                    glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances);
 
 private:
-    unsigned int vao_mxm, vao_mx3, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_3x3, vao_2x2;
+    unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_3x3, vao_2x2;
     unsigned textureID, ntextureID, ttextureID;
     int width, height;
     // TODO: naming

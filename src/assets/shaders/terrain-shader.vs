@@ -37,7 +37,8 @@ void main()
     // convert from grid xy to world xy coordinates
     //  scaleFactor.xy: grid spacing of current level // scale
     //  scaleFactor.zw: origin of current block within world // translate
-    vec2 worldPos = gridPos * scaleFactor.xy + scaleFactor.zw;
+    vec2 pos = (M * vec4(gridPos.x, 1, gridPos.y, 1)).xz;
+    vec2 worldPos = pos * scaleFactor.xy + scaleFactor.zw;
 
     // compute coordinates for vertex texture
     //  FineBlockOrig.xy: 1/(w, h) of texture // normalized size
@@ -87,7 +88,7 @@ void main()
     _zalpha = vec2(0.5 + z/1600, alpha.x);
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
-	Position_worldspace = (M * vec4(position_worldspace, 1)).xyz;
+	Position_worldspace = position_worldspace;
 	LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
-	EyeDirection_cameraspace = vec3(0,0,0) - ( V * M * vec4(position_worldspace, 1)).xyz;
+	EyeDirection_cameraspace = vec3(0,0,0) - (V * vec4(position_worldspace, 1)).xyz;
 }

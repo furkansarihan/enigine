@@ -26,10 +26,6 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     // create mxm
     unsigned int vbo_mxm, ebo_mxm;
     createMesh(m, m, vbo_mxm, vao_mxm, ebo_mxm);
-    // TODO: 1 vao for mx3 and 3mx - rotate
-    // create mx3
-    unsigned int vbo_mx3, ebo_mx3;
-    createMesh(m, 3, vbo_mx3, vao_mx3, ebo_mx3);
     // create 3xm
     unsigned int vbo_3xm, ebo_3xm;
     createMesh(3, m, vbo_3xm, vao_3xm, ebo_3xm);
@@ -509,6 +505,20 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
         terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM * 3 + size2)));
         glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
 
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), (float)M_PI_2, glm::vec3(0, 1, 0));
+        model = glm::rotate(model, (float)M_PI, glm::vec3(1, 0, 0));
+        terrainShader.setMat4("M", model);
+
+        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 2 + size2));
+        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 2 + size2)));
+        glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
+
+        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 4 + size2, z + sizeMM * 2 + size2));
+        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2 + size2)));
+        glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
+
+        terrainShader.setMat4("M", glm::mat4(1.0f));
+
         // fine level 3xm
         if (i == 1)
         {
@@ -519,27 +529,20 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
             terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z + sizeMM * 2 + size2));
             terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM * 2 + size2)));
             glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-        }
 
-        // mx3
-        glBindVertexArray(vao_mx3);
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 2)));
-        glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
+            glm::mat4 model = glm::rotate(glm::mat4(1.0f), (float)M_PI_2, glm::vec3(0, 1, 0));
+            model = glm::rotate(model, (float)M_PI, glm::vec3(1, 0, 0));
+            terrainShader.setMat4("M", model);
 
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2)));
-        glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
-
-        if (i == 1)
-        {
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 2)));
+            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2, z + sizeMM * 2 + size2));
+            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2), h * (z + sizeMM * 2 + size2)));
             glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
 
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z + sizeMM * 2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * (z + sizeMM * 2)));
+            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 2 + size2));
+            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2 + size2)));
             glDrawElements(GL_TRIANGLES, indices3M, GL_UNSIGNED_INT, 0);
+
+            terrainShader.setMat4("M", glm::mat4(1.0f));
         }
 
         if (i != 1)
