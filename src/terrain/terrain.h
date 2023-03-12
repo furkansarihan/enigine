@@ -44,7 +44,7 @@ public:
                    glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances);
 
 private:
-    unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_3x3, vao_2x2;
+    unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
     unsigned textureID, ntextureID, ttextureID;
     int width, height;
     // TODO: naming
@@ -53,8 +53,10 @@ private:
     // Functions
     void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
+    void createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     int roundUp(int numToRound, int multiple);
     void draw(Shader shader, glm::vec3 viewerPos);
+    void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount);
 };
 
 #endif /* terrain_hpp */

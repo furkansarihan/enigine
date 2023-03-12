@@ -39,13 +39,13 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     // create outer degenerate triangles
     unsigned int vbo_0, ebo_0;
     createOuterCoverMesh(4 * (m - 1) + 2, vbo_0, vao_0, ebo_0);
+    // triangle fan - outside of terrain
+    unsigned int vbo_tf, ebo_tf;
+    createTriangleFanMesh(m - 1, vbo_tf, vao_tf, ebo_tf);
 
     // 3x3 - finer center
     unsigned int vbo_3x3, ebo_3x3;
     createMesh(3, 3, vbo_3x3, vao_3x3, ebo_3x3);
-    // 2x2 - outside of terrain
-    unsigned int vbo_2x2, ebo_2x2;
-    createMesh(2, 2, vbo_2x2, vao_2x2, ebo_2x2);
 
     // buffer elevationSampler texture
     glGenTextures(1, &textureID);
@@ -195,6 +195,66 @@ int Terrain::roundUp(int numToRound, int multiple)
 {
     assert(multiple && ((multiple & (multiple - 1)) == 0));
     return (numToRound + multiple - 1) & -multiple;
+}
+
+void Terrain::createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
+{
+    std::vector<float> vertices;
+    std::vector<int> indices;
+    // --
+    for (int i = 0; i < size; i++)
+    {
+        vertices.push_back(i);
+        vertices.push_back(0);
+    }
+    // --|
+    for (int i = 0; i < size; i++)
+    {
+        vertices.push_back(size);
+        vertices.push_back(i);
+    }
+    // --|
+    // --|
+    for (int i = size; i > 0; i--)
+    {
+        vertices.push_back(i);
+        vertices.push_back(size);
+    }
+    // |--|
+    // |--|
+    for (int i = size; i > 0; i--)
+    {
+        vertices.push_back(0);
+        vertices.push_back(i);
+    }
+
+    // center
+    vertices.push_back((float)size / 2);
+    vertices.push_back((float)size / 2);
+
+    int half = vertices.size() / 2;
+    int centerIndex = half - 1;
+    for (int i = 0; i < half - 2; i++)
+    {
+        indices.push_back(i);
+        indices.push_back(i + 1);
+        indices.push_back(centerIndex);
+    }
+    indices.push_back(half - 2);
+    indices.push_back(0);
+    indices.push_back(centerIndex);
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Terrain::createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
@@ -416,75 +476,42 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
 
         glBindVertexArray(vao_mxm);
 
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, x, z));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
+        glm::vec2 positions_mxm[] = {
+            glm::vec2(x, z),
+            glm::vec2(x + sizeMM, z),
+            glm::vec2(x + sizeMM * 2 + size2, z),
+            glm::vec2(x + sizeMM * 3 + size2, z),
+            glm::vec2(x + sizeMM * 3 + size2, z + sizeMM),
+            glm::vec2(x + sizeMM * 3 + size2, z + sizeMM * 2 + size2),
+            glm::vec2(x + sizeMM * 3 + size2, z + sizeMM * 3 + size2),
+            glm::vec2(x + sizeMM * 2 + size2, z + sizeMM * 3 + size2),
+            glm::vec2(x + sizeMM, z + sizeMM * 3 + size2),
+            glm::vec2(x, z + sizeMM * 3 + size2),
+            glm::vec2(x, z + sizeMM * 2 + size2),
+            glm::vec2(x, z + sizeMM),
+            // fine level
+            glm::vec2(x + sizeMM, z + sizeMM),
+            glm::vec2(x + 2 * sizeMM + size2, z + sizeMM),
+            glm::vec2(x + sizeMM, z + 2 * sizeMM + size2),
+            glm::vec2(x + 2 * sizeMM + size2, z + 2 * sizeMM + size2),
+        };
 
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * z));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
+        for (int i = 0; i < 12; i++)
+        {
+            glm::vec2 pos = positions_mxm[i];
+            drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices);
+        }
 
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * z));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * z));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 2 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 2 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 3 + size2, z + sizeMM * 3 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 3 + size2), h * (z + sizeMM * 3 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM * 2 + size2, z + sizeMM * 3 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM * 2 + size2), h * (z + sizeMM * 3 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM * 3 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM * 3 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 3 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 3 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM * 2 + size2));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM * 2 + size2)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x, z + sizeMM));
-        terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * x, h * (z + sizeMM)));
-        glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-        // fine level mxm
+        // fine level
         if (i == 1)
         {
-            terrainShader.setVec3("wireColor", glm::vec3(1, 1, 1));
+            for (int i = 12; i < 16; i++)
+            {
+                glm::vec2 pos = positions_mxm[i];
+                drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices);
+            }
 
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + sizeMM));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + sizeMM)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM + size2, z + sizeMM));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + 2 * sizeMM + size2), h * (z + sizeMM)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + sizeMM, z + 2 * sizeMM + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + sizeMM), h * (z + 2 * sizeMM + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
-            terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM + size2, z + 2 * sizeMM + size2));
-            terrainShader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * (x + 2 * sizeMM + size2), h * (z + 2 * sizeMM + size2)));
-            glDrawElements(GL_TRIANGLES, mmIndices, GL_UNSIGNED_INT, 0);
-
+            // TODO: center
             glBindVertexArray(vao_3x3);
 
             terrainShader.setVec4("scaleFactor", glm::vec4(scale, scale, x + 2 * sizeMM, z + 2 * sizeMM));
@@ -591,5 +618,30 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         lastRoundX = x;
         lastRoundZ = z;
+    }
+}
+
+// TODO: reduce glBindVertexArray calls
+void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount)
+{
+    glm::vec2 actualSize = glm::vec2(size.x * scale, size.y * scale);
+
+    glm::vec2 topLeft = pos;
+    glm::vec2 bottomRight = pos + actualSize;
+
+    bool outside = false;
+    if (bottomRight.y < 0 || topLeft.y > height || bottomRight.x < 0 || topLeft.x > width)
+    {
+        outside = true;
+        glBindVertexArray(vao_tf);
+    }
+
+    shader.setVec4("scaleFactor", glm::vec4(scale, scale, pos.x, pos.y));
+    shader.setVec4("fineTextureBlockOrigin", glm::vec4(w, h, w * pos.x, h * pos.y));
+    glDrawElements(GL_TRIANGLES, indiceCount, GL_UNSIGNED_INT, 0);
+
+    if (outside)
+    {
+        glBindVertexArray(vao);
     }
 }
