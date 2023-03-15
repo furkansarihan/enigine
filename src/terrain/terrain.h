@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <math.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -16,14 +17,15 @@
 
 #include "../shader/shader.h"
 #include "../physics_world/physics_world.h"
+#include "../camera/camera.h"
 
 class Terrain
 {
 public:
-    // Contructors
-    Terrain(PhysicsWorld *physicsWorld);
+    Terrain(PhysicsWorld *physicsWorld, Camera *camera);
     ~Terrain();
-    // Terrain Attributes
+
+    Camera *m_camera;
     int resolution;
     bool wireframe;
     glm::vec3 terrainCenter;
@@ -38,9 +40,9 @@ public:
     glm::vec3 shadowBias;
     bool showCascade;
     btRigidBody *terrainBody;
-    // Functions
-    void drawDepth(Shader terrainShadow, glm::vec3 cameraPosition, glm::mat4 view, glm::mat4 projection);
-    void drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
+
+    void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection);
+    void drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
                    glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances);
 
 private:
@@ -50,13 +52,18 @@ private:
     // TODO: naming
     float w, h;
     float *data;
-    // Functions
+
     void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     int roundUp(int numToRound, int multiple);
-    void draw(Shader shader, glm::vec3 viewerPos);
+    void draw(Shader shader);
     void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount);
+
+    // frustum culling
+    glm::vec4 m_planes[4];
+    void calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix);
+    bool inFrontOf(glm::vec4 plane, glm::vec3 corners[8]);
 };
 
 #endif /* terrain_hpp */

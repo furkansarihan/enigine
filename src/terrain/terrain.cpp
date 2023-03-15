@@ -3,9 +3,11 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PhysicsWorld *physicsWorld)
+Terrain::Terrain(PhysicsWorld *physicsWorld, Camera *camera)
 {
     // TODO: keep track initialization state
+    m_camera = camera;
+    
     resolution = 64;
     wireframe = false;
     terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -359,12 +361,14 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Terrain::drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
+void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
                         glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances)
 {
+    calculatePlanes(projection, view);
+
     terrainShader.use();
     terrainShader.setFloat("zscaleFactor", scaleFactor);
-    terrainShader.setVec3("viewerPos", cameraPosition);
+    terrainShader.setVec3("viewerPos", m_camera->position);
     terrainShader.setFloat("oneOverWidth", oneOverWidth);
     terrainShader.setVec2("alphaOffset", alphaOffset);
     terrainShader.setVec3("lightDirection", lightPosition);
@@ -403,15 +407,16 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 cameraPosition, glm::vec
     glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 3);
     glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapId);
 
-    this->draw(terrainShader, cameraPosition);
+    this->draw(terrainShader);
 }
 
 // TODO: culling with furstum light aabb
-void Terrain::drawDepth(Shader terrainShadow, glm::vec3 cameraPosition, glm::mat4 view, glm::mat4 projection)
+// TODO: fix x-axis 3xm gap
+void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection)
 {
     terrainShadow.use();
     terrainShadow.setFloat("zscaleFactor", scaleFactor);
-    terrainShadow.setVec3("viewerPos", cameraPosition);
+    terrainShadow.setVec3("viewerPos", m_camera->position);
     terrainShadow.setFloat("oneOverWidth", oneOverWidth);
     terrainShadow.setVec2("alphaOffset", alphaOffset);
     terrainShadow.setVec2("uvOffset", uvOffset);
@@ -425,10 +430,10 @@ void Terrain::drawDepth(Shader terrainShadow, glm::vec3 cameraPosition, glm::mat
     glUniform1i(glGetUniformLocation(terrainShadow.id, "elevationSampler"), 0);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    this->draw(terrainShadow, cameraPosition);
+    this->draw(terrainShadow);
 }
 
-void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
+void Terrain::draw(Shader terrainShader)
 {
     int m = resolution;
 
@@ -439,8 +444,8 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
         // set param for each footprint
         int scale = pow(2, i - 1);
 
-        int X = -1 * (2 * m * scale) + (int)viewerPos.x + (int)terrainCenter.x;
-        int Z = -1 * (2 * m * scale) + (int)viewerPos.z + (int)terrainCenter.z;
+        int X = -1 * (2 * m * scale) + (int)m_camera->position.x + (int)terrainCenter.x;
+        int Z = -1 * (2 * m * scale) + (int)m_camera->position.z + (int)terrainCenter.z;
 
         int x = roundUp(X, scale * 2);
         int z = roundUp(Z, scale * 2);
@@ -624,11 +629,37 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewerPos)
 // TODO: reduce glBindVertexArray calls
 void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount)
 {
-    glm::vec2 actualSize = glm::vec2(size.x * scale, size.y * scale);
+    glm::vec2 blockSize = glm::vec2(size.x * scale, size.y * scale);
 
     glm::vec2 topLeft = pos;
-    glm::vec2 bottomRight = pos + actualSize;
+    glm::vec2 topRight = pos + glm::vec2(blockSize.x, 0);
+    glm::vec2 bottomLeft = pos + glm::vec2(0, blockSize.y);
+    glm::vec2 bottomRight = pos + blockSize;
 
+    // frustum culling
+    // TODO: variable min, max
+    float terrainMin = 0.0f;
+    float terrainMax = 255.0f;
+    glm::vec3 corners[] = {
+        glm::vec3(topLeft.x, terrainMin, topLeft.y),
+        glm::vec3(topRight.x, terrainMin, topRight.y),
+        glm::vec3(bottomLeft.x, terrainMin, bottomLeft.y),
+        glm::vec3(bottomRight.x, terrainMin, bottomRight.y),
+        glm::vec3(topLeft.x, terrainMax, topLeft.y),
+        glm::vec3(topRight.x, terrainMax, topRight.y),
+        glm::vec3(bottomLeft.x, terrainMax, bottomLeft.y),
+        glm::vec3(bottomRight.x, terrainMax, bottomRight.y),
+    };
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (!inFrontOf(m_planes[i], corners))
+        {
+            return;
+        }
+    }
+
+    // outside of terrain
     bool outside = false;
     if (bottomRight.y < 0 || topLeft.y > height || bottomRight.x < 0 || topLeft.x > width)
     {
@@ -644,4 +675,40 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     {
         glBindVertexArray(vao);
     }
+}
+
+bool Terrain::inFrontOf(glm::vec4 plane, glm::vec3 corners[8])
+{
+    glm::vec3 planeNormal(plane.x, plane.y, plane.z);
+
+    for (int i = 0; i < 8; i++)
+    {
+        glm::vec3 pos = corners[i] - m_camera->position;
+        float res = glm::dot(planeNormal, pos);
+
+        if (res > 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Terrain::calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix)
+{
+    glm::mat4 mat = projMatrix * viewMatrix;
+
+    for (int i = 4; i--;)
+        m_planes[0][i] = mat[i][3] + mat[i][0]; // left
+    for (int i = 4; i--;)
+        m_planes[1][i] = mat[i][3] - mat[i][0]; // right
+    for (int i = 4; i--;)
+        m_planes[2][i] = mat[i][3] + mat[i][1]; // bottom
+    for (int i = 4; i--;)
+        m_planes[3][i] = mat[i][3] - mat[i][1]; // top
+    // for (int i = 4; i--;)
+    //     m_planes[4][i] = mat[i][3] + mat[i][2]; // near
+    // for (int i = 4; i--;)
+    //     m_planes[5][i] = mat[i][3] - mat[i][2]; // far
 }

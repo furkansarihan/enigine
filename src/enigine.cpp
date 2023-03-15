@@ -29,7 +29,7 @@ float quadScale = 0.2f;
 float bias = 0.005;
 bool drawFrustum = true;
 bool drawAABB = false;
-bool drawShadowmap = true;
+bool drawShadowmap = false;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
@@ -184,6 +184,20 @@ static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, C
             editorCamera->projectionMode = ProjectionMode::Ortho;
         }
         ImGui::Separator();
+        // ImGui::Text("left plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[0].x, terrain->m_planes[0].y, terrain->m_planes[0].z, terrain->m_planes[0].w);
+        // ImGui::Text("right plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[1].x, terrain->m_planes[1].y, terrain->m_planes[1].z, terrain->m_planes[1].w);
+        ImGui::Text("camPos");
+        ImGui::DragFloat("camPosX", &shadowManager->m_camera->position.x, 0.5f);
+        ImGui::DragFloat("camPosY", &shadowManager->m_camera->position.y, 0.5f);
+        ImGui::DragFloat("camPosZ", &shadowManager->m_camera->position.z, 0.5f);
+        ImGui::Text("camView");
+        ImGui::DragFloat("camViewX", &shadowManager->m_camera->front.x, 0.01f);
+        ImGui::DragFloat("camViewY", &shadowManager->m_camera->front.y, 0.01f);
+        ImGui::DragFloat("camViewZ", &shadowManager->m_camera->front.z, 0.01f);
+        shadowManager->m_camera->front = glm::normalize(shadowManager->m_camera->front);
+        ImGui::DragFloat("camNear", &shadowManager->m_near, 1);
+        ImGui::DragFloat("camFar", &shadowManager->m_far, 1, 26, 1000);
+        ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
         ImGui::Checkbox("drawFrustum", &drawFrustum);
@@ -195,20 +209,6 @@ static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, C
         ImGui::DragFloat("terrainBias0", &terrain->shadowBias.x, 0.001f);
         ImGui::DragFloat("terrainBias1", &terrain->shadowBias.y, 0.001f);
         ImGui::DragFloat("terrainBias2", &terrain->shadowBias.z, 0.001f);
-        ImGui::Text("groundPos");
-        ImGui::DragFloat("groundPosX", &groundPos.x, 0.5f);
-        ImGui::DragFloat("groundPosY", &groundPos.y, 0.5f);
-        ImGui::DragFloat("groundPosZ", &groundPos.z, 0.5f);
-        ImGui::Text("camPos");
-        ImGui::DragFloat("camPosX", &shadowManager->m_camera->position.x, 0.5f);
-        ImGui::DragFloat("camPosY", &shadowManager->m_camera->position.y, 0.5f);
-        ImGui::DragFloat("camPosZ", &shadowManager->m_camera->position.z, 0.5f);
-        // ImGui::Text("camView");
-        // ImGui::DragFloat("camViewX", &camView.x, 0.01f);
-        // ImGui::DragFloat("camViewY", &camView.y, 0.01f);
-        // ImGui::DragFloat("camViewZ", &camView.z, 0.01f);
-        ImGui::DragFloat("camNear", &shadowManager->m_near, 1);
-        ImGui::DragFloat("camFar", &shadowManager->m_far, 1, 26, 1000);
         ImGui::Separator();
         ImGui::Text("Light");
         ImGui::DragFloat("X", &shadowManager->m_lightPos.x, 0.01f);
@@ -579,9 +579,6 @@ int main(int argc, char **argv)
 
     bool show_overlay = false;
 
-    // Terrain
-    Terrain terrain(&physicsWorld);
-
     // Vehicle
     Vehicle vehicle(&physicsWorld, btVector3(1700, 10, 1750));
     glfwSetWindowUserPointer(window, &vehicle);
@@ -594,6 +591,10 @@ int main(int argc, char **argv)
 
     ShadowManager shadowManager(shaderIds);
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
+
+    // Terrain
+    // Terrain terrain(&physicsWorld, shadowManager.m_camera);
+    Terrain terrain(&physicsWorld, &editorCamera);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -741,7 +742,7 @@ int main(int argc, char **argv)
             // glCullFace(GL_FRONT);
 
             // Draw terrain
-            terrain.drawDepth(terrainShadow, editorCamera.position, depthViewMatrix, shadowManager.m_depthPMatrices[i]);
+            // terrain.drawDepth(terrainShadow, depthViewMatrix, shadowManager.m_depthPMatrices[i]);
 
             // Draw objects
             glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
@@ -849,7 +850,7 @@ int main(int argc, char **argv)
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
-        terrain.drawColor(terrainShader, editorCamera.position, shadowManager.m_lightPos, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
+        terrain.drawColor(terrainShader, shadowManager.m_lightPos, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
                           lightPower, editorCamera.getViewMatrix(), projection, shadowmapManager.m_textureArray,
                           shadowManager.m_camera->position, shadowManager.m_camera->front,
                           frustumDistances);
@@ -939,6 +940,7 @@ int main(int argc, char **argv)
         cube.draw(simpleShader);
 
         // Draw physics debug lines
+        // TODO: own shader with only lines
         std::vector<DebugDrawer::Line> &lines = debugDrawer.getLines();
         std::vector<GLfloat> vertices;
         std::vector<GLuint> indices;
