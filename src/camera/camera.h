@@ -51,6 +51,7 @@ public:
     glm::vec3 right;
     glm::vec3 worldUp;
     ProjectionMode projectionMode;
+    glm::vec3 frustumPoints[8];
     float near;
     float far;
     float fov;
@@ -66,6 +67,7 @@ public:
     glm::mat4 getProjectionMatrix(float width, float height);
     void processKeyboard(Camera_Movement direction, float deltaTime);
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
+    void updateFrustumPoints(float width, float height);
 
 private:
     void updateCameraVectors();

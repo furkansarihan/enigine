@@ -22,10 +22,9 @@
 class Terrain
 {
 public:
-    Terrain(PhysicsWorld *physicsWorld, Camera *camera);
+    Terrain(PhysicsWorld *physicsWorld);
     ~Terrain();
 
-    Camera *m_camera;
     int resolution;
     bool wireframe;
     glm::vec3 terrainCenter;
@@ -41,9 +40,11 @@ public:
     bool showCascade;
     btRigidBody *terrainBody;
 
-    void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection);
+    void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
     void drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
-                   glm::mat4 view, glm::mat4 projection, GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances);
+                   glm::mat4 view, glm::mat4 projection,
+                   GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
+                   glm::vec3 viewPos, bool ortho);
 
 private:
     unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
@@ -57,13 +58,13 @@ private:
     void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     int roundUp(int numToRound, int multiple);
-    void draw(Shader shader);
-    void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount);
+    void draw(Shader shader, glm::vec3 viewPos, bool ortho);
+    void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount, glm::vec3 viewPos, bool ortho);
 
     // frustum culling
     glm::vec4 m_planes[4];
     void calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix);
-    bool inFrontOf(glm::vec4 plane, glm::vec3 corners[8]);
+    bool inFrontOf(glm::vec4 plane, glm::vec3 corners[8], glm::vec3 viewPos, bool ortho);
 };
 
 #endif /* terrain_hpp */

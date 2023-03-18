@@ -3,11 +3,11 @@
 layout (location = 0) in vec2 gridPos;
 
 uniform mat4 worldViewProjMatrix;
+uniform mat4 M;
 uniform float zscaleFactor;
 uniform vec4 scaleFactor;
 uniform vec4 fineTextureBlockOrigin; 
 uniform vec2 alphaOffset;
-uniform vec3 viewerPos;
 uniform vec3 lightPos;
 // transition width (chosen to be n/10) ? [0, n-1] : range of clipmap grid
 uniform float oneOverWidth; 
@@ -22,7 +22,8 @@ void main()
     // convert from grid xy to world xy coordinates
     //  scaleFactor.xy: grid spacing of current level // scale
     //  scaleFactor.zw: origin of current block within world // translate
-    vec2 worldPos = gridPos * scaleFactor.xy + scaleFactor.zw;
+    vec2 pos = (M * vec4(gridPos.x, 1, gridPos.y, 1)).xz;
+    vec2 worldPos = pos * scaleFactor.xy + scaleFactor.zw;
 
     // compute coordinates for vertex texture
     //  FineBlockOrig.xy: 1/(w, h) of texture // normalized size
@@ -59,5 +60,7 @@ void main()
     float z = zf + alpha.x * zd;
     z = z * zscaleFactor;
 
-    gl_Position = worldViewProjMatrix * vec4(worldPos.x, zf_zd * zscaleFactor, worldPos.y, 1);
+    vec3 position_worldspace = vec3(worldPos.x, zf_zd * zscaleFactor, worldPos.y);
+
+    gl_Position = worldViewProjMatrix * vec4(position_worldspace, 1);
 }

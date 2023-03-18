@@ -26,7 +26,9 @@ glm::mat4 Camera::getProjectionMatrix(float width, float height)
 {
     if (projectionMode == ProjectionMode::Ortho)
     {
-        return glm::scale(glm::ortho(0.0f, width, 0.0f, height, near, far), glm::vec3(scaleOrtho, scaleOrtho, 1));
+        float halfW = (width / 2) * scaleOrtho;
+        float halfH = (height / 2) * scaleOrtho;
+        return glm::ortho(-halfW, halfW, -halfH, halfH, near, far);
     }
     else
     {
@@ -82,4 +84,47 @@ void Camera::updateCameraVectors()
     // Also re-calculate the Right and Up vector
     right = glm::normalize(glm::cross(front, worldUp)); // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
     up = glm::normalize(glm::cross(right, front));
+}
+
+// TODO: reuse last
+void Camera::updateFrustumPoints(float width, float height)
+{
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = normalize(cross(front, up));
+
+    up = normalize(cross(right, front));
+
+    glm::vec3 fc = position + front * far;
+    glm::vec3 nc = position + front * near;
+
+    float near_height;
+    float near_width;
+    float far_height;
+    float far_width;
+
+    if (projectionMode == ProjectionMode::Ortho)
+    {
+        near_height = (height / 2) * scaleOrtho;
+        near_width = (width / 2) * scaleOrtho;
+        far_height = (height / 2) * scaleOrtho;
+        far_width = (width / 2) * scaleOrtho;
+    }
+    else
+    {
+        float ratio = width / height;
+        near_height = tan(fov / 2.0f) * near;
+        near_width = near_height * ratio;
+        far_height = tan(fov / 2.0f) * far;
+        far_width = far_height * ratio;
+    }
+
+    frustumPoints[0] = nc - up * near_height - right * near_width;
+    frustumPoints[1] = nc + up * near_height - right * near_width;
+    frustumPoints[2] = nc + up * near_height + right * near_width;
+    frustumPoints[3] = nc - up * near_height + right * near_width;
+
+    frustumPoints[4] = fc - up * far_height - right * far_width;
+    frustumPoints[5] = fc + up * far_height - right * far_width;
+    frustumPoints[6] = fc + up * far_height + right * far_width;
+    frustumPoints[7] = fc - up * far_height + right * far_width;
 }

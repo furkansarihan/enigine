@@ -29,7 +29,7 @@ float quadScale = 0.2f;
 float bias = 0.005;
 bool drawFrustum = true;
 bool drawAABB = false;
-bool drawShadowmap = false;
+bool drawShadowmap = true;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
@@ -590,11 +590,11 @@ int main(int argc, char **argv)
     shaderIds.push_back(terrainShadow.id);
 
     ShadowManager shadowManager(shaderIds);
+    // shadowManager.m_camera = &editorCamera;
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Terrain
-    // Terrain terrain(&physicsWorld, shadowManager.m_camera);
-    Terrain terrain(&physicsWorld, &editorCamera);
+    Terrain terrain(&physicsWorld);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -730,19 +730,31 @@ int main(int argc, char **argv)
         // Shadowmap
         shadowManager.setup((float)screenWidth, (float)screenHeight);
         glm::mat4 depthViewMatrix = shadowManager.getDepthViewMatrix();
+        glm::mat4 inverseDepthViewMatrix = glm::inverse(depthViewMatrix);
 
         shadowmapManager.bindFramebuffer();
         for (int i = 0; i < shadowManager.m_splitCount; i++)
         {
             shadowmapManager.bindTextureArray(i);
-            glm::mat4 depthVP = shadowManager.m_depthPMatrices[i] * depthViewMatrix;
+            glm::mat4 depthP = shadowManager.m_depthPMatrices[i];
+            glm::mat4 depthVP = depthP * depthViewMatrix;
             // We don't use bias in the shader, but instead we draw back faces,
             // which are already separated from the front faces by a small distance
             // (if your geometry is made this way)
             // glCullFace(GL_FRONT);
 
             // Draw terrain
-            // terrain.drawDepth(terrainShadow, depthViewMatrix, shadowManager.m_depthPMatrices[i]);
+            glm::vec3 nearPlaneEdges[4];
+            for (int j = 0; j < 4; j++)
+            {
+                glm::vec4 worldPoint = inverseDepthViewMatrix * glm::vec4(shadowManager.m_frustums[i].lightAABB[j], 1.0f);
+                glm::vec3 worldPoint3 = glm::vec3(worldPoint) / worldPoint.w;
+                nearPlaneEdges[j] = worldPoint3;
+            }
+            glm::vec3 nearPlaneCenter = (nearPlaneEdges[0] + nearPlaneEdges[1] + nearPlaneEdges[2] + nearPlaneEdges[3]) / 4.0f;
+
+            // TODO: terrain only cascade - covers all area - last one
+            terrain.drawDepth(terrainShadow, depthViewMatrix, depthP, nearPlaneCenter);
 
             // Draw objects
             glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
@@ -851,9 +863,13 @@ int main(int argc, char **argv)
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
         terrain.drawColor(terrainShader, shadowManager.m_lightPos, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
-                          lightPower, editorCamera.getViewMatrix(), projection, shadowmapManager.m_textureArray,
-                          shadowManager.m_camera->position, shadowManager.m_camera->front,
-                          frustumDistances);
+                          lightPower,
+                          editorCamera.getViewMatrix(), projection,
+                          shadowmapManager.m_textureArray,
+                          editorCamera.position, editorCamera.front,
+                          frustumDistances,
+                          editorCamera.position,
+                          editorCamera.projectionMode == ProjectionMode::Ortho);
 
         // Draw objects
         {
@@ -1048,8 +1064,7 @@ int main(int argc, char **argv)
             glEnableVertexAttribArray(0);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
-            glm::mat4 inverseViewMatrix = glm::inverse(depthViewMatrix);
-            glm::mat4 mvp = projection * editorCamera.getViewMatrix() * inverseViewMatrix;
+            glm::mat4 mvp = projection * editorCamera.getViewMatrix() * inverseDepthViewMatrix;
             simpleShader.use();
             simpleShader.setMat4("MVP", mvp);
             glm::vec4 color = glm::vec4(1.0, 1.0, 1.0, 0.2f);
