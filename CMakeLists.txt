@@ -40,6 +40,8 @@ add_executable( enigine
                 src/shadowmap_manager/shadowmap_manager.h
                 src/shadow_manager/shadow_manager.cpp
                 src/shadow_manager/shadow_manager.h
+                src/post_process/post_process.cpp
+                src/post_process/post_process.h
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp

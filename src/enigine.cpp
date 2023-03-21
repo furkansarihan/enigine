@@ -21,13 +21,14 @@
 #include "vehicle/vehicle.h"
 #include "shadowmap_manager/shadowmap_manager.h"
 #include "shadow_manager/shadow_manager.h"
+#include "post_process/post_process.h"
 
 #include "external/stb_image/stb_image.h"
 
 // Shadowmap
 float quadScale = 0.2f;
 float bias = 0.005;
-bool drawFrustum = true;
+bool drawFrustum = false;
 bool drawAABB = false;
 bool drawShadowmap = true;
 // Sphere
@@ -41,6 +42,7 @@ static float lightPower = 10.0;
 // Camera
 static bool followVehicle = false;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
+float blurOffset = 0.01;
 bool firstMove = true;
 float lastX;
 float lastY;
@@ -54,6 +56,7 @@ Shader terrainShadow;
 Shader lineShader;
 Shader textureShader;
 Shader textureArrayShader;
+Shader postProcessShader;
 // System Monitor
 task_basic_info t_info;
 
@@ -96,6 +99,7 @@ void initShaders()
     lineShader.init(FileManager::read("../src/assets/shaders/line-shader.vs"), FileManager::read("../src/assets/shaders/line-shader.fs"));
     textureShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/simple-texture.fs"));
     textureArrayShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/texture-array.fs"));
+    postProcessShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/post-process.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -174,6 +178,7 @@ static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, C
         ImGui::DragFloat("fov", &editorCamera->fov, 0.01f);
         ImGui::DragFloat("movementSpeed", &editorCamera->movementSpeed, 10.0f);
         ImGui::DragFloat("scaleOrtho", &editorCamera->scaleOrtho, 0.1f);
+        // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
         ImGui::Checkbox("followVehicle", &followVehicle);
         if (ImGui::RadioButton("perspective", editorCamera->projectionMode == ProjectionMode::Perspective))
         {
@@ -590,7 +595,7 @@ int main(int argc, char **argv)
     shaderIds.push_back(terrainShadow.id);
 
     ShadowManager shadowManager(shaderIds);
-    // shadowManager.m_camera = &editorCamera;
+    shadowManager.m_camera = &editorCamera;
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Terrain
@@ -611,6 +616,9 @@ int main(int argc, char **argv)
     glGenVertexArrays(1, &c_vao_2);
     glGenBuffers(1, &c_vbo_2);
     glGenBuffers(1, &c_ebo_2);
+
+    // Post process
+    PostProcess postProcess((float)screenWidth, (float)screenHeight);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -683,49 +691,8 @@ int main(int argc, char **argv)
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
         glm::mat4 projection = editorCamera.getProjectionMatrix((float)screenWidth, (float)screenHeight);
 
-        // Render geometries
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
-        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * model; // Model-View-Projection matrix
-        glm::mat4 mv = editorCamera.getViewMatrix() * model;
-        glm::mat3 ModelView3x3Matrix = glm::mat3(mv);
-
-        normalShader.use();
-        normalShader.setMat4("MVP", mvp);
-        normalShader.setMat4("M", model);
-        normalShader.setMat4("V", editorCamera.getViewMatrix());
-        normalShader.setMat3("MV3x3", ModelView3x3Matrix);
-        normalShader.setVec3("LightPosition_worldspace", shadowManager.m_lightPos);
-        normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
-        normalShader.setFloat("LightPower", lightPower);
-        sphere.draw(normalShader);
-
         // Vehicle
         vehicle.update(window, deltaTime);
-
-        // Render vehicle
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-        simpleShader.use();
-        glm::mat4 transform;
-        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
-        transform = glm::translate(transform, glm::vec3(0, 1, 0));
-        transform = glm::scale(transform, glm::vec3(0.8f, 0.3f, 2.8f));
-        simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
-        simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
-        cube.draw(simpleShader);
-
-        for (int i = 0; i < 4; i++)
-        {
-            btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
-            glm::mat4 transform;
-            body.getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
-            transform = glm::scale(transform, glm::vec3(1.0f, 1.0f, 1.0f));
-            simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
-            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
-            wheel.draw(simpleShader);
-        }
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // Shadowmap
         shadowManager.setup((float)screenWidth, (float)screenHeight);
@@ -738,10 +705,6 @@ int main(int argc, char **argv)
             shadowmapManager.bindTextureArray(i);
             glm::mat4 depthP = shadowManager.m_depthPMatrices[i];
             glm::mat4 depthVP = depthP * depthViewMatrix;
-            // We don't use bias in the shader, but instead we draw back faces,
-            // which are already separated from the front faces by a small distance
-            // (if your geometry is made this way)
-            // glCullFace(GL_FRONT);
 
             // Draw terrain
             glm::vec3 nearPlaneEdges[4];
@@ -815,49 +778,53 @@ int main(int argc, char **argv)
             }
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // glCullFace(GL_BACK);
+        // Render to post process texture
+        postProcess.updateFramebuffer((float)screenWidth, (float)screenHeight);
+        glBindFramebuffer(GL_FRAMEBUFFER, postProcess.m_framebufferObject);
         glViewport(0, 0, screenWidth, screenHeight);
+        glClearColor(0.46f, 0.71f, 0.98f, 1.00f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw shadowmap
-        if (drawShadowmap)
+        // Render vehicle
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        simpleShader.use();
+        glm::mat4 transform;
+        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
+        transform = glm::translate(transform, glm::vec3(0, 1, 0));
+        transform = glm::scale(transform, glm::vec3(0.8f, 0.3f, 2.8f));
+        simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
+        simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
+        cube.draw(simpleShader);
+
+        for (int i = 0; i < 4; i++)
         {
-            textureArrayShader.use();
-
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(glGetUniformLocation(textureArrayShader.id, "renderedTexture"), 0);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-            for (int i = 0; i < shadowManager.m_splitCount; i++)
-            {
-                if (!drawShadowmap)
-                    break;
-                glm::mat4 model = glm::mat4(1.0f);
-
-                glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);    // Camera position
-                glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); // Point camera is looking at
-                glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);     // Up direction
-
-                glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-
-                float aspectRatio = (float)screenWidth / screenHeight;
-                glm::vec3 scale = glm::vec3(quadScale / aspectRatio, quadScale, 1.0f);
-
-                float posX = 1.0f - scale.x * ((i + 0.5) * 2);
-                float posY = -1.0f + scale.y;
-                glm::vec3 position = glm::vec3(posX, posY, 0);
-
-                glm::mat4 projection = glm::ortho(-1, 1, -1, 1, 0, 2);
-                projection = glm::scale(glm::translate(projection, position), scale);
-
-                textureArrayShader.setMat4("MVP", projection * view * model);
-                textureArrayShader.setInt("layer", i);
-
-                glBindVertexArray(q_vao);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                glBindVertexArray(0);
-            }
+            btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
+            glm::mat4 transform;
+            body.getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
+            transform = glm::scale(transform, glm::vec3(1.0f, 1.0f, 1.0f));
+            simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
+            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
+            wheel.draw(simpleShader);
         }
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        // Render light source
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
+        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * model; // Model-View-Projection matrix
+        glm::mat4 mv = editorCamera.getViewMatrix() * model;
+        glm::mat3 ModelView3x3Matrix = glm::mat3(mv);
+
+        normalShader.use();
+        normalShader.setMat4("MVP", mvp);
+        normalShader.setMat4("M", model);
+        normalShader.setMat4("V", editorCamera.getViewMatrix());
+        normalShader.setMat3("MV3x3", ModelView3x3Matrix);
+        normalShader.setVec3("LightPosition_worldspace", shadowManager.m_lightPos);
+        normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
+        normalShader.setFloat("LightPower", lightPower);
+        sphere.draw(normalShader);
 
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
@@ -1080,6 +1047,64 @@ int main(int argc, char **argv)
 
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             glBindVertexArray(0);
+        }
+
+        // Post process
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, screenWidth, screenHeight);
+
+        {
+            postProcessShader.use();
+            postProcessShader.setVec2("screenSize", glm::vec2((float)screenWidth, (float)screenHeight));
+            postProcessShader.setFloat("blurOffset", blurOffset);
+
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);
+            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
+
+            glBindVertexArray(q_vao);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
+
+        // Draw shadowmap
+        if (drawShadowmap)
+        {
+            textureArrayShader.use();
+
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(glGetUniformLocation(textureArrayShader.id, "renderedTexture"), 0);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
+
+            for (int i = 0; i < shadowManager.m_splitCount; i++)
+            {
+                if (!drawShadowmap)
+                    break;
+                glm::mat4 model = glm::mat4(1.0f);
+
+                glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);    // Camera position
+                glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); // Point camera is looking at
+                glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);     // Up direction
+
+                glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+
+                float aspectRatio = (float)screenWidth / screenHeight;
+                glm::vec3 scale = glm::vec3(quadScale / aspectRatio, quadScale, 1.0f);
+
+                float posX = 1.0f - scale.x * ((i + 0.5) * 2);
+                float posY = -1.0f + scale.y;
+                glm::vec3 position = glm::vec3(posX, posY, 0);
+
+                glm::mat4 projection = glm::ortho(-1, 1, -1, 1, 0, 2);
+                projection = glm::scale(glm::translate(projection, position), scale);
+
+                textureArrayShader.setMat4("MVP", projection * view * model);
+                textureArrayShader.setInt("layer", i);
+
+                glBindVertexArray(q_vao);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                glBindVertexArray(0);
+            }
         }
 
         // Render UI
