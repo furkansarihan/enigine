@@ -170,6 +170,8 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
+    setupAnisotropicFiltering();
+
     stbi_image_free(tdata0);
     stbi_image_free(tdata1);
     stbi_image_free(tdata2);
@@ -187,6 +189,23 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
 Terrain::~Terrain()
 {
     stbi_image_free(data);
+}
+
+void Terrain::setupAnisotropicFiltering()
+{
+    if (!glewIsSupported("GL_EXT_texture_filter_anisotropic"))
+    {
+        std::cerr << "Anisotropic filtering is not supported" << std::endl;
+        return;
+    }
+
+    GLfloat maxAnisotropy;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
+    std::cout << "Max anisotropy supported: " << maxAnisotropy << std::endl;
+
+    float amount = std::min(4.0f, maxAnisotropy);
+
+    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
 }
 
 // https://stackoverflow.com/a/9194117/11601515

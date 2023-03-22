@@ -54,10 +54,11 @@ private:
     float w, h;
     float *data;
 
+    void setupAnisotropicFiltering();
+    int roundUp(int numToRound, int multiple);
     void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
-    int roundUp(int numToRound, int multiple);
     void draw(Shader shader, glm::vec3 viewPos, bool ortho);
     void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount, glm::vec3 viewPos, bool ortho);
 
