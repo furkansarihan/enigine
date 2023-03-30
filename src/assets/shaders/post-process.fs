@@ -6,6 +6,9 @@ uniform vec2 screenSize;
 // blur
 uniform float blurOffset;
 
+// hdr
+uniform float exposure;
+
 in vec2 UV;
 
 out vec4 fragColor;
@@ -91,12 +94,31 @@ vec3 fxaa(sampler2D tex, vec2 uv) {
     }
 }
 
+vec3 hdr(vec3 color, float exposure)
+{
+    const float gamma = 2.2;
+
+    // reinhard tone mapping
+    // vec3 mapped = hdrColor / (hdrColor + vec3(1.0));
+    // exposure tone mapping
+    vec3 mapped = vec3(1.0) - exp(-color * exposure);
+
+    // gamma correction 
+    mapped = pow(mapped, vec3(1.0 / gamma));
+
+    return mapped;
+}
+
 void main(void)
 {
-    // fragColor = texture(renderedTexture, UV).xyz;
+    // fragColor.xyz = texture(renderedTexture, UV).xyz;
     // return;
 
     // fragColor.xyz = blur(renderedTexture, UV);
     fragColor.xyz = fxaa(renderedTexture, UV);
+    
+    // HDR tone mapping - gamma correction
+    fragColor.xyz = hdr(fragColor.xyz, exposure);
+
     fragColor.a = 1.0;
 }

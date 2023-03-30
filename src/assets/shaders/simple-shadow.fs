@@ -134,7 +134,7 @@ void main()
     for (int i = 0; i < 8; i++) {
         // 1. simple
         if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - bias) {
-            visibility -= 0.02;
+            visibility -= 0.08;
         }
 
         // 2. advanced
@@ -169,7 +169,8 @@ void main()
         visibility * DiffuseColor * LightColor * LightPower * cosTheta +
         // Specular : reflective highlight, like a mirror
         visibility * SpecularColor * LightColor * LightPower * pow(cosAlpha, 5);
-    color = vec4(col, 1);
+    // TODO: adapt to hdr
+    color = vec4(col * 2.2, 1);
 
     // color = vec4(vec3(nearestOccluderDist), 1);
     // color = vec4(vec3(fragDist), 1);

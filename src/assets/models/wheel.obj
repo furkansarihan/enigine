@@ -1,7 +1,6 @@
 # Blender 3.4.1
 # www.blender.org
-mtllib wheel.mtl
-o Torus.006
+o Wheel
 v 0.000000 -0.500000 0.000000
 v 0.265165 -0.463388 0.000000
 v 0.375000 -0.375000 0.000000

@@ -13,7 +13,7 @@ ShadowmapManager::ShadowmapManager(int cascadeCount, int shadowmapSize)
 
 ShadowmapManager::~ShadowmapManager()
 {
-    // TODO: desctruction
+    // TODO: destruction
 }
 
 void ShadowmapManager::createTextureArray()

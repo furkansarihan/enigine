@@ -22,6 +22,7 @@
 #include "shadowmap_manager/shadowmap_manager.h"
 #include "shadow_manager/shadow_manager.h"
 #include "post_process/post_process.h"
+#include "pbr_manager/pbr_manager.h"
 
 #include "external/stb_image/stb_image.h"
 
@@ -30,7 +31,7 @@ float quadScale = 0.2f;
 float bias = 0.005;
 bool drawFrustum = false;
 bool drawAABB = false;
-bool drawShadowmap = true;
+bool drawShadowmap = false;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
@@ -39,6 +40,17 @@ static float lightColor[3] = {0.1f, 0.1f, 0.1f};
 static float ambientColor[3] = {0.4f, 0.4f, 0.4f};
 static float specularColor[3] = {0.15f, 0.15f, 0.15f};
 static float lightPower = 10.0;
+static float radius = 12.0;
+static float speed = 2.0;
+// PBR
+static float albedo[3] = {0.5f, 0.0f, 0.0f};
+static float ao = 1.0;
+glm::vec3 lightPositions[] = {
+    glm::vec3(0.0f, 0.0f, 10.0f),
+};
+glm::vec3 lightColors[] = {
+    glm::vec3(350.0f, 410.0f, 458.0f),
+};
 // Camera
 static bool followVehicle = false;
 glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
@@ -57,6 +69,12 @@ Shader lineShader;
 Shader textureShader;
 Shader textureArrayShader;
 Shader postProcessShader;
+Shader hdrToCubemapShader;
+Shader cubemapShader;
+Shader irradianceShader;
+Shader pbrShader;
+Shader prefilterShader;
+Shader brdfShader;
 // System Monitor
 task_basic_info t_info;
 
@@ -100,6 +118,12 @@ void initShaders()
     textureShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/simple-texture.fs"));
     textureArrayShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/texture-array.fs"));
     postProcessShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/post-process.fs"));
+    hdrToCubemapShader.init(FileManager::read("../src/assets/shaders/hdr-to-cubemap.vs"), FileManager::read("../src/assets/shaders/hdr-to-cubemap.fs"));
+    cubemapShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/cubemap.fs"));
+    irradianceShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/irradiance.fs"));
+    pbrShader.init(FileManager::read("../src/assets/shaders/pbr.vs"), FileManager::read("../src/assets/shaders/pbr.fs"));
+    prefilterShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/prefilter.fs"));
+    brdfShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/brdf.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -149,7 +173,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     static int corner = 0;
     ImGuiIO &io = ImGui::GetIO();
@@ -173,7 +197,7 @@ static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, C
         ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
         ImGui::Text("pitch: %.1f", editorCamera->pitch);
         ImGui::Text("yaw: %.1f", editorCamera->yaw);
-        ImGui::DragFloat("near", &editorCamera->near, 10.0f);
+        ImGui::DragFloat("near", &editorCamera->near, 0.001f);
         ImGui::DragFloat("far", &editorCamera->far, 10.0f);
         ImGui::DragFloat("fov", &editorCamera->fov, 0.01f);
         ImGui::DragFloat("movementSpeed", &editorCamera->movementSpeed, 10.0f);
@@ -225,9 +249,14 @@ static void showOverlay(btRigidBody *sphereBody, ShadowManager *shadowManager, C
         ImGui::DragFloat("llaZ", &shadowManager->m_lightLookAt.z, 0.01);
         ImGui::Separator();
         ImGui::DragFloat("power", &lightPower, 0.1);
+        ImGui::DragFloat("radius", &radius, 0.1);
+        ImGui::DragFloat("speed", &speed, 0.01);
         ImGui::ColorEdit3("lightColor", lightColor);
         ImGui::ColorEdit3("ambientColor", ambientColor);
         ImGui::ColorEdit3("specularColor", specularColor);
+        ImGui::Separator();
+        ImGui::Text("Post process");
+        ImGui::DragFloat("exposure", &postProcess->m_exposure, 0.001);
         if (ImGui::Button("refresh shaders"))
         {
             initShaders();
@@ -505,11 +534,13 @@ int main(int argc, char **argv)
     // Enable depth test, z-buffer
     glEnable(GL_DEPTH_TEST);
     // Accept fragment if it closer to the camera than the former one
-    glDepthFunc(GL_LESS);
+    // glDepthFunc(GL_LESS);
+    glDepthFunc(GL_LEQUAL);
     // Trasparency
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     // Init OpenAL
     SoundEngine soundEngine;
@@ -561,6 +592,7 @@ int main(int argc, char **argv)
     Model wheel("assets/models/wheel.obj");
     Model cylinder("assets/models/cylinder.obj");
     Model suzanne("assets/models/suzanne.obj");
+    Model spherePBR("../src/assets/spaceship/sphere.obj");
 
     // Init shaders
     initShaders();
@@ -619,6 +651,13 @@ int main(int argc, char **argv)
 
     // Post process
     PostProcess postProcess((float)screenWidth, (float)screenHeight);
+
+    // PBR
+    PbrManager pbrManager;
+    pbrManager.setupCubemap(cube, hdrToCubemapShader);
+    pbrManager.setupIrradianceMap(cube, irradianceShader);
+    pbrManager.setupPrefilterMap(cube, prefilterShader);
+    pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -787,7 +826,6 @@ int main(int argc, char **argv)
 
         // Render vehicle
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
         simpleShader.use();
         glm::mat4 transform;
         vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
@@ -807,10 +845,9 @@ int main(int argc, char **argv)
             simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
             wheel.draw(simpleShader);
         }
-
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        // Render light source
+        // draw sphere
         glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
         glm::mat4 mvp = projection * editorCamera.getViewMatrix() * model; // Model-View-Projection matrix
         glm::mat4 mv = editorCamera.getViewMatrix() * model;
@@ -915,12 +952,86 @@ int main(int argc, char **argv)
             }
         }
 
+        // animate light source
+        lightPositions[0].x = radius * glm::sin(currentFrame * speed);
+        lightPositions[0].y = radius * glm::sin(currentFrame * (speed / 6)) + 20;
+        lightPositions[0].z = radius * glm::cos(currentFrame * speed) + 6;
+
+        // draw pbr
+        {
+            pbrShader.use();
+            glm::mat4 view = editorCamera.getViewMatrix();
+            pbrShader.setMat4("view", view);
+            pbrShader.setMat4("projection", projection);
+            pbrShader.setVec3("camPos", editorCamera.position);
+            pbrShader.setVec3("albedo", albedo[0], albedo[1], albedo[2]);
+            pbrShader.setFloat("ao", ao);
+
+            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
+            {
+                pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
+                pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
+            }
+
+            glActiveTexture(GL_TEXTURE0 + 7);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 7);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.irradianceMap);
+
+            glActiveTexture(GL_TEXTURE0 + 8);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 8);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.prefilterMap);
+
+            glActiveTexture(GL_TEXTURE0 + 9);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 9);
+            glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
+
+            float nrRows = 16;
+            float nrColumns = 4;
+            float spacing = 5;
+
+            glm::mat4 model = glm::mat4(1.0f);
+            for (int row = 10; row < nrRows; ++row)
+            {
+                pbrShader.setFloat("metallic", (float)row / (float)nrRows);
+                for (int col = 0; col < nrColumns; ++col)
+                {
+                    // we clamp the roughness to 0.05 - 1.0 as perfectly smooth surfaces (roughness of 0.0) tend to look a bit off
+                    // on direct lighting.
+                    pbrShader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
+
+                    model = glm::mat4(1.0f);
+                    glm::vec3 position(
+                        (col - (nrColumns / 2)) * spacing + spacing / 2,
+                        (row - (nrRows / 2)) * spacing,
+                        6);
+                    model = glm::translate(model, position);
+                    model = glm::scale(model, glm::vec3(2));
+                    pbrShader.setMat4("model", model);
+                    pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+                    spherePBR.draw(pbrShader);
+                }
+            }
+
+            // light sources
+            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
+            {
+                model = glm::mat4(1.0f);
+                model = glm::translate(model, lightPositions[i]);
+                model = glm::scale(model, glm::vec3(0.2f));
+
+                simpleShader.use();
+                simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * model);
+                simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
+                sphere.draw(simpleShader);
+            }
+        }
+
         // Draw light source
         mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
         simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
-        cube.draw(simpleShader);
+        sphere.draw(simpleShader);
 
         // Draw physics debug lines
         // TODO: own shader with only lines
@@ -1049,6 +1160,19 @@ int main(int argc, char **argv)
             glBindVertexArray(0);
         }
 
+        // Draw skybox
+        glDepthMask(GL_FALSE);
+        cubemapShader.use();
+        cubemapShader.setMat4("projection", projection);
+        cubemapShader.setMat4("view", editorCamera.getViewMatrix());
+
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.m_skyboxTexture);
+
+        cube.draw(cubemapShader);
+        glDepthMask(GL_TRUE);
+
         // Post process
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, screenWidth, screenHeight);
@@ -1057,6 +1181,7 @@ int main(int argc, char **argv)
             postProcessShader.use();
             postProcessShader.setVec2("screenSize", glm::vec2((float)screenWidth, (float)screenHeight));
             postProcessShader.setFloat("blurOffset", blurOffset);
+            postProcessShader.setFloat("exposure", postProcess.m_exposure);
 
             glActiveTexture(GL_TEXTURE0);
             glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);
@@ -1111,7 +1236,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(sphereBody, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(sphereBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

@@ -23,6 +23,8 @@ public:
     float m_width;
     float m_height;
 
+    float m_exposure = 1.0;
+
     void updateFramebuffer(float width, float height);
 
 private:
