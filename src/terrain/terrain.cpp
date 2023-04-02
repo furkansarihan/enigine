@@ -92,38 +92,6 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     terrainBody->getWorldTransform().setOrigin(btVector3(width / 2, scaleFactor / 2, height / 2));
     terrainBody->getCollisionShape()->setLocalScaling(btVector3(1, scaleFactor, 1));
 
-    // buffer normalMapSampler texture
-    glGenTextures(1, &ntextureID);
-    int nwidth, nheight, nnrComponents;
-    unsigned char *ndata = stbi_load("assets/images/4096x4096-normal.png", &nwidth, &nheight, &nnrComponents, 0);
-    if (ndata == nullptr)
-    {
-        fprintf(stderr, "Failed to read heightmap\n");
-        return;
-    }
-
-    std::cout << "nwidth: " << nwidth << std::endl;
-    std::cout << "nheight: " << nheight << std::endl;
-    std::cout << "nnrComponents: " << nnrComponents << std::endl;
-
-    GLenum nformat;
-    if (nnrComponents == 1)
-        nformat = GL_RED;
-    else if (nnrComponents == 3)
-        nformat = GL_RGB;
-    else if (nnrComponents == 4)
-        nformat = GL_RGBA;
-
-    glBindTexture(GL_TEXTURE_2D, ntextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, nformat, nwidth, nheight, 0, nformat, GL_UNSIGNED_BYTE, ndata);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    stbi_image_free(ndata);
-
     glGenTextures(1, &ttextureID);
     int twidth, theight, tnrComponents;
     int nrTextures = 6;
@@ -398,6 +366,9 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     terrainShader.setFloat("fogMaxDist", fogMaxDist);
     terrainShader.setFloat("fogMinDist", fogMinDist);
     terrainShader.setVec4("fogColor", fogColor);
+    terrainShader.setFloat("ambientMult", ambientMult);
+    terrainShader.setFloat("diffuseMult", diffuseMult);
+    terrainShader.setFloat("specularMult", specularMult);
 
     // shadowmap
     terrainShader.setMat4("worldViewProjMatrix", projection * view);
@@ -415,15 +386,11 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     glActiveTexture(GL_TEXTURE0 + 1);
-    glUniform1i(glGetUniformLocation(terrainShader.id, "normalMapSampler"), 1);
-    glBindTexture(GL_TEXTURE_2D, ntextureID);
-
-    glActiveTexture(GL_TEXTURE0 + 2);
-    glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 2);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 1);
     glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
 
-    glActiveTexture(GL_TEXTURE0 + 3);
-    glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 3);
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 2);
     glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapId);
 
     this->draw(terrainShader, viewPos, ortho);

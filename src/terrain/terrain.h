@@ -40,6 +40,10 @@ public:
     bool showCascade;
     btRigidBody *terrainBody;
 
+    float ambientMult = 0.5f;
+    float diffuseMult = 0.7f;
+    float specularMult = 0.15f;
+
     void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
     void drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
                    glm::mat4 view, glm::mat4 projection,
@@ -48,7 +52,7 @@ public:
 
 private:
     unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
-    unsigned textureID, ntextureID, ttextureID;
+    unsigned textureID, ttextureID;
     int width, height;
     // TODO: naming
     float w, h;

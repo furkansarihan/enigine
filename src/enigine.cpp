@@ -437,6 +437,9 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         ImGui::DragFloat("fogMaxDist", &terrain->fogMaxDist, 100.0f);
         ImGui::DragFloat("fogMinDist", &terrain->fogMinDist, 100.0f);
         ImGui::ColorEdit4("fogColor", &terrain->fogColor[0]);
+        ImGui::DragFloat("ambientMult", &terrain->ambientMult, 0.01f);
+        ImGui::DragFloat("diffuseMult", &terrain->diffuseMult, 0.01f);
+        ImGui::DragFloat("specularMult", &terrain->specularMult, 0.01f);
         ImGui::Text("center");
         ImGui::DragFloat("terrainCenter-X", &terrain->terrainCenter.x, 1.0f);
         ImGui::DragFloat("terrainCenter-Z", &terrain->terrainCenter.z, 1.0);

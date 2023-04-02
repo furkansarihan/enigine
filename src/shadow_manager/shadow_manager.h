@@ -36,7 +36,7 @@ public:
 
     std::vector<unsigned int> m_shaderIds;
 
-    glm::vec3 m_lightPos = glm::vec3(1.8f, 1.2f, -0.7f);
+    glm::vec3 m_lightPos = glm::vec3(0.35f, 0.35f, 0.4f);
     glm::vec3 m_lightLookAt = glm::vec3(0, 0, 0);
 
     std::vector<glm::mat4> m_depthPMatrices;

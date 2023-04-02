@@ -22,15 +22,30 @@ uniform sampler2D elevationSampler;
 
 out float _height; // based on world coorinates
 out vec2 _tuv; // texture coordinates
-out vec2 _uv; // coordinates for normal-map lookup
 out vec2 _zalpha; // coordinates for elevation-map lookup
 out float _distance; // vertex distance to the camera
+out vec3 _normal; // vertex normal
 
 // shadowmap
 out vec3 Position_worldspace;
 out vec3 LightDirection_cameraspace;
 out vec3 EyeDirection_cameraspace;
 out vec3 Normal_cameraspace;
+
+vec3 computeNormal(vec2 uv, float texelSize, float texelAspect, float scale)
+{
+    vec4 h;
+    h[0] = texture(elevationSampler, uv + texelSize * vec2(0, -1)).r * texelAspect;
+    h[1] = texture(elevationSampler, uv + texelSize * vec2(-1, 0)).r * texelAspect;
+    h[2] = texture(elevationSampler, uv + texelSize * vec2(1, 0)).r * texelAspect;
+    h[3] = texture(elevationSampler, uv + texelSize * vec2(0, 1)).r * texelAspect;
+    vec3 n;
+    n.z = h[0] - h[3];
+    n.x = h[1] - h[2];
+    n.y = 2 * scale;
+
+    return normalize(n);
+}
 
 void main()
 {
@@ -84,11 +99,21 @@ void main()
 
     _height = zf_zd * zscaleFactor;
     _tuv = vec2(x, y);
-    _uv = uv;
     _zalpha = vec2(0.5 + z/1600, alpha.x);
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
     Position_worldspace = position_worldspace;
-    LightDirection_cameraspace = (V * vec4(lightDirection, 0)).xyz;
-    EyeDirection_cameraspace = vec3(0,0,0) - (V * vec4(position_worldspace, 1)).xyz;
+
+    vec3 vertexPosition_cameraspace = (V * vec4(lightDirection, 0)).xyz;
+    EyeDirection_cameraspace = vec3(0, 0, 0) - vertexPosition_cameraspace;
+    
+    vec3 LightPosition_cameraspace = vec3(0, 0, 0) - (V * vec4(position_worldspace, 1)).xyz;
+    LightDirection_cameraspace = LightPosition_cameraspace + EyeDirection_cameraspace;
+
+    // compute normal
+    float texelSize = fineTextureBlockOrigin.x * scaleFactor.x;
+    float scale = scaleFactor.x;
+    float texelAspect = zscaleFactor;
+
+    _normal = computeNormal(uv, texelSize, zscaleFactor, scale);
 }

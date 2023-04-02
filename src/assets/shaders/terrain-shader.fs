@@ -8,18 +8,15 @@ uniform float fogMinDist;
 uniform vec4 fogColor;
 uniform vec2 terrainSize;
 
-uniform sampler2D normalMapSampler;
 uniform sampler2DArray textureSampler;
 uniform sampler2DArray ShadowMap;
 
 uniform mat4 M;
 uniform mat4 V;
 
-// uniform vec3 AmbientColor;
-// uniform vec3 DiffuseColor;
-// uniform vec3 SpecularColor;
-uniform vec3 LightColor;
-uniform float LightPower;
+uniform float ambientMult;
+uniform float diffuseMult;
+uniform float specularMult;
 
 uniform vec3 CamPos;
 uniform vec3 CamView;
@@ -33,9 +30,9 @@ layout (std140) uniform matrices {
 
 in float _height; // based on world coorinates
 in vec2 _tuv; // texture coordinates
-in vec2 _uv; // coordinates for normal-map lookup
 in vec2 _zalpha; // coordinates for elevation-map lookup
 in float _distance; // vertex distance to the camera
+in vec3 _normal; // vertex normal
 
 // shadowmap
 in vec3 Position_worldspace;
@@ -82,6 +79,8 @@ vec3 transitionRegion(int from, int to, float regionEnd, float regionSize) {
 
 void main()
 {
+    float specularMul = specularMult;
+
     vec3 v = Position_worldspace - CamPos;
     float fragToCamDist = dot(v, CamView);
 
@@ -97,20 +96,8 @@ void main()
 
     vec4 ShadowCoord = DepthBiasVP[index] * vec4(Position_worldspace, 1);
 
-    // do a texture lookup to get the normal in current level
-    vec4 normalfc = texture(normalMapSampler, _uv);
-    // normal_fc.xy contains normal at current (fine) level
-    // normal_fc.zw contains normal at coarser level
-    // blend normals using alpha computed in vertex shader  
-    vec3 normal = vec3((1 - _zalpha.y) * normalfc.xy + _zalpha.y * (normalfc.zw), 1.0);
-
-    // unpack coordinates from [0, 1] to [-1, +1] range, and renormalize.
-    normal = normalize(normalfc.xyz * 2 - 1);
-
-    float s = clamp(dot(normal, lightDirection), 0.8, 1);
-
     // Normal of the computed fragment, in camera space
-    vec3 n = normalize((V * M * vec4(normal, 0)).xyz);
+    vec3 n = normalize((V * vec4(_normal, 0)).xyz);
     // Direction of the light (from the fragment to the light)
     vec3 l = normalize(LightDirection_cameraspace);
     // Cosine of the angle between the normal and the light direction, 
@@ -158,7 +145,7 @@ void main()
     for (int i = 0; i < 8; i++) {
         // 1. simple
         if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
-            visibility -= 0.02;
+            visibility -= 0.08;
         }
 
         // 2. simple2
@@ -190,56 +177,61 @@ void main()
         float normalRate = 1 - distanceRate;
         outColor = vec4(wireColor, 1 * normalRate);
     } else {
-        // outColor = vec4(texture(textureSampler, _tuv).rgb * s, 1); // sampler2D
+        // outColor = vec4(texture(textureSampler, _tuv).rgb, 1); // sampler2D
         if (_height == 0) {
+            specularMul *= 10;
             int index = 0; // water
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1); // sampler2DArray
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1); // sampler2DArray
         } else if (_height >= 0 && _height < 0.5) {
+            float start = 0;
+            float gap = _height - start;
+            specularMul *= (gap * 5 + 10);
             vec3 mergedColor = transitionRegion(0, 1, 0.5, 0.5);
-            outColor = vec4(mergedColor * s, 1);
+            outColor = vec4(mergedColor, 1);
         } else if (_height < 1) {
             int index = 1; // sand
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
         } else if (_height >= 1 && _height < 2) {
             vec3 mergedColor = transitionRegion(1, 2, 2, 1);
-            outColor = vec4(mergedColor * s, 1);
+            outColor = vec4(mergedColor, 1);
         } else if (_height < 8) {
             int index = 2; // stone
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
         } else if (_height >= 8 && _height < 9) {
             vec3 mergedColor = transitionRegion(2, 3, 9, 1);
-            outColor = vec4(mergedColor * s, 1);
+            outColor = vec4(mergedColor, 1);
         } else if (_height < 50) {
             int index = 3; // grass
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
         } else if (_height >= 50 && _height < 54) {
             vec3 mergedColor = transitionRegion(3, 4, 54, 4);
-            outColor = vec4(mergedColor * s, 1);
+            outColor = vec4(mergedColor, 1);
         } else if (_height < 160) {
             int index = 4; // rock
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
         } else if (_height >= 160 && _height < 164) {
             vec3 mergedColor = transitionRegion(4, 5, 164, 4);
-            outColor = vec4(mergedColor * s, 1);
+            outColor = vec4(mergedColor, 1);
         } else {
             int index = 5; // snow
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb * s, 1);
+            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
         }
     }
 
-    // vec3 DiffuseColor = texture(textureSampler, vec3(_tuv / 1024, 0)).rgb * s;
     vec3 DiffuseColor = outColor.xyz;
+    vec3 SpecularColor = vec3(1, 1, 1);
+    vec3 LightColor = vec3(0.2, 0.2, 0.2);
+    float LightPower = 10;
 
-    // TODO:
-    // vec3 col =
-    //     // Ambient : simulates indirect lighting
-    //     // AmbientColor +
-    //     // Diffuse : "color" of the object
-    //     visibility * DiffuseColor * LightColor * LightPower * cosTheta;
-    //     // Specular : reflective highlight, like a mirror
-    //     // visibility * SpecularColor * LightColor * LightPower * pow(cosAlpha, 5);
-    // color = vec4(col, 1);
-    outColor = vec4(visibility * DiffuseColor, 1);
+    // Ambient : simulates indirect lighting
+    vec3 ambient = DiffuseColor * ambientMult;
+    // Diffuse : "color" of the object
+    vec3 diffuse = visibility * ambient * LightColor * LightPower * cosTheta * diffuseMult;
+    // Specular : reflective highlight, like a mirror
+    vec3 specular = visibility * SpecularColor * LightColor * LightPower * pow(cosAlpha, 5) * specularMul;
+
+    vec3 col = ambient + diffuse + specular;
+    outColor = vec4(col, 1);
 
     if (ShowCascade) {
         outColor[index] = 0.9;
