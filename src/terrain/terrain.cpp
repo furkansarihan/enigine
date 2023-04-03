@@ -13,7 +13,7 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     scaleFactor = 255.0f;
     fogMaxDist = 6600.0f;
     fogMinDist = 1000.0f;
-    fogColor = glm::vec4(0.46f, 0.71f, 0.98f, 1.0f);
+    fogColor = glm::vec4(0.89f, 0.912f, 0.936f, 1.0f);
     uvOffset = glm::vec2(0.0f, 0.0f);
     alphaOffset = glm::vec2(0.0f, 0.0f);
     oneOverWidth = 1.5f;

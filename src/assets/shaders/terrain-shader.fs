@@ -7,6 +7,9 @@ uniform float fogMaxDist;
 uniform float fogMinDist;
 uniform vec4 fogColor;
 uniform vec2 terrainSize;
+// TODO:
+// uniform vec2 heightEdges;
+vec2 heightEdges = vec2(0, 256);
 
 uniform sampler2DArray textureSampler;
 uniform sampler2DArray ShadowMap;
@@ -41,6 +44,42 @@ in vec3 EyeDirection_cameraspace;
 
 out vec4 color;
 
+struct Mixer
+{
+    int from;
+    int to;
+    float mixer;
+} heightMixer, slopeMixer1, slopeMixer2;
+
+vec4 heightSteps = vec4(0, 0.004, 0.7, 1);
+vec4 hTransitions = vec4(0, 0.002, 0.2, 0);
+mat4 slopeStepsList = mat4(
+    vec4(0, 0.1, 0.999, 1),
+    vec4(0, 0.5, 0.9, 1),
+    vec4(0, 0.5, 0.8, 1),
+    vec4(0, 0.5, 0.8, 1)
+);
+mat4 sTransitions = mat4(
+    vec4(0, 0.1, 0.001, 0),
+    vec4(0, 0.2, 0.1, 0),
+    vec4(0, 0.2, 0.1, 0),
+    vec4(0, 0.2, 0.1, 0)
+);
+
+const int water = 0;
+const int sand = 1;
+const int stone = 2;
+const int grass = 3;
+const int rock = 4;
+const int snow = 5;
+
+// TODO: dirt
+mat3 textureIndexes = mat3(
+    vec3(rock, stone, sand),
+    vec3(rock, stone, grass),
+    vec3(rock, snow, snow)
+);
+
 vec2 poissonDisk[16] = vec2[]( 
    vec2( -0.94201624, -0.39906216 ), 
    vec2( 0.94558609, -0.76890725 ), 
@@ -67,14 +106,55 @@ float random(vec3 seed, int i){
     return fract(sin(dot_product) * 43758.5453);
 }
 
-vec3 transitionRegion(int from, int to, float regionEnd, float regionSize) {
-    vec3 color1 = texture(textureSampler, vec3(_tuv, from)).rgb;
-    vec3 color2 = texture(textureSampler, vec3(_tuv, to)).rgb;
+vec2 calculateHeightSlopeVector(float slope) {
+    float maxHeightGap = heightEdges.y - heightEdges.x;
+    
+    float h = _height / maxHeightGap;
 
-    float dist = regionEnd - _height;
-    float mixFactor = dist / regionSize;
+    return vec2(h, slope);
+}
 
-    return mix(color2, color1, mixFactor);
+Mixer calculateSampleMixer(Mixer result, float value, vec4 steps, vec4 transitions) {
+    for (int i = 0; i < 3; i++) {
+        if (value >= steps[i] && value < steps[i + 1]) {
+            if (i != 0 && value < steps[i] + transitions[i]) {
+                result.from = i - 1;
+                result.to = i;
+                result.mixer = (transitions[i] + value - steps[i]) / (transitions[i] * 2);
+            } else if (i != 3 && value > steps[i + 1] - transitions[i + 1]) {
+                result.from = i;
+                result.to = i + 1;
+                result.mixer = (value - (steps[i + 1] - transitions[i + 1])) / (transitions[i + 1] * 2);
+            } else {
+                result.from = i;
+                result.to = i;
+                result.mixer = 1.0;
+            }
+
+            break;
+        }
+    }
+
+    return result;
+}
+
+vec3 sampleTexture(vec2 hs) {
+    float h = hs.x;
+    float s = hs.y;
+
+    heightMixer = calculateSampleMixer(heightMixer, h, heightSteps, hTransitions);
+    slopeMixer1 = calculateSampleMixer(slopeMixer1, s, slopeStepsList[heightMixer.from], sTransitions[heightMixer.from]);
+    slopeMixer2 = calculateSampleMixer(slopeMixer2, s, slopeStepsList[heightMixer.to], sTransitions[heightMixer.to]);
+
+    vec3 color1 = texture(textureSampler, vec3(_tuv, textureIndexes[heightMixer.from][slopeMixer1.from])).rgb;
+    vec3 color2 = texture(textureSampler, vec3(_tuv, textureIndexes[heightMixer.from][slopeMixer1.to])).rgb;
+    vec3 mix1 = mix(color1, color2, slopeMixer1.mixer);
+
+    vec3 color3 = texture(textureSampler, vec3(_tuv, textureIndexes[heightMixer.to][slopeMixer2.from])).rgb;
+    vec3 color4 = texture(textureSampler, vec3(_tuv, textureIndexes[heightMixer.to][slopeMixer2.to])).rgb;
+    vec3 mix2 = mix(color3, color4, slopeMixer2.mixer);
+
+    return mix(mix1, mix2, heightMixer.mixer);
 }
 
 void main()
@@ -177,45 +257,9 @@ void main()
         float normalRate = 1 - distanceRate;
         outColor = vec4(wireColor, 1 * normalRate);
     } else {
-        // outColor = vec4(texture(textureSampler, _tuv).rgb, 1); // sampler2D
-        if (_height == 0) {
-            specularMul *= 10;
-            int index = 0; // water
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1); // sampler2DArray
-        } else if (_height >= 0 && _height < 0.5) {
-            float start = 0;
-            float gap = _height - start;
-            specularMul *= (gap * 5 + 10);
-            vec3 mergedColor = transitionRegion(0, 1, 0.5, 0.5);
-            outColor = vec4(mergedColor, 1);
-        } else if (_height < 1) {
-            int index = 1; // sand
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
-        } else if (_height >= 1 && _height < 2) {
-            vec3 mergedColor = transitionRegion(1, 2, 2, 1);
-            outColor = vec4(mergedColor, 1);
-        } else if (_height < 8) {
-            int index = 2; // stone
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
-        } else if (_height >= 8 && _height < 9) {
-            vec3 mergedColor = transitionRegion(2, 3, 9, 1);
-            outColor = vec4(mergedColor, 1);
-        } else if (_height < 50) {
-            int index = 3; // grass
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
-        } else if (_height >= 50 && _height < 54) {
-            vec3 mergedColor = transitionRegion(3, 4, 54, 4);
-            outColor = vec4(mergedColor, 1);
-        } else if (_height < 160) {
-            int index = 4; // rock
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
-        } else if (_height >= 160 && _height < 164) {
-            vec3 mergedColor = transitionRegion(4, 5, 164, 4);
-            outColor = vec4(mergedColor, 1);
-        } else {
-            int index = 5; // snow
-            outColor = vec4(texture(textureSampler, vec3(_tuv, index)).rgb, 1);
-        }
+        float slope = dot(vec3(0, 1, 0), _normal);
+        vec2 hs = calculateHeightSlopeVector(slope);
+        outColor = vec4(sampleTexture(hs), 1);
     }
 
     vec3 DiffuseColor = outColor.xyz;
