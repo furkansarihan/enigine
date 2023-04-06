@@ -22,22 +22,25 @@
 class Terrain
 {
 public:
-    Terrain(PhysicsWorld *physicsWorld);
+    Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
     ~Terrain();
 
+    // TODO: naming
+    int heightmapWidth, heightmapHeight;
+    float width, height;
+    float w, h;
+
     int resolution;
-    bool wireframe;
+    float m_minHeight, m_maxHeight, m_scaleHoriz;
     glm::vec3 terrainCenter;
     int level;
-    float scaleFactor;
     float fogMaxDist;
     float fogMinDist;
     glm::vec4 fogColor;
     glm::vec2 uvOffset;
-    glm::vec2 alphaOffset;
-    float oneOverWidth;
     glm::vec3 shadowBias;
     bool showCascade;
+    bool wireframe;
     btRigidBody *terrainBody;
 
     float ambientMult = 0.5f;
@@ -49,13 +52,11 @@ public:
                    glm::mat4 view, glm::mat4 projection,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
                    glm::vec3 viewPos, bool ortho);
+    void updateHorizontalScale();
 
 private:
     unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
     unsigned textureID, ttextureID;
-    int width, height;
-    // TODO: naming
-    float w, h;
     float *data;
 
     void setupAnisotropicFiltering();

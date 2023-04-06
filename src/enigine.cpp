@@ -226,6 +226,10 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         shadowManager->m_camera->front = glm::normalize(shadowManager->m_camera->front);
         ImGui::DragFloat("camNear", &shadowManager->m_near, 1);
         ImGui::DragFloat("camFar", &shadowManager->m_far, 1, 26, 1000);
+        if (ImGui::Button("refresh shaders"))
+        {
+            initShaders();
+        }
         ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
@@ -257,10 +261,6 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         ImGui::Separator();
         ImGui::Text("Post process");
         ImGui::DragFloat("exposure", &postProcess->m_exposure, 0.001);
-        if (ImGui::Button("refresh shaders"))
-        {
-            initShaders();
-        }
         ImGui::Separator();
         ImGui::Text("Vehicle");
         ImGui::Text("gVehicleSteering = %f", vehicle->gVehicleSteering);
@@ -396,7 +396,6 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         ImGui::DragInt("lines", &lines);
         ImGui::Separator();
         ImGui::Text("Sphere");
-        // ImGui::Text("position: (%.1f, %.1f, %.1f)", spherePosition.x, spherePosition.y, spherePosition.z);
         float sX = sphereBody->getWorldTransform().getOrigin().getX();
         float sY = sphereBody->getWorldTransform().getOrigin().getY();
         float sZ = sphereBody->getWorldTransform().getOrigin().getZ();
@@ -422,32 +421,32 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
             sphereBody->setAngularVelocity(btVector3(0, 0, 0));
             sphereBody->applyCentralForce(btVector3(1000, 1000, 1000));
         }
-        float scaleX = terrain->terrainBody->getCollisionShape()->getLocalScaling().getX();
-        float scaleY = terrain->terrainBody->getCollisionShape()->getLocalScaling().getY();
-        float scaleZ = terrain->terrainBody->getCollisionShape()->getLocalScaling().getZ();
-        if (ImGui::DragFloat("scaleY", &scaleY, 10.0))
-        {
-            terrain->terrainBody->getCollisionShape()->setLocalScaling(btVector3(scaleX, scaleY, scaleZ));
-        }
         ImGui::Separator();
         ImGui::Text("Terrain");
         ImGui::Checkbox("wirewrame", &terrain->wireframe);
         ImGui::DragInt("level", &terrain->level);
-        ImGui::DragFloat("scale factor", &terrain->scaleFactor, 0.05f);
+        if (ImGui::DragFloat("scaleHoriz", &terrain->m_scaleHoriz, 0.05f))
+        {
+            terrain->updateHorizontalScale();
+        }
+        if (ImGui::DragFloat("minHeight", &terrain->m_minHeight, 1.0f))
+        {
+            terrain->updateHorizontalScale();
+        }
+        if (ImGui::DragFloat("maxHeight", &terrain->m_maxHeight, 1.0f))
+        {
+            terrain->updateHorizontalScale();
+        }
         ImGui::DragFloat("fogMaxDist", &terrain->fogMaxDist, 100.0f);
         ImGui::DragFloat("fogMinDist", &terrain->fogMinDist, 100.0f);
         ImGui::ColorEdit4("fogColor", &terrain->fogColor[0]);
         ImGui::DragFloat("ambientMult", &terrain->ambientMult, 0.01f);
         ImGui::DragFloat("diffuseMult", &terrain->diffuseMult, 0.01f);
         ImGui::DragFloat("specularMult", &terrain->specularMult, 0.01f);
-        ImGui::Text("center");
         ImGui::DragFloat("terrainCenter-X", &terrain->terrainCenter.x, 1.0f);
         ImGui::DragFloat("terrainCenter-Z", &terrain->terrainCenter.z, 1.0);
         ImGui::DragFloat("uvOffset-X", &terrain->uvOffset.x, 0.001f);
         ImGui::DragFloat("uvOffset-Y", &terrain->uvOffset.y, 0.001);
-        ImGui::DragFloat("alphaOffset-X", &terrain->alphaOffset.x, 1.000f);
-        ImGui::DragFloat("alphaOffset-Y", &terrain->alphaOffset.y, 1.000);
-        ImGui::DragFloat("oneOverWidth", &terrain->oneOverWidth, 0.01f);
         float trestitution = terrain->terrainBody->getRestitution();
         if (ImGui::DragFloat("terrain restitution", &trestitution, 0.1f))
         {
@@ -620,7 +619,7 @@ int main(int argc, char **argv)
     bool show_overlay = false;
 
     // Vehicle
-    Vehicle vehicle(&physicsWorld, btVector3(1700, 10, 1750));
+    Vehicle vehicle(&physicsWorld, btVector3(5725, 10, 5145));
     glfwSetWindowUserPointer(window, &vehicle);
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
 
@@ -634,7 +633,7 @@ int main(int argc, char **argv)
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Terrain
-    Terrain terrain(&physicsWorld);
+    Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;

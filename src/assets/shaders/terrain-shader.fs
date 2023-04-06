@@ -6,10 +6,8 @@ uniform vec3 wireColor;
 uniform float fogMaxDist;
 uniform float fogMinDist;
 uniform vec4 fogColor;
-uniform vec2 terrainSize;
-// TODO:
-// uniform vec2 heightEdges;
-vec2 heightEdges = vec2(0, 256);
+uniform float minHeight;
+uniform float maxHeight;
 
 uniform sampler2DArray textureSampler;
 uniform sampler2DArray ShadowMap;
@@ -33,7 +31,6 @@ layout (std140) uniform matrices {
 
 in float _height; // based on world coorinates
 in vec2 _tuv; // texture coordinates
-in vec2 _zalpha; // coordinates for elevation-map lookup
 in float _distance; // vertex distance to the camera
 in vec3 _normal; // vertex normal
 
@@ -75,7 +72,7 @@ const int snow = 5;
 
 // TODO: dirt
 mat3 textureIndexes = mat3(
-    vec3(rock, stone, sand),
+    vec3(rock, sand, water),
     vec3(rock, stone, grass),
     vec3(rock, snow, snow)
 );
@@ -107,7 +104,7 @@ float random(vec3 seed, int i){
 }
 
 vec2 calculateHeightSlopeVector(float slope) {
-    float maxHeightGap = heightEdges.y - heightEdges.x;
+    float maxHeightGap = maxHeight - minHeight;
     
     float h = _height / maxHeightGap;
 

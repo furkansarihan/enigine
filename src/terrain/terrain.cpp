@@ -3,22 +3,22 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PhysicsWorld *physicsWorld)
+Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
 {
     // TODO: keep track initialization state
-    resolution = 64;
-    wireframe = false;
+    resolution = 128;
+    m_minHeight = minHeight;
+    m_maxHeight = maxHeight;
+    m_scaleHoriz = scaleHoriz;
     terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
     level = 9;
-    scaleFactor = 255.0f;
-    fogMaxDist = 6600.0f;
-    fogMinDist = 1000.0f;
-    fogColor = glm::vec4(0.89f, 0.912f, 0.936f, 1.0f);
+    fogMaxDist = 10000.0f;
+    fogMinDist = 6000.0f;
+    fogColor = glm::vec4(0.46f, 0.704f, 0.966f, 1.0f);
     uvOffset = glm::vec2(0.0f, 0.0f);
-    alphaOffset = glm::vec2(0.0f, 0.0f);
-    oneOverWidth = 1.5f;
     shadowBias = glm::vec3(0.020, 0.023, 0.005);
     showCascade = false;
+    wireframe = false;
 
     // int n = 255;
     int m = resolution; // m = (n+1)/4
@@ -50,28 +50,26 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     // buffer elevationSampler texture
     glGenTextures(1, &textureID);
     int nrComponents;
-    data = stbi_loadf("assets/images/4096x4096.png", &width, &height, &nrComponents, 1);
-    // data = stbi_loadf("assets/images/vehicle.png", &width, &height, &nrComponents, 1);
+    data = stbi_loadf(filename.c_str(), &heightmapWidth, &heightmapHeight, &nrComponents, 1);
     if (data == nullptr)
     {
         fprintf(stderr, "Failed to read heightmap\n");
         return;
     }
 
-    std::cout << "width: " << width << std::endl;
-    std::cout << "height: " << height << std::endl;
+    std::cout << "heightmapWidth: " << heightmapWidth << std::endl;
+    std::cout << "heightmapHeight: " << heightmapHeight << std::endl;
     std::cout << "nrComponents: " << nrComponents << std::endl;
 
-    GLenum format;
-    if (nrComponents == 1)
-        format = GL_RED;
-    else if (nrComponents == 3)
-        format = GL_RGB;
-    else if (nrComponents == 4)
-        format = GL_RGBA;
+    if (nrComponents != 1)
+    {
+        fprintf(stderr, "Failed to initialize heightmap. Number of components of the texture must be 1.\n");
+        return;
+    }
 
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, data);
+    // TODO: variable internal format
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, heightmapWidth, heightmapHeight, 0, GL_RED, GL_FLOAT, data);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // GL_CLAMP_TO_EDGE
@@ -80,17 +78,15 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
 
     // Physics
     terrainBody = physicsWorld->createTerrain(
-        width,
-        height,
+        heightmapWidth,
+        heightmapHeight,
         data,
         0,
         1,
         1,
         false);
 
-    // TODO: bound to terrain scale factor
-    terrainBody->getWorldTransform().setOrigin(btVector3(width / 2, scaleFactor / 2, height / 2));
-    terrainBody->getCollisionShape()->setLocalScaling(btVector3(1, scaleFactor, 1));
+    updateHorizontalScale();
 
     glGenTextures(1, &ttextureID);
     int twidth, theight, tnrComponents;
@@ -146,12 +142,6 @@ Terrain::Terrain(PhysicsWorld *physicsWorld)
     stbi_image_free(tdata3);
     stbi_image_free(tdata4);
     stbi_image_free(tdata5);
-
-    w = 1.0 / width;
-    h = 1.0 / height;
-
-    std::cout << "w: " << w << std::endl;
-    std::cout << "h: " << h << std::endl;
 }
 
 Terrain::~Terrain()
@@ -354,10 +344,10 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     calculatePlanes(projection, view);
 
     terrainShader.use();
-    terrainShader.setFloat("zscaleFactor", scaleFactor);
+    terrainShader.setFloat("scaleHoriz", m_scaleHoriz);
+    terrainShader.setFloat("minHeight", m_minHeight);
+    terrainShader.setFloat("maxHeight", m_maxHeight);
     terrainShader.setVec3("viewerPos", viewPos);
-    terrainShader.setFloat("oneOverWidth", oneOverWidth);
-    terrainShader.setVec2("alphaOffset", alphaOffset);
     terrainShader.setVec3("lightDirection", lightPosition);
     terrainShader.setVec3("lightColor", lightColor);
     terrainShader.setFloat("lightPower", lightPower);
@@ -396,14 +386,26 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     this->draw(terrainShader, viewPos, ortho);
 }
 
+void Terrain::updateHorizontalScale()
+{
+    width = heightmapWidth * m_scaleHoriz;
+    height = heightmapHeight * m_scaleHoriz;
+    w = 1.0 / heightmapWidth;
+    h = 1.0 / heightmapHeight;
+
+    float scaleFactor = m_maxHeight - m_minHeight;
+    terrainBody->getWorldTransform().setOrigin(btVector3(width / 2.0, scaleFactor / 2.0 + m_minHeight, height / 2.0));
+    terrainBody->getCollisionShape()->setLocalScaling(btVector3(m_scaleHoriz, scaleFactor, m_scaleHoriz));
+}
+
 void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos)
 {
     calculatePlanes(projection, view);
 
     terrainShadow.use();
-    terrainShadow.setFloat("zscaleFactor", scaleFactor);
-    terrainShadow.setFloat("oneOverWidth", oneOverWidth);
-    terrainShadow.setVec2("alphaOffset", alphaOffset);
+    terrainShadow.setFloat("scaleHoriz", m_scaleHoriz);
+    terrainShadow.setFloat("minHeight", m_minHeight);
+    terrainShadow.setFloat("maxHeight", m_maxHeight);
     terrainShadow.setVec2("uvOffset", uvOffset);
     terrainShadow.setVec2("terrainSize", glm::vec2(width, height));
 
@@ -622,18 +624,15 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     glm::vec2 bottomRight = pos + blockSize;
 
     // frustum culling
-    // TODO: variable min, max
-    float terrainMin = 0.0f;
-    float terrainMax = 255.0f;
     glm::vec3 corners[] = {
-        glm::vec3(topLeft.x, terrainMin, topLeft.y),
-        glm::vec3(topRight.x, terrainMin, topRight.y),
-        glm::vec3(bottomLeft.x, terrainMin, bottomLeft.y),
-        glm::vec3(bottomRight.x, terrainMin, bottomRight.y),
-        glm::vec3(topLeft.x, terrainMax, topLeft.y),
-        glm::vec3(topRight.x, terrainMax, topRight.y),
-        glm::vec3(bottomLeft.x, terrainMax, bottomLeft.y),
-        glm::vec3(bottomRight.x, terrainMax, bottomRight.y),
+        glm::vec3(topLeft.x, m_minHeight, topLeft.y),
+        glm::vec3(topRight.x, m_minHeight, topRight.y),
+        glm::vec3(bottomLeft.x, m_minHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, m_minHeight, bottomRight.y),
+        glm::vec3(topLeft.x, m_maxHeight, topLeft.y),
+        glm::vec3(topRight.x, m_maxHeight, topRight.y),
+        glm::vec3(bottomLeft.x, m_maxHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, m_maxHeight, bottomRight.y),
     };
 
     for (int i = 0; i < 4; i++)

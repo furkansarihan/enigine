@@ -36,7 +36,7 @@ const float SPEED = 50.0f;
 const float SENSITIVITY = 0.1f;
 const float FOV = 45.0f;
 const float NEAR = 0.1f;
-const float FAR = 10000.0f;
+const float FAR = 20000.0f;
 
 class Camera
 {
