@@ -16,6 +16,8 @@ public:
     ~Shader();
     unsigned int id;
     void init(const std::string &vertexCode, const std::string &fragmentCode);
+    void init(const std::string &vertexCode, const std::string &fragmentCode,
+              const std::string &tessControlCode, const std::string &tessEvalCode);
     void use();
     void setBool(const std::string &name, bool value) const;
     void setInt(const std::string &name, int value) const;
@@ -31,13 +33,15 @@ public:
     void setMat4(const std::string &name, const glm::mat4 &mat) const;
 
 private:
-    void checkCompileErr();
-    void checkLinkingErr();
+    void checkCompileError(unsigned int shader, std::string type);
+    void checkLinkingError();
     void compile();
     void link();
-    unsigned int vertexId_, fragmentId_;
+    unsigned int vertexId_, fragmentId_, tessControlId_, tessEvalId_;
     std::string vertexCode_;
     std::string fragmentCode_;
+    std::string tessControlCode_;
+    std::string tessEvalCode_;
 };
 
 #endif /* shader_hpp */

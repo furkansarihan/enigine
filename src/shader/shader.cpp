@@ -16,18 +16,48 @@ void Shader::init(const std::string &vertexCode, const std::string &fragmentCode
     link();
 }
 
+void Shader::init(const std::string &vertexCode, const std::string &fragmentCode,
+                  const std::string &tessControlCode, const std::string &tessEvalCode)
+{
+    vertexCode_ = vertexCode;
+    fragmentCode_ = fragmentCode;
+    tessControlCode_ = tessControlCode;
+    tessEvalCode_ = tessEvalCode;
+    compile();
+    link();
+}
+
 void Shader::compile()
 {
     const char *vcode = vertexCode_.c_str();
     vertexId_ = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexId_, 1, &vcode, NULL);
     glCompileShader(vertexId_);
+    checkCompileError(vertexId_, "VERTEX");
 
     const char *fcode = fragmentCode_.c_str();
     fragmentId_ = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentId_, 1, &fcode, NULL);
     glCompileShader(fragmentId_);
-    checkCompileErr();
+    checkCompileError(fragmentId_, "FRAGMENT");
+
+    if (!tessControlCode_.empty())
+    {
+        const char *tcShaderCode = tessControlCode_.c_str();
+        tessControlId_ = glCreateShader(GL_TESS_CONTROL_SHADER);
+        glShaderSource(tessControlId_, 1, &tcShaderCode, NULL);
+        glCompileShader(tessControlId_);
+        checkCompileError(tessControlId_, "TESS_CONTROL");
+    }
+
+    if (!tessEvalCode_.empty())
+    {
+        const char *teShaderCode = tessEvalCode_.c_str();
+        tessEvalId_ = glCreateShader(GL_TESS_EVALUATION_SHADER);
+        glShaderSource(tessEvalId_, 1, &teShaderCode, NULL);
+        glCompileShader(tessEvalId_);
+        checkCompileError(tessEvalId_, "TESS_EVALUATION");
+    }
 }
 
 void Shader::link()
@@ -35,10 +65,22 @@ void Shader::link()
     id = glCreateProgram();
     glAttachShader(id, vertexId_);
     glAttachShader(id, fragmentId_);
+    if (!tessControlCode_.empty())
+    {
+        glAttachShader(id, tessControlId_);
+    }
+    if (!tessEvalCode_.empty())
+    {
+        glAttachShader(id, tessEvalId_);
+    }
     glLinkProgram(id);
-    checkLinkingErr();
+    checkLinkingError();
     glDeleteShader(vertexId_);
     glDeleteShader(fragmentId_);
+    if (!tessControlCode_.empty())
+        glDeleteShader(tessControlId_);
+    if (!tessEvalCode_.empty())
+        glDeleteShader(tessEvalId_);
 }
 
 void Shader::use()
@@ -103,27 +145,20 @@ void Shader::setMat4(const std::string &name, const glm::mat4 &mat) const
     glUniformMatrix4fv(glGetUniformLocation(id, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
-void Shader::checkCompileErr()
+void Shader::checkCompileError(unsigned int shader, std::string type)
 {
     int success;
     char infoLog[1024];
-    glGetShaderiv(vertexId_, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
-        glGetShaderInfoLog(vertexId_, 1024, NULL, infoLog);
-        std::cout << "Error compiling Vertex Shader:\n"
-                  << infoLog << std::endl;
-    }
-    glGetShaderiv(fragmentId_, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentId_, 1024, NULL, infoLog);
-        std::cout << "Error compiling Fragment Shader:\n"
+        glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+        std::cout << "Error compiling : " << type << ":\n"
                   << infoLog << std::endl;
     }
 }
 
-void Shader::checkLinkingErr()
+void Shader::checkLinkingError()
 {
     int success;
     char infoLog[1024];
