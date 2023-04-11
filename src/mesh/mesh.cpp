@@ -14,8 +14,32 @@ Mesh::~Mesh()
 {
 }
 
-// render the mesh
 void Mesh::draw(Shader shader)
+{
+    bindTextures(shader);
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    // always good practice to set everything back to defaults once configured.
+    glActiveTexture(GL_TEXTURE0);
+}
+
+void Mesh::drawInstanced(Shader shader, int instanceCount)
+{
+    bindTextures(shader);
+
+    glBindVertexArray(VAO);
+    glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
+    glBindVertexArray(0);
+
+    // always good practice to set everything back to defaults once configured.
+    glActiveTexture(GL_TEXTURE0);
+}
+
+// render the mesh
+void Mesh::bindTextures(Shader shader)
 {
     // bind appropriate textures
     unsigned int diffuseNr = 1;
@@ -51,14 +75,6 @@ void Mesh::draw(Shader shader)
         // and finally bind the texture
         glBindTexture(GL_TEXTURE_2D, textures[i].id);
     }
-
-    // draw mesh
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    // always good practice to set everything back to defaults once configured.
-    glActiveTexture(GL_TEXTURE0);
 }
 
 void Mesh::setupMesh()

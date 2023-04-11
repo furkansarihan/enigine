@@ -39,11 +39,13 @@ public:
     unsigned int VAO;
     // Functions
     void draw(Shader shader);
+    void drawInstanced(Shader shader, int instanceCount);
 
 private:
     unsigned int VBO, EBO;
     void setupMesh();
     void setupPrimitiveMesh();
+    void bindTextures(Shader shader);
 };
 
 #endif /* mesh_hpp */

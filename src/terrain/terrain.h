@@ -18,11 +18,12 @@
 #include "../shader/shader.h"
 #include "../physics_world/physics_world.h"
 #include "../camera/camera.h"
+#include "../model/model.h"
 
 class Terrain
 {
 public:
-    Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
+    Terrain(PhysicsWorld *physicsWorld, Model *grass, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
     ~Terrain();
 
     // TODO: naming
@@ -42,6 +43,11 @@ public:
     bool showCascade;
     bool wireframe;
     btRigidBody *terrainBody;
+    Model *m_grass;
+
+    int m_grassTileSize = 12;
+    int m_grassDensity = 2;
+    float m_windIntensity = 6.0;
 
     float ambientMult = 0.5f;
     float diffuseMult = 0.7f;
@@ -52,6 +58,7 @@ public:
                    glm::mat4 view, glm::mat4 projection,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
                    glm::vec3 viewPos, bool ortho);
+    void drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();
 
 private:
@@ -70,6 +77,7 @@ private:
     // frustum culling
     glm::vec4 m_planes[4];
     void calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix);
+    bool inFrustum(glm::vec2 topLeft, glm::vec2 topRight, glm::vec2 bottomLeft, glm::vec2 bottomRight, glm::vec3 viewPos, bool ortho);
     bool inFrontOf(glm::vec4 plane, glm::vec3 corners[8], glm::vec3 viewPos, bool ortho);
 };
 

@@ -3,9 +3,10 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
+Terrain::Terrain(PhysicsWorld *physicsWorld, Model *grass, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
 {
     // TODO: keep track initialization state
+    m_grass = grass;
     resolution = 128;
     m_minHeight = minHeight;
     m_maxHeight = maxHeight;
@@ -613,6 +614,97 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
     }
 }
 
+void Terrain::drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos)
+{
+    int tileSize1 = m_grassTileSize;
+    int tileSize2 = tileSize1 * 2;
+    int tileSize3 = tileSize1 * 3;
+
+    glm::vec2 topLeft1(-tileSize1, -tileSize1);
+    glm::vec2 topLeft2(-1 * (tileSize1 + tileSize2), -1 * (tileSize1 + tileSize2));
+    glm::vec2 topLeft3(-1 * (tileSize1 + tileSize2 + tileSize3), -1 * (tileSize1 + tileSize2 + tileSize3));
+
+    int x = roundUp(viewPos.x, 2);
+    int z = roundUp(viewPos.z, 2);
+
+    glm::vec2 positions[] = {
+        // level 1
+        glm::vec2(x, z) + topLeft1,
+        glm::vec2(x, z) + topLeft1 + glm::vec2(tileSize1, 0),
+        glm::vec2(x, z) + topLeft1 + glm::vec2(0, tileSize1),
+        glm::vec2(x, z) + topLeft1 + glm::vec2(tileSize1, tileSize1),
+        // level 2
+        glm::vec2(x, z) + topLeft2,
+        glm::vec2(x, z) + topLeft2 + glm::vec2(tileSize2, 0),
+        glm::vec2(x, z) + topLeft2 + glm::vec2(tileSize2 * 2, 0),
+        // level 2 - 2
+        glm::vec2(x, z) + topLeft2 + glm::vec2(0, tileSize2),
+        glm::vec2(x, z) + topLeft2 + glm::vec2(tileSize2 * 2, tileSize2),
+        // level 2 - 3
+        glm::vec2(x, z) + topLeft2 + glm::vec2(0, tileSize2 * 2),
+        glm::vec2(x, z) + topLeft2 + glm::vec2(tileSize2, tileSize2 * 2),
+        glm::vec2(x, z) + topLeft2 + glm::vec2(tileSize2 * 2, tileSize2 * 2),
+        // level 3 - 1
+        glm::vec2(x, z) + topLeft3,
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3, 0),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 2, 0),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 3, 0),
+        // level 3 - 2, 3
+        glm::vec2(x, z) + topLeft3 + glm::vec2(0, tileSize3),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 3, tileSize3),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(0, tileSize3 * 2),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 3, tileSize3 * 2),
+        // level 3 - 4
+        glm::vec2(x, z) + topLeft3 + glm::vec2(0, tileSize3 * 3),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3, tileSize3 * 3),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 2, tileSize3 * 3),
+        glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 3, tileSize3 * 3),
+    };
+
+    grassShader.use();
+    grassShader.setMat4("projection", projection);
+    grassShader.setMat4("view", view);
+    grassShader.setVec2("elevationMapSize", glm::vec2(w, h));
+    grassShader.setFloat("scaleHoriz", m_scaleHoriz);
+    grassShader.setFloat("minHeight", m_minHeight);
+    grassShader.setFloat("maxHeight", m_maxHeight);
+    grassShader.setFloat("u_time", (float)glfwGetTime());
+    grassShader.setInt("grassDensity", m_grassDensity);
+    grassShader.setFloat("windIntensity", m_windIntensity);
+
+    // TODO: texture unit based on texture count for instanced model
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glUniform1i(glGetUniformLocation(grassShader.id, "elevationSampler"), 1);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    for (int i = 0; i < 24; i++)
+    {
+        glm::vec2 pos = positions[i];
+        int column = i < 4 ? tileSize1 : i < 12 ? tileSize2
+                                                : tileSize3;
+        column *= m_grassDensity;
+        int instanceCount = column * column;
+
+        grassShader.setInt("columnCount", column);
+        grassShader.setVec2("referencePos", pos);
+
+        glm::vec2 blockSize(column, column);
+
+        glm::vec2 topLeft = pos;
+        glm::vec2 topRight = pos + glm::vec2(blockSize.x, 0);
+        glm::vec2 bottomLeft = pos + glm::vec2(0, blockSize.y);
+        glm::vec2 bottomRight = pos + blockSize;
+
+        if (inFrustum(topLeft, topRight, bottomLeft, bottomRight, viewPos, false))
+        {
+            for (unsigned int i = 0; i < m_grass->meshes.size(); i++)
+            {
+                m_grass->meshes[i].drawInstanced(grassShader, instanceCount);
+            }
+        }
+    }
+}
+
 // TODO: reduce glBindVertexArray calls
 void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount, glm::vec3 viewPos, bool ortho)
 {
@@ -624,23 +716,9 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     glm::vec2 bottomRight = pos + blockSize;
 
     // frustum culling
-    glm::vec3 corners[] = {
-        glm::vec3(topLeft.x, m_minHeight, topLeft.y),
-        glm::vec3(topRight.x, m_minHeight, topRight.y),
-        glm::vec3(bottomLeft.x, m_minHeight, bottomLeft.y),
-        glm::vec3(bottomRight.x, m_minHeight, bottomRight.y),
-        glm::vec3(topLeft.x, m_maxHeight, topLeft.y),
-        glm::vec3(topRight.x, m_maxHeight, topRight.y),
-        glm::vec3(bottomLeft.x, m_maxHeight, bottomLeft.y),
-        glm::vec3(bottomRight.x, m_maxHeight, bottomRight.y),
-    };
-
-    for (int i = 0; i < 4; i++)
+    if (!inFrustum(topLeft, topRight, bottomLeft, bottomRight, viewPos, ortho))
     {
-        if (!inFrontOf(m_planes[i], corners, viewPos, ortho))
-        {
-            return;
-        }
+        return;
     }
 
     // outside of terrain
@@ -659,6 +737,30 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     {
         glBindVertexArray(vao);
     }
+}
+
+bool Terrain::inFrustum(glm::vec2 topLeft, glm::vec2 topRight, glm::vec2 bottomLeft, glm::vec2 bottomRight, glm::vec3 viewPos, bool ortho)
+{
+    glm::vec3 corners[] = {
+        glm::vec3(topLeft.x, m_minHeight, topLeft.y),
+        glm::vec3(topRight.x, m_minHeight, topRight.y),
+        glm::vec3(bottomLeft.x, m_minHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, m_minHeight, bottomRight.y),
+        glm::vec3(topLeft.x, m_maxHeight, topLeft.y),
+        glm::vec3(topRight.x, m_maxHeight, topRight.y),
+        glm::vec3(bottomLeft.x, m_maxHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, m_maxHeight, bottomRight.y),
+    };
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (!inFrontOf(m_planes[i], corners, viewPos, ortho))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool Terrain::inFrontOf(glm::vec4 plane, glm::vec3 corners[8], glm::vec3 viewPos, bool ortho)

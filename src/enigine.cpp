@@ -75,6 +75,7 @@ Shader irradianceShader;
 Shader pbrShader;
 Shader prefilterShader;
 Shader brdfShader;
+Shader grassShader;
 // System Monitor
 task_basic_info t_info;
 
@@ -124,6 +125,7 @@ void initShaders()
     pbrShader.init(FileManager::read("../src/assets/shaders/pbr.vs"), FileManager::read("../src/assets/shaders/pbr.fs"));
     prefilterShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/prefilter.fs"));
     brdfShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/brdf.fs"));
+    grassShader.init(FileManager::read("../src/assets/shaders/grass.vs"), FileManager::read("../src/assets/shaders/grass.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -447,6 +449,9 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         ImGui::DragFloat("terrainCenter-Z", &terrain->terrainCenter.z, 1.0);
         ImGui::DragFloat("uvOffset-X", &terrain->uvOffset.x, 0.001f);
         ImGui::DragFloat("uvOffset-Y", &terrain->uvOffset.y, 0.001);
+        ImGui::DragInt("grassTileSize", &terrain->m_grassTileSize, 1, 0, 128);
+        ImGui::DragInt("grassDensity", &terrain->m_grassDensity, 1, 0, 10);
+        ImGui::DragFloat("windIntensity", &terrain->m_windIntensity, 0.2, 0, 50);
         float trestitution = terrain->terrainBody->getRestitution();
         if (ImGui::DragFloat("terrain restitution", &trestitution, 0.1f))
         {
@@ -594,13 +599,14 @@ int main(int argc, char **argv)
     Model wheel("assets/models/wheel.obj");
     Model cylinder("assets/models/cylinder.obj");
     Model suzanne("assets/models/suzanne.obj");
-    Model spherePBR("../src/assets/spaceship/sphere.obj");
+    // Model spherePBR("../src/assets/spaceship/sphere.obj");
+    Model grass("../src/assets/terrain/grass.obj");
 
     // Init shaders
     initShaders();
 
     // Camera
-    Camera editorCamera(glm::vec3(25.0f, 18.0f, 25.0f), glm::vec3(0.0f, 1.0f, 0.0f), 224.0f, -22.0f);
+    Camera editorCamera(glm::vec3(4456.0f, 9.0f, 3908.0f), glm::vec3(0.0f, 1.0f, 0.0f), 42.0f, -6.0f);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -633,7 +639,7 @@ int main(int argc, char **argv)
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Terrain
-    Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
+    Terrain terrain(&physicsWorld, &grass, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -657,9 +663,9 @@ int main(int argc, char **argv)
     // PBR
     PbrManager pbrManager;
     pbrManager.setupCubemap(cube, hdrToCubemapShader);
-    pbrManager.setupIrradianceMap(cube, irradianceShader);
-    pbrManager.setupPrefilterMap(cube, prefilterShader);
-    pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
+    // pbrManager.setupIrradianceMap(cube, irradianceShader);
+    // pbrManager.setupPrefilterMap(cube, prefilterShader);
+    // pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -877,6 +883,8 @@ int main(int argc, char **argv)
                           editorCamera.position,
                           editorCamera.projectionMode == ProjectionMode::Ortho);
 
+        terrain.drawGrass(grassShader, projection, editorCamera.getViewMatrix(), editorCamera.position);
+
         // Draw objects
         {
             glm::vec3 objectColor(0.6f, 0.6f, 0.6f);
@@ -960,6 +968,7 @@ int main(int argc, char **argv)
         lightPositions[0].z = radius * glm::cos(currentFrame * speed) + 6;
 
         // draw pbr
+        // TODO: toggle
         {
             pbrShader.use();
             glm::mat4 view = editorCamera.getViewMatrix();
@@ -1010,7 +1019,7 @@ int main(int argc, char **argv)
                     model = glm::scale(model, glm::vec3(2));
                     pbrShader.setMat4("model", model);
                     pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-                    spherePBR.draw(pbrShader);
+                    // spherePBR.draw(pbrShader);
                 }
             }
 
