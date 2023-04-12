@@ -15,7 +15,6 @@ uniform float maxHeight;
 uniform float scaleHoriz;
 uniform float u_time;
 uniform float mult;
-uniform float windIntensity;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -29,9 +28,7 @@ float rand(float st) {
 
 // 2D Random
 float random (in vec2 st) {
-    return fract(sin(dot(st.xy,
-                         vec2(12.9898,78.233)))
-                 * 43758.5453123);
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
 }
 
 // 2D Noise based on Morgan McGuire @morgan3d
@@ -77,18 +74,26 @@ void main()
 {
     TexCoords = aTexCoords;
 
+    float halfTileSize = mult / 2;
+
     float x = gl_InstanceID / columnCount;
     float z = mod(gl_InstanceID, columnCount);
 
     x *= mult;
     z *= mult;
 
+    // move to center
+    x += halfTileSize;
+    z += halfTileSize;
+
     vec2 worldPos = referencePos + vec2(x, z);
 
     float n = noise(worldPos);
+    float nx = clamp(n * 12, 0, halfTileSize);
+    float nz = clamp(n * 8, 0, halfTileSize);
 
-    worldPos.x += n * 3;
-    worldPos.y -= n * 2;
+    worldPos.x += nx;
+    worldPos.y -= nz;
 
     vec2 uv = worldPos * elevationMapSize;
     uv /= scaleHoriz;
@@ -100,10 +105,7 @@ void main()
     height *= yScaleFactor;
     height += minHeight;
 
-    vec3 localPos = aPos * vec3(0.5, 0.5 + 1 * n, 0.5);
-
-    float wave = sin(localPos.z * 10.0 + u_time) * 0.1;
-    localPos.z += wave * (1 - aTexCoords.y) * n * windIntensity;
+    vec3 localPos = aPos * vec3(0.2);
 
     gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
     

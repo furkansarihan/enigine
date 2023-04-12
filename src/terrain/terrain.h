@@ -23,7 +23,7 @@
 class Terrain
 {
 public:
-    Terrain(PhysicsWorld *physicsWorld, Model *grass, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
+    Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
     ~Terrain();
 
     // TODO: naming
@@ -43,10 +43,11 @@ public:
     bool showCascade;
     bool wireframe;
     btRigidBody *terrainBody;
-    Model *m_grass;
 
     int m_grassTileSize = 12;
-    int m_grassDensity = 2;
+    float m_grassDensity = 2;
+    int m_stoneTileSize = 30;
+    float m_stoneDensity = 0.05;
     float m_windIntensity = 6.0;
 
     float ambientMult = 0.5f;
@@ -58,7 +59,7 @@ public:
                    glm::mat4 view, glm::mat4 projection,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
                    glm::vec3 viewPos, bool ortho);
-    void drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
+    void drawInstance(Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();
 
 private:
@@ -68,6 +69,7 @@ private:
 
     void setupAnisotropicFiltering();
     int roundUp(int numToRound, int multiple);
+    float roundUpf(float numToRound, float multiple);
     void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createOuterCoverMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
     void createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);

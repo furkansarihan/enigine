@@ -24,6 +24,7 @@ public:
     Model(std::string const &path);
     ~Model();
     void draw(Shader shader);
+    void drawInstanced(Shader shader, int instanceCount);
     std::vector<Texture> textures_loaded;
     std::vector<Mesh> meshes;
     std::string directory;

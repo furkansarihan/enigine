@@ -14,11 +14,16 @@ Model::~Model()
 {
 }
 
-// draws the model, and thus all its meshes
 void Model::draw(Shader shader)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
         meshes[i].draw(shader);
+}
+
+void Model::drawInstanced(Shader shader, int instanceCount)
+{
+    for (unsigned int i = 0; i < meshes.size(); i++)
+        meshes[i].drawInstanced(shader, instanceCount);
 }
 
 /*  Functions   */

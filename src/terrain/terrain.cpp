@@ -3,10 +3,9 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PhysicsWorld *physicsWorld, Model *grass, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
+Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
 {
     // TODO: keep track initialization state
-    m_grass = grass;
     resolution = 128;
     m_minHeight = minHeight;
     m_maxHeight = maxHeight;
@@ -173,6 +172,16 @@ int Terrain::roundUp(int numToRound, int multiple)
 {
     assert(multiple && ((multiple & (multiple - 1)) == 0));
     return (numToRound + multiple - 1) & -multiple;
+}
+
+float Terrain::roundUpf(float numToRound, float multiple)
+{
+    float remainder = fmod(numToRound, multiple);
+    if (remainder == 0.0f)
+    {
+        return numToRound;
+    }
+    return numToRound + multiple - remainder;
 }
 
 void Terrain::createTriangleFanMesh(int size, unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
@@ -614,18 +623,22 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
     }
 }
 
-void Terrain::drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos)
+void Terrain::drawInstance(Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos)
 {
-    int tileSize1 = m_grassTileSize;
-    int tileSize2 = tileSize1 * 2;
-    int tileSize3 = tileSize1 * 3;
+    int tileSize1 = tileSize;
+    int tileSize2 = tileSize * 2;
+    int tileSize3 = tileSize * 3;
 
     glm::vec2 topLeft1(-tileSize1, -tileSize1);
     glm::vec2 topLeft2(-1 * (tileSize1 + tileSize2), -1 * (tileSize1 + tileSize2));
     glm::vec2 topLeft3(-1 * (tileSize1 + tileSize2 + tileSize3), -1 * (tileSize1 + tileSize2 + tileSize3));
 
-    int x = roundUp(viewPos.x, 2);
-    int z = roundUp(viewPos.z, 2);
+    // length of each instance
+    int columnCount = tileSize1 * density;
+    float mult = (float)tileSize1 / columnCount;
+
+    float x = roundUpf(viewPos.x, mult);
+    float z = roundUpf(viewPos.z, mult);
 
     glm::vec2 positions[] = {
         // level 1
@@ -661,34 +674,35 @@ void Terrain::drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view
         glm::vec2(x, z) + topLeft3 + glm::vec2(tileSize3 * 3, tileSize3 * 3),
     };
 
-    grassShader.use();
-    grassShader.setMat4("projection", projection);
-    grassShader.setMat4("view", view);
-    grassShader.setVec2("elevationMapSize", glm::vec2(w, h));
-    grassShader.setFloat("scaleHoriz", m_scaleHoriz);
-    grassShader.setFloat("minHeight", m_minHeight);
-    grassShader.setFloat("maxHeight", m_maxHeight);
-    grassShader.setFloat("u_time", (float)glfwGetTime());
-    grassShader.setInt("grassDensity", m_grassDensity);
-    grassShader.setFloat("windIntensity", m_windIntensity);
+    instanceShader.use();
+    instanceShader.setMat4("projection", projection);
+    instanceShader.setMat4("view", view);
+    instanceShader.setVec2("elevationMapSize", glm::vec2(w, h));
+    instanceShader.setFloat("scaleHoriz", m_scaleHoriz);
+    instanceShader.setFloat("minHeight", m_minHeight);
+    instanceShader.setFloat("maxHeight", m_maxHeight);
+    instanceShader.setFloat("u_time", (float)glfwGetTime());
+
+    instanceShader.setFloat("windIntensity", m_windIntensity);
+    instanceShader.setFloat("mult", mult);
 
     // TODO: texture unit based on texture count for instanced model
     glActiveTexture(GL_TEXTURE0 + 1);
-    glUniform1i(glGetUniformLocation(grassShader.id, "elevationSampler"), 1);
+    glUniform1i(glGetUniformLocation(instanceShader.id, "elevationSampler"), 1);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     for (int i = 0; i < 24; i++)
     {
         glm::vec2 pos = positions[i];
-        int column = i < 4 ? tileSize1 : i < 12 ? tileSize2
-                                                : tileSize3;
-        column *= m_grassDensity;
-        int instanceCount = column * column;
+        int columnSize = i < 4 ? tileSize1 : i < 12 ? tileSize2
+                                                    : tileSize3;
+        int columnCount = columnSize / mult + 0.01;
+        int instanceCount = columnCount * columnCount;
 
-        grassShader.setInt("columnCount", column);
-        grassShader.setVec2("referencePos", pos);
+        instanceShader.setInt("columnCount", columnCount);
+        instanceShader.setVec2("referencePos", pos);
 
-        glm::vec2 blockSize(column, column);
+        glm::vec2 blockSize(columnSize, columnSize);
 
         glm::vec2 topLeft = pos;
         glm::vec2 topRight = pos + glm::vec2(blockSize.x, 0);
@@ -697,10 +711,7 @@ void Terrain::drawGrass(Shader grassShader, glm::mat4 projection, glm::mat4 view
 
         if (inFrustum(topLeft, topRight, bottomLeft, bottomRight, viewPos, false))
         {
-            for (unsigned int i = 0; i < m_grass->meshes.size(); i++)
-            {
-                m_grass->meshes[i].drawInstanced(grassShader, instanceCount);
-            }
+            model->drawInstanced(instanceShader, instanceCount);
         }
     }
 }
