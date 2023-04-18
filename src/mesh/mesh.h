@@ -10,6 +10,8 @@
 
 #include "../shader/shader.h"
 
+#define MAX_BONE_PER_VERTEX 4
+
 struct Vertex
 {
     glm::vec3 position;
@@ -17,6 +19,8 @@ struct Vertex
     glm::vec2 texCoords;
     glm::vec3 tangent;
     glm::vec3 bitangent;
+    int boneIDs[MAX_BONE_PER_VERTEX];
+    float weights[MAX_BONE_PER_VERTEX];
 };
 
 struct Texture
@@ -44,7 +48,6 @@ public:
 private:
     unsigned int VBO, EBO;
     void setupMesh();
-    void setupPrimitiveMesh();
     void bindTextures(Shader shader);
 };
 

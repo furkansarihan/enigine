@@ -3,7 +3,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../external/stb_image/stb_image.h"
 
+unsigned int textureFromMemory(const aiTexture *embeddedTexture);
 unsigned int textureFromFile(const char *path, const std::string &directory);
+unsigned int loadTexture(void *image_data, int width, int height, int nrComponents);
 
 Model::Model(std::string const &path)
 {
@@ -32,9 +34,9 @@ void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    m_scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
     // check for errors
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
+    if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) // if is Not Zero
     {
         std::cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
         return;
@@ -43,28 +45,28 @@ void Model::loadModel(std::string const &path)
     directory = path.substr(0, path.find_last_of('/'));
 
     // process ASSIMP's root node recursively
-    processNode(scene->mRootNode, scene);
+    processNode(m_scene->mRootNode);
 }
 
 // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
-void Model::processNode(aiNode *node, const aiScene *scene)
+void Model::processNode(aiNode *node)
 {
     // process each mesh located at the current node
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
         // the node object only contains indices to index the actual objects in the scene.
         // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
-        aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(processMesh(mesh, scene));
+        aiMesh *mesh = m_scene->mMeshes[node->mMeshes[i]];
+        meshes.push_back(processMesh(mesh));
     }
     // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
     for (unsigned int i = 0; i < node->mNumChildren; i++)
     {
-        processNode(node->mChildren[i], scene);
+        processNode(node->mChildren[i]);
     }
 }
 
-Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
+Mesh Model::processMesh(aiMesh *mesh)
 {
     // data to fill
     std::vector<Vertex> vertices;
@@ -75,17 +77,9 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
         Vertex vertex;
-        glm::vec3 vector; // we declare a placeholder vector since assimp uses its own vector class that doesn't directly convert to glm's vec3 class so we transfer the data to this placeholder glm::vec3 first.
-        // positions
-        vector.x = mesh->mVertices[i].x;
-        vector.y = mesh->mVertices[i].y;
-        vector.z = mesh->mVertices[i].z;
-        vertex.position = vector;
-        // normals
-        vector.x = mesh->mNormals[i].x;
-        vector.y = mesh->mNormals[i].y;
-        vector.z = mesh->mNormals[i].z;
-        vertex.normal = vector;
+        setVertexBoneDataToDefault(vertex);
+        vertex.position = AssimpToGLM::getGLMVec3(mesh->mVertices[i]);
+        vertex.normal = AssimpToGLM::getGLMVec3(mesh->mNormals[i]);
         // texture coordinates
         if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
         {
@@ -101,6 +95,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         // tangent
         if (mesh->mTangents) // does the mesh contain Tangents
         {
+            glm::vec3 vector;
             vector.x = mesh->mTangents[i].x;
             vector.y = mesh->mTangents[i].y;
             vector.z = mesh->mTangents[i].z;
@@ -109,6 +104,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         // bitangent
         if (mesh->mBitangents) // does the mesh contain Bitangents
         {
+            glm::vec3 vector;
             vector.x = mesh->mBitangents[i].x;
             vector.y = mesh->mBitangents[i].y;
             vector.z = mesh->mBitangents[i].z;
@@ -125,7 +121,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
             indices.push_back(face.mIndices[j]);
     }
     // process materials
-    aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+    aiMaterial *material = m_scene->mMaterials[mesh->mMaterialIndex];
     // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
     // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER.
     // Same applies to other texture as the following list summarizes:
@@ -155,6 +151,9 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     std::vector<Texture> metalMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metal");
     textures.insert(textures.end(), metalMaps.begin(), metalMaps.end());
 
+    // animation
+    extractBoneWeightForVertices(vertices, mesh);
+
     // return a mesh object created from the extracted mesh data
     return Mesh(vertices, indices, textures);
 }
@@ -182,14 +181,48 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         if (!skip)
         { // if texture hasn't been loaded already, load it
             Texture texture;
-            texture.id = textureFromFile(str.C_Str(), this->directory);
             texture.type = typeName;
             texture.path = str.C_Str();
+
+            const aiTexture *embeddedTexture = m_scene->GetEmbeddedTexture(str.C_Str());
+            if (embeddedTexture != nullptr)
+            {
+                texture.id = textureFromMemory(embeddedTexture);
+            }
+            else
+            {
+                texture.id = textureFromFile(str.C_Str(), this->directory);
+            }
+
             textures.push_back(texture);
             textures_loaded.push_back(texture); // store it as texture loaded for entire model, to ensure we won't unnecesery load duplicate textures.
         }
     }
     return textures;
+}
+
+unsigned int textureFromMemory(const aiTexture *embeddedTexture)
+{
+    unsigned int textureID;
+
+    int w, h, nrComponents;
+    void *pData = embeddedTexture->pcData;
+    unsigned int bufferSize = embeddedTexture->mWidth;
+
+    void *data = stbi_load_from_memory((const stbi_uc *)pData, bufferSize, &w, &h, &nrComponents, 0);
+
+    textureID = loadTexture(data, w, h, nrComponents);
+    if (data)
+    {
+        textureID = loadTexture(data, w, h, nrComponents);
+    }
+    else
+    {
+        std::cout << "Texture failed to load from memory" << std::endl;
+    }
+    stbi_image_free(data);
+
+    return textureID;
 }
 
 unsigned int textureFromFile(const char *path, const std::string &directory)
@@ -199,36 +232,116 @@ unsigned int textureFromFile(const char *path, const std::string &directory)
     std::cout << filename << std::endl;
 
     unsigned int textureID;
-    glGenTextures(1, &textureID);
 
-    int width, height, nrComponents;
-    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    int w, h, nrComponents;
+    unsigned char *data = stbi_load(filename.c_str(), &w, &h, &nrComponents, 0);
     if (data)
     {
-        GLenum format;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        stbi_image_free(data);
+        textureID = loadTexture(data, w, h, nrComponents);
     }
     else
     {
         std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
     }
+    stbi_image_free(data);
 
     return textureID;
+}
+
+unsigned int loadTexture(void *image_data, int width, int height, int nrComponents)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    switch (nrComponents)
+    {
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, image_data);
+        break;
+    case 3:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
+        break;
+    case 4:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+        break;
+    default:
+        std::cout << "loadTexture: " << nrComponents << " component is not implemented" << std::endl;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return textureID;
+}
+
+void Model::setVertexBoneDataToDefault(Vertex &vertex)
+{
+    for (int i = 0; i < MAX_BONE_PER_VERTEX; i++)
+    {
+        vertex.boneIDs[i] = -1;
+        vertex.weights[i] = 0.0f;
+    }
+}
+
+void Model::setVertexBoneData(Vertex &vertex, int boneID, float weight)
+{
+    if (weight == 0)
+    {
+        return;
+    }
+
+    for (int i = 0; i < MAX_BONE_PER_VERTEX; ++i)
+    {
+        if (vertex.boneIDs[i] < 0)
+        {
+            // std::cout << "boneID: " << boneID << ", weight: " << weight << std::endl;
+            vertex.boneIDs[i] = boneID;
+            vertex.weights[i] = weight;
+            break;
+        }
+    }
+}
+
+void Model::extractBoneWeightForVertices(std::vector<Vertex> &vertices, aiMesh *mesh)
+{
+    auto &boneInfoMap = m_boneInfoMap;
+    int &boneCount = m_boneCounter;
+
+    for (int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+    {
+        int boneID = -1;
+        std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+        if (boneInfoMap.find(boneName) == boneInfoMap.end())
+        {
+            BoneInfo newBoneInfo;
+            newBoneInfo.id = boneCount;
+            newBoneInfo.offset = AssimpToGLM::getGLMMat4(mesh->mBones[boneIndex]->mOffsetMatrix);
+            boneInfoMap[boneName] = newBoneInfo;
+            boneID = boneCount;
+            boneCount++;
+        }
+        else
+        {
+            boneID = boneInfoMap[boneName].id;
+        }
+        assert(boneID != -1);
+        auto weights = mesh->mBones[boneIndex]->mWeights;
+        int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+        for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex)
+        {
+            int vertexId = weights[weightIndex].mVertexId;
+            float weight = weights[weightIndex].mWeight;
+            // std::cout << "vertexId: " << vertexId << ", boneID: " << boneID << ", weight: " << weight << std::endl;
+            assert(vertexId <= vertices.size());
+            setVertexBoneData(vertices[vertexId], boneID, weight);
+        }
+    }
 }

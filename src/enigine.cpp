@@ -23,6 +23,7 @@
 #include "shadow_manager/shadow_manager.h"
 #include "post_process/post_process.h"
 #include "pbr_manager/pbr_manager.h"
+#include "animation/animator.h"
 
 #include "external/stb_image/stb_image.h"
 
@@ -34,6 +35,9 @@ bool drawAABB = false;
 bool drawShadowmap = false;
 // Sphere
 glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
+glm::vec3 modelPosition = glm::vec3(6757.0f, 8.5f, 3005.0f);
+glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
+float modelScale = 4.00;
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
 // Light
 static float lightColor[3] = {0.1f, 0.1f, 0.1f};
@@ -77,6 +81,7 @@ Shader prefilterShader;
 Shader brdfShader;
 Shader grassShader;
 Shader stoneShader;
+Shader animShader;
 // System Monitor
 task_basic_info t_info;
 
@@ -128,6 +133,7 @@ void initShaders()
     brdfShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/brdf.fs"));
     grassShader.init(FileManager::read("../src/assets/shaders/grass.vs"), FileManager::read("../src/assets/shaders/grass.fs"));
     stoneShader.init(FileManager::read("../src/assets/shaders/stone.vs"), FileManager::read("../src/assets/shaders/stone.fs"));
+    animShader.init(FileManager::read("../src/assets/shaders/anim.vs"), FileManager::read("../src/assets/shaders/anim.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -234,6 +240,14 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         {
             initShaders();
         }
+        ImGui::Text("model");
+        ImGui::DragFloat("modelX", &modelPosition.x, 0.5f);
+        ImGui::DragFloat("modelY", &modelPosition.y, 0.5f);
+        ImGui::DragFloat("modelZ", &modelPosition.z, 0.5f);
+        ImGui::DragFloat("modelScale", &modelScale, 0.01f);
+        ImGui::DragFloat("modelRotateX", &modelRotate.x, 0.01f);
+        ImGui::DragFloat("modelRotateY", &modelRotate.y, 0.01f);
+        ImGui::DragFloat("modelRotateZ", &modelRotate.z, 0.01f);
         ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
@@ -568,7 +582,7 @@ int main(int argc, char **argv)
 
     try
     {
-        soundSource = soundEngine.loadSource("assets/sounds/rain-loop-1648m.wav");
+        soundSource = soundEngine.loadSource("../src/assets/sounds/rain-loop-1648m.wav");
     }
     catch (const char *e)
     {
@@ -607,11 +621,15 @@ int main(int argc, char **argv)
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
 
+    Model animModel("../src/assets/waving.glb");
+    Animation animation("../src/assets/waving.glb", &animModel);
+    Animator animator(&animation);
+
     // Init shaders
     initShaders();
 
     // Camera
-    Camera editorCamera(glm::vec3(4456.0f, 9.0f, 3908.0f), glm::vec3(0.0f, 1.0f, 0.0f), 42.0f, -6.0f);
+    Camera editorCamera(glm::vec3(6757.0f, 14.0f, 3018.0f), glm::vec3(0.0f, 1.0f, 0.0f), -83.0f, -6.0f);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -644,7 +662,11 @@ int main(int argc, char **argv)
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Terrain
-    Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
+    // Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
+    Terrain terrain(&physicsWorld, "../src/assets/images/height-1.png", -1.0f, 517.0f, 6.0f);
+    // Terrain terrain(&physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f);
+    // Terrain terrain(&physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f);
+    // Terrain terrain(&physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -687,6 +709,9 @@ int main(int argc, char **argv)
 
         // Process input
         processCameraInput(window, &editorCamera, deltaTime);
+
+        // update animation
+        animator.update(deltaTime);
 
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 2);
@@ -875,6 +900,29 @@ int main(int argc, char **argv)
         normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
         normalShader.setFloat("LightPower", lightPower);
         sphere.draw(normalShader);
+
+        // animation
+        {
+            animShader.use();
+            animShader.setMat4("projection", projection);
+            animShader.setMat4("view", editorCamera.getViewMatrix());
+            animShader.setVec3("lightDir", shadowManager.m_lightPos);
+
+            auto transforms = animator.m_FinalBoneMatrices;
+            for (int i = 0; i < transforms.size(); ++i)
+            {
+                animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+            }
+
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, modelPosition);
+            model = glm::rotate(model, modelRotate.x, glm::vec3(1, 0, 0));
+            model = glm::rotate(model, modelRotate.y, glm::vec3(0, 1, 0));
+            model = glm::rotate(model, modelRotate.z, glm::vec3(0, 0, 1));
+            model = glm::scale(model, glm::vec3(modelScale, modelScale, modelScale));
+            animShader.setMat4("model", model);
+            animModel.draw(animShader);
+        }
 
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
