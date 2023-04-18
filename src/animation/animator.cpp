@@ -41,7 +41,7 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     std::string nodeName = node->name;
     glm::mat4 nodeTransform = node->transformation;
 
-    Bone *bone = m_CurrentAnimation->FindBone(nodeName);
+    Bone *bone = m_CurrentAnimation->getBone(nodeName);
 
     if (bone)
     {

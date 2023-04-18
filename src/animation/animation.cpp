@@ -10,33 +10,35 @@ Animation::Animation(const std::string &animationPath, Model *model)
     auto animation = scene->mAnimations[0];
     m_Duration = animation->mDuration;
     m_TicksPerSecond = animation->mTicksPerSecond;
-    ReadHeirarchyData(m_RootNode, scene->mRootNode);
-    ReadMissingBones(animation, *model);
+    readHierarchy(m_RootNode, scene->mRootNode);
+    readBones(animation, *model);
 }
 
 Animation::~Animation()
 {
+    for (auto iter = m_bones.begin(); iter != m_bones.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    m_bones.clear();
+
     // TODO: destruction
 }
 
-Bone *Animation::FindBone(const std::string &name)
+Bone *Animation::getBone(const std::string &name)
 {
-    auto iter = std::find_if(m_Bones.begin(), m_Bones.end(),
-                             [&](const Bone &Bone)
-                             {
-                                 return Bone.m_Name == name;
-                             });
-    if (iter == m_Bones.end())
-        return nullptr;
-    else
-        return &(*iter);
+    if (m_bones.find(name) != m_bones.end())
+    {
+        return m_bones[name];
+    }
+
+    return nullptr;
 }
 
-void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
+void Animation::readBones(const aiAnimation *animation, Model &model)
 {
     int size = animation->mNumChannels;
 
-    // TODO: check if direct access is right
     auto &boneInfoMap = model.m_boneInfoMap;
     int &boneCount = model.m_boneCounter;
 
@@ -48,17 +50,19 @@ void Animation::ReadMissingBones(const aiAnimation *animation, Model &model)
 
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
+            std::cout << "Animation: readBones: missing bone found" << std::endl;
             boneInfoMap[boneName].id = boneCount;
             boneCount++;
         }
-        m_Bones.push_back(Bone(channel->mNodeName.data,
-                               boneInfoMap[channel->mNodeName.data].id, channel));
+
+        Bone *bone = new Bone(boneName, boneInfoMap[boneName].id, channel);
+        m_bones[boneName] = bone;
     }
 
     m_BoneInfoMap = boneInfoMap;
 }
 
-void Animation::ReadHeirarchyData(AssimpNodeData &dest, const aiNode *src)
+void Animation::readHierarchy(AssimpNodeData &dest, const aiNode *src)
 {
     assert(src);
 
@@ -69,7 +73,7 @@ void Animation::ReadHeirarchyData(AssimpNodeData &dest, const aiNode *src)
     for (int i = 0; i < src->mNumChildren; i++)
     {
         AssimpNodeData newData;
-        ReadHeirarchyData(newData, src->mChildren[i]);
+        readHierarchy(newData, src->mChildren[i]);
         dest.children.push_back(newData);
     }
 }

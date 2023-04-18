@@ -26,16 +26,15 @@ class Animation
 public:
     float m_Duration;
     int m_TicksPerSecond;
-    // TODO: unordered_map?
-    std::vector<Bone> m_Bones;
+    std::unordered_map<std::string, Bone*> m_bones;
     AssimpNodeData m_RootNode;
     std::map<std::string, BoneInfo> m_BoneInfoMap;
 
-    Animation(const std::string& animationPath, Model* model);
+    Animation(const std::string &animationPath, Model *model);
     ~Animation();
-    Bone* FindBone(const std::string& name);
-    void ReadMissingBones(const aiAnimation* animation, Model& model);
-    void ReadHeirarchyData(AssimpNodeData& dest, const aiNode* src);
+    Bone *getBone(const std::string &name);
+    void readBones(const aiAnimation *animation, Model &model);
+    void readHierarchy(AssimpNodeData &dest, const aiNode *src);
 };
 
 #endif /* animation_hpp */
