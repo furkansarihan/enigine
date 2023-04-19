@@ -907,6 +907,8 @@ int main(int argc, char **argv)
             animShader.setMat4("projection", projection);
             animShader.setMat4("view", editorCamera.getViewMatrix());
             animShader.setVec3("lightDir", shadowManager.m_lightPos);
+            animShader.setVec3("lightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
+            animShader.setFloat("lightPower", lightPower);
 
             auto transforms = animator.m_FinalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
