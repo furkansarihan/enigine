@@ -30,7 +30,7 @@ public:
     AssimpNodeData m_RootNode;
     std::map<std::string, BoneInfo> m_BoneInfoMap;
 
-    Animation(const std::string &animationPath, Model *model);
+    Animation(const std::string &animationPath, Model *model, int index);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);

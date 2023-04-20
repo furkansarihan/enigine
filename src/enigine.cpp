@@ -183,7 +183,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     static int corner = 0;
     ImGuiIO &io = ImGui::GetIO();
@@ -248,6 +248,12 @@ static void showOverlay(btRigidBody *sphereBody, PostProcess *postProcess, Shado
         ImGui::DragFloat("modelRotateX", &modelRotate.x, 0.01f);
         ImGui::DragFloat("modelRotateY", &modelRotate.y, 0.01f);
         ImGui::DragFloat("modelRotateZ", &modelRotate.z, 0.01f);
+        ImGui::Separator();
+        ImGui::Text("Animation");
+        int max = animator->m_animations.size() - 1;
+        ImGui::DragInt("fromIndex", &animator->m_state.fromIndex, 1, 0, max);
+        ImGui::DragInt("toIndex", &animator->m_state.toIndex, 1, 0, max);
+        ImGui::DragFloat("blendFactor", &animator->m_state.blendFactor, 0.01f, 0.0f, 1.0f);
         ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
@@ -621,9 +627,15 @@ int main(int argc, char **argv)
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
 
-    Model animModel("../src/assets/waving.glb");
-    Animation animation("../src/assets/waving.glb", &animModel);
-    Animator animator(&animation);
+    Model animModel("../src/assets/gltf/character.glb");
+    Animation animation0("../src/assets/gltf/character.glb", &animModel, 0);
+    Animation animation1("../src/assets/gltf/character.glb", &animModel, 1);
+    Animation animation2("../src/assets/gltf/character.glb", &animModel, 2);
+    std::vector<Animation *> animations;
+    animations.push_back(&animation0);
+    animations.push_back(&animation1);
+    animations.push_back(&animation2);
+    Animator animator(animations);
 
     // Init shaders
     initShaders();
@@ -1303,7 +1315,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(sphereBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&animator, sphereBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

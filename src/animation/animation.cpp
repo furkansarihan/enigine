@@ -2,12 +2,19 @@
 
 #include "animation.h"
 
-Animation::Animation(const std::string &animationPath, Model *model)
+Animation::Animation(const std::string &animationPath, Model *model, int index)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
     assert(scene && scene->mRootNode);
-    auto animation = scene->mAnimations[0];
+    std::cout << "Animation: mNumAnimations: " << scene->mNumAnimations << std::endl;
+    auto animation = scene->mAnimations[index];
+    std::cout << "Animation: mName: " << animation->mName.C_Str() << std::endl;
+    std::cout << "Animation: mDuration: " << animation->mDuration << std::endl;
+    std::cout << "Animation: mTicksPerSecond: " << animation->mTicksPerSecond << std::endl;
+    std::cout << "Animation: mNumChannels: " << animation->mNumChannels << std::endl
+              << std::endl;
+
     m_Duration = animation->mDuration;
     m_TicksPerSecond = animation->mTicksPerSecond;
     readHierarchy(m_RootNode, scene->mRootNode);

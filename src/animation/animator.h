@@ -11,19 +11,26 @@
 
 #include "animation.h"
 
-#define MAX_BONES 150
+#define MAX_BONES 200
+
+struct AnimatorState
+{
+    int fromIndex;
+    int toIndex;
+    float blendFactor;
+};
 
 class Animator
 {
 public:
     std::vector<glm::mat4> m_FinalBoneMatrices;
-    Animation *m_CurrentAnimation;
-    float m_CurrentTime;
+    std::vector<Animation *> m_animations;
+    std::vector<float> m_timers;
+    AnimatorState m_state;
 
-    Animator(Animation *animation);
+    Animator(std::vector<Animation *> animations);
     ~Animator();
     void update(float deltaTime);
-    void play(Animation *pAnimation);
     void calculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
 };
 

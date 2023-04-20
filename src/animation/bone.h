@@ -37,11 +37,12 @@ public:
     int m_NumRotations;
     int m_NumScalings;
 
-    glm::mat4 m_LocalTransform;
+    glm::vec3 m_translation;
+    glm::quat m_rotation;
+    glm::vec3 m_scale;
     std::string m_Name;
     int m_ID;
 
-    /*reads keyframes from aiNodeAnim*/
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
     ~Bone();
     void update(float animationTime);
@@ -49,9 +50,9 @@ public:
     int getRotationIndex(float animationTime);
     int getScaleIndex(float animationTime);
     float getScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime);
-    glm::mat4 interpolatePosition(float animationTime);
-    glm::mat4 interpolateRotation(float animationTime);
-    glm::mat4 interpolateScaling(float animationTime);
+    glm::vec3 interpolatePosition(float animationTime);
+    glm::quat interpolateRotation(float animationTime);
+    glm::vec3 interpolateScaling(float animationTime);
 };
 
 #endif /* bone_hpp */
