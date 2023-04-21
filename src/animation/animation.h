@@ -29,12 +29,14 @@ public:
     std::unordered_map<std::string, Bone*> m_bones;
     AssimpNodeData m_RootNode;
     std::map<std::string, BoneInfo> m_BoneInfoMap;
+    std::unordered_map<std::string, float> m_blendMask;
 
-    Animation(const std::string &animationPath, Model *model, int index);
+    Animation(const std::string &animationPath, const std::string &animationName, Model *model);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);
     void readHierarchy(AssimpNodeData &dest, const aiNode *src);
+    void setBlendMask(std::unordered_map<std::string, float> blendMask);
 };
 
 #endif /* animation_hpp */

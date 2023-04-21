@@ -2,13 +2,30 @@
 
 #include "animation.h"
 
-Animation::Animation(const std::string &animationPath, Model *model, int index)
+Animation::Animation(const std::string &animationPath, const std::string &animationName, Model *model)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
     assert(scene && scene->mRootNode);
     std::cout << "Animation: mNumAnimations: " << scene->mNumAnimations << std::endl;
-    auto animation = scene->mAnimations[index];
+
+    aiAnimation *animation;
+    for (int i = 0; i < scene->mNumAnimations; i++)
+    {
+        auto anim = scene->mAnimations[i];
+        if (strcmp(anim->mName.C_Str(), animationName.c_str()) == 0)
+        {
+            animation = anim;
+            break;
+        }
+    }
+
+    if (animation == nullptr)
+    {
+        std::cout << "Animation: can not found an animation with name: " << animationName << std::endl;
+        return;
+    }
+
     std::cout << "Animation: mName: " << animation->mName.C_Str() << std::endl;
     std::cout << "Animation: mDuration: " << animation->mDuration << std::endl;
     std::cout << "Animation: mTicksPerSecond: " << animation->mTicksPerSecond << std::endl;
@@ -55,6 +72,10 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
         auto channel = animation->mChannels[i];
         std::string boneName = channel->mNodeName.data;
 
+        // std::cout << "readBones: mNumPositionKeys: " << channel->mNodeName.C_Str() << ": " << channel->mNumPositionKeys << std::endl;
+        // std::cout << "readBones: mNumRotationKeys: " << channel->mNodeName.C_Str() << ": " << channel->mNumRotationKeys << std::endl;
+        // std::cout << "readBones: mNumScalingKeys: " << channel->mNodeName.C_Str() << ": " << channel->mNumScalingKeys << std::endl;
+
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
             std::cout << "Animation: readBones: missing bone found" << std::endl;
@@ -82,5 +103,27 @@ void Animation::readHierarchy(AssimpNodeData &dest, const aiNode *src)
         AssimpNodeData newData;
         readHierarchy(newData, src->mChildren[i]);
         dest.children.push_back(newData);
+    }
+}
+
+void Animation::setBlendMask(std::unordered_map<std::string, float> blendMask)
+{
+    m_blendMask = blendMask;
+
+    for (auto it = m_bones.begin(); it != m_bones.end(); ++it)
+    {
+        Bone *bone = it->second;
+        bone->m_blendFactor = 0.0;
+    }
+
+    for (auto it = m_blendMask.begin(); it != m_blendMask.end(); ++it)
+    {
+        std::string name = it->first;
+        Bone *bone = getBone(name);
+        if (bone)
+        {
+            float blendFactor = it->second;
+            bone->m_blendFactor = blendFactor;
+        }
     }
 }

@@ -42,6 +42,20 @@ Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
         data.scale = AssimpToGLM::getGLMVec3(scale);
         m_Scales.push_back(data);
     }
+
+    if (m_NumPositions == 1 && m_NumRotations == 1 && m_NumScalings == 1)
+    {
+        m_animType = AnimationType::Pose;
+
+        m_translation = m_Positions[0].position;
+        m_rotation = m_Rotations[0].orientation;
+        m_scale = m_Scales[0].scale;
+    }
+    else
+    {
+        // TODO: validation
+        m_animType = AnimationType::Cycle;
+    }
 }
 
 Bone::~Bone()
@@ -49,8 +63,12 @@ Bone::~Bone()
     // TODO: destruction
 }
 
+// TODO: snap to keyframe
 void Bone::update(float animationTime)
 {
+    if (m_animType == AnimationType::Pose)
+        return;
+
     m_translation = interpolatePosition(animationTime);
     m_rotation = interpolateRotation(animationTime);
     m_scale = interpolateScaling(animationTime);

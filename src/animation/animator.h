@@ -13,11 +13,18 @@
 
 #define MAX_BONES 200
 
+struct AnimPose
+{
+    int index;
+    float blendFactor;
+};
+
 struct AnimatorState
 {
     int fromIndex;
     int toIndex;
     float blendFactor;
+    std::vector<AnimPose> poses;
 };
 
 class Animator

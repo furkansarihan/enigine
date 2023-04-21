@@ -38,6 +38,7 @@ glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
 glm::vec3 modelPosition = glm::vec3(6757.0f, 8.5f, 3005.0f);
 glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
 float modelScale = 4.00;
+int selectedAnimPose = 0;
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
 // Light
 static float lightColor[3] = {0.1f, 0.1f, 0.1f};
@@ -223,6 +224,26 @@ static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess
             editorCamera->projectionMode = ProjectionMode::Ortho;
         }
         ImGui::Separator();
+        ImGui::Text("Animation");
+        int max = animator->m_animations.size() - 1;
+        ImGui::DragInt("fromIndex", &animator->m_state.fromIndex, 1, 0, max);
+        ImGui::DragInt("toIndex", &animator->m_state.toIndex, 1, 0, max);
+        ImGui::DragFloat("blendFactor", &animator->m_state.blendFactor, 0.01f, 0.0f, 1.0f);
+        ImGui::Separator();
+        ImGui::DragInt("selectedAnimPose", &selectedAnimPose, 1, 0, animator->m_state.poses.size() - 1);
+        if (selectedAnimPose >= 0 && selectedAnimPose < animator->m_state.poses.size())
+        {
+            AnimPose *animPose = &animator->m_state.poses[selectedAnimPose];
+            ImGui::Text("animPose.index: %d", animPose->index);
+            ImGui::DragFloat("animPose.blendFactor", &animPose->blendFactor, 0.01f, 0.0f, 1.0f);
+            auto bonesMap = &animator->m_animations[animPose->index]->m_bones;
+            for (auto it = bonesMap->begin(); it != bonesMap->end(); ++it)
+            {
+                Bone *bone = it->second;
+                ImGui::DragFloat(bone->m_Name.c_str(), &bone->m_blendFactor, 0.01f, 0.0f, 1.0f);
+            }
+        }
+        ImGui::Separator();
         // ImGui::Text("left plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[0].x, terrain->m_planes[0].y, terrain->m_planes[0].z, terrain->m_planes[0].w);
         // ImGui::Text("right plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[1].x, terrain->m_planes[1].y, terrain->m_planes[1].z, terrain->m_planes[1].w);
         ImGui::Text("camPos");
@@ -248,12 +269,6 @@ static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess
         ImGui::DragFloat("modelRotateX", &modelRotate.x, 0.01f);
         ImGui::DragFloat("modelRotateY", &modelRotate.y, 0.01f);
         ImGui::DragFloat("modelRotateZ", &modelRotate.z, 0.01f);
-        ImGui::Separator();
-        ImGui::Text("Animation");
-        int max = animator->m_animations.size() - 1;
-        ImGui::DragInt("fromIndex", &animator->m_state.fromIndex, 1, 0, max);
-        ImGui::DragInt("toIndex", &animator->m_state.toIndex, 1, 0, max);
-        ImGui::DragFloat("blendFactor", &animator->m_state.blendFactor, 0.01f, 0.0f, 1.0f);
         ImGui::Separator();
         ImGui::Text("Shadowmap");
         ImGui::Checkbox("drawShadowmap", &drawShadowmap);
@@ -627,15 +642,44 @@ int main(int argc, char **argv)
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
 
+    // Animation
+    // TODO: single aiScene read
     Model animModel("../src/assets/gltf/character.glb");
-    Animation animation0("../src/assets/gltf/character.glb", &animModel, 0);
-    Animation animation1("../src/assets/gltf/character.glb", &animModel, 1);
-    Animation animation2("../src/assets/gltf/character.glb", &animModel, 2);
+    Animation animation0("../src/assets/gltf/character.glb", "idle", &animModel);
+    Animation animation1("../src/assets/gltf/character.glb", "walking", &animModel);
+    Animation animation2("../src/assets/gltf/character.glb", "left", &animModel);
+    Animation animation3("../src/assets/gltf/character.glb", "right", &animModel);
     std::vector<Animation *> animations;
     animations.push_back(&animation0);
     animations.push_back(&animation1);
     animations.push_back(&animation2);
+    animations.push_back(&animation3);
     Animator animator(animations);
+
+    // idle - walk
+    animator.m_state.fromIndex = 0;
+    animator.m_state.toIndex = 1;
+    animator.m_state.blendFactor = 0.5f;
+
+    // set blend mask for turn-right and turn-left
+    std::unordered_map<std::string, float> blendMask;
+    blendMask["mixamorig:Spine"] = 1.0f;
+    blendMask["mixamorig:Spine1"] = 1.0f;
+    blendMask["mixamorig:Spine2"] = 1.0f;
+    blendMask["mixamorig:Neck"] = 1.0f;
+    blendMask["mixamorig:Head"] = 1.0f;
+
+    animation2.setBlendMask(blendMask);
+    animation3.setBlendMask(blendMask);
+
+    // turn-left pose
+    AnimPose animPose;
+    animPose.index = 2;
+    animPose.blendFactor = 0.0f;
+    animator.m_state.poses.push_back(animPose);
+    // turn-right pose
+    animPose.index = 3;
+    animator.m_state.poses.push_back(animPose);
 
     // Init shaders
     initShaders();

@@ -27,6 +27,12 @@ struct KeyScale
     glm::vec3 scale;
 };
 
+enum AnimationType
+{
+    Cycle,
+    Pose
+};
+
 class Bone
 {
 public:
@@ -42,6 +48,9 @@ public:
     glm::vec3 m_scale;
     std::string m_Name;
     int m_ID;
+
+    AnimationType m_animType;
+    float m_blendFactor = 0.0f;
 
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
     ~Bone();

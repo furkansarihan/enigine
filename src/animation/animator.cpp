@@ -59,28 +59,51 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     bool seperatedPair = (m_state.blendFactor == 0.0f) || (m_state.blendFactor == 1.0f);
     bool singleAnimation = seperatedPair || (bone1 == bone2);
 
+    glm::vec3 blendedT;
+    glm::quat blendedR;
+    glm::vec3 blendedS;
     if (validBonePair && singleAnimation)
     {
         int singleAnimIndex = seperatedPair ? (m_state.blendFactor == 0 ? m_state.fromIndex : m_state.toIndex) : m_state.fromIndex;
         Bone *bone = singleAnimIndex == m_state.fromIndex ? bone1 : bone2;
         bone->update(m_timers[singleAnimIndex]);
 
-        glm::mat4 blendedT = glm::translate(glm::mat4(1), bone->m_translation);
-        glm::mat4 blendedR = glm::toMat4(glm::normalize(bone->m_rotation));
-        glm::mat4 blendedS = glm::scale(glm::mat4(1), bone->m_scale);
-
-        nodeTransform = blendedT * blendedR * blendedS;
+        blendedT = bone->m_translation;
+        blendedR = bone->m_rotation;
+        blendedS = bone->m_scale;
     }
     else if (validBonePair)
     {
         bone1->update(m_timers[m_state.fromIndex]);
         bone2->update(m_timers[m_state.toIndex]);
 
-        glm::mat4 blendedT = glm::translate(glm::mat4(1), glm::mix(bone1->m_translation, bone2->m_translation, m_state.blendFactor));
-        glm::mat4 blendedR = glm::toMat4(glm::normalize(glm::slerp(bone1->m_rotation, bone2->m_rotation, m_state.blendFactor)));
-        glm::mat4 blendedS = glm::scale(glm::mat4(1), glm::mix(bone1->m_scale, bone2->m_scale, m_state.blendFactor));
+        blendedT = glm::mix(bone1->m_translation, bone2->m_translation, m_state.blendFactor);
+        blendedR = glm::slerp(bone1->m_rotation, bone2->m_rotation, m_state.blendFactor);
+        blendedS = glm::mix(bone1->m_scale, bone2->m_scale, m_state.blendFactor);
+    }
 
-        nodeTransform = blendedT * blendedR * blendedS;
+    if (validBonePair)
+    {
+        // AnimPose influence
+        for (int i = 0; i < m_state.poses.size(); i++)
+        {
+            AnimPose animPose = m_state.poses[i];
+            if (animPose.blendFactor == 0.0f || animPose.index < 0 || animPose.index >= m_animations.size())
+                continue;
+
+            Bone *bone = m_animations[animPose.index]->getBone(nodeName);
+
+            if (bone->m_blendFactor == 0.0f)
+                continue;
+
+            blendedT = glm::mix(blendedT, bone->m_translation, bone->m_blendFactor * animPose.blendFactor);
+            blendedR = glm::slerp(blendedR, bone->m_rotation, bone->m_blendFactor * animPose.blendFactor);
+            blendedS = glm::mix(blendedS, bone->m_scale, bone->m_blendFactor * animPose.blendFactor);
+        }
+
+        nodeTransform = glm::translate(glm::mat4(1), blendedT) *
+                        glm::toMat4(glm::normalize(blendedR)) *
+                        glm::scale(glm::mat4(1), blendedS);
     }
 
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
