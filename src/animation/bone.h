@@ -50,7 +50,7 @@ public:
     int m_ID;
 
     AnimationType m_animType;
-    float m_blendFactor = 0.0f;
+    float m_blendFactor = 1.0f;
 
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
     ~Bone();

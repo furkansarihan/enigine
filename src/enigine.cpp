@@ -24,6 +24,7 @@
 #include "post_process/post_process.h"
 #include "pbr_manager/pbr_manager.h"
 #include "animation/animator.h"
+#include "character_controller/character_controller.h"
 
 #include "external/stb_image/stb_image.h"
 
@@ -34,10 +35,9 @@ bool drawFrustum = false;
 bool drawAABB = false;
 bool drawShadowmap = false;
 // Sphere
-glm::vec3 spherePosition = glm::vec3(80.0f, 2.0f, 80.0f);
-glm::vec3 modelPosition = glm::vec3(6757.0f, 8.5f, 3005.0f);
+glm::vec3 modelPosition = glm::vec3(200.0f, 10.5f, 200.0f);
 glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
-float modelScale = 4.00;
+float modelScale = 2.0;
 int selectedAnimPose = 0;
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
 // Light
@@ -57,8 +57,11 @@ glm::vec3 lightColors[] = {
     glm::vec3(350.0f, 410.0f, 458.0f),
 };
 // Camera
-static bool followVehicle = false;
-glm::vec3 followDistance = glm::vec3(10.0, 4.5, -10.0);
+bool firstPerson = false;
+bool followVehicle = false;
+bool followCharacter = true;
+float followDistance = 10.0f;
+glm::vec3 followOffset = glm::vec3(0.0f, 2.0f, 0.0f);
 float blurOffset = 0.01;
 bool firstMove = true;
 float lastX;
@@ -184,7 +187,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(CharacterController *characterController, Animator *animator, btRigidBody *characterBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     static int corner = 0;
     ImGuiIO &io = ImGui::GetIO();
@@ -214,7 +217,24 @@ static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess
         ImGui::DragFloat("movementSpeed", &editorCamera->movementSpeed, 10.0f);
         ImGui::DragFloat("scaleOrtho", &editorCamera->scaleOrtho, 0.1f);
         // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
+        ImGui::DragFloat("followDistance", &followDistance, 0.1f);
+        ImGui::DragFloat("followOffsetY", &followOffset.y, 0.1f);
         ImGui::Checkbox("followVehicle", &followVehicle);
+        ImGui::Checkbox("followCharacter", &followCharacter);
+        // TODO: change camera min pitch
+        if (ImGui::Checkbox("firstPerson", &firstPerson))
+        {
+            if (firstPerson)
+            {
+                followDistance = -1.0f;
+                followOffset.y = 3.3f;
+            }
+            else
+            {
+                followDistance = 10.0f;
+                followOffset.y = 1.5f;
+            }
+        }
         if (ImGui::RadioButton("perspective", editorCamera->projectionMode == ProjectionMode::Perspective))
         {
             editorCamera->projectionMode = ProjectionMode::Perspective;
@@ -429,36 +449,77 @@ static void showOverlay(Animator *animator, btRigidBody *sphereBody, PostProcess
         bool debugEnabled = debugDrawer->getDebugMode();
         if (ImGui::Checkbox("wireframe", &debugEnabled))
         {
-            debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawAabb : btIDebugDraw::DBG_NoDebug);
+            debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawWireframe : btIDebugDraw::DBG_NoDebug);
         }
         int lines = debugDrawer->getLines().size();
         ImGui::DragInt("lines", &lines);
         ImGui::Separator();
-        ImGui::Text("Sphere");
-        float sX = sphereBody->getWorldTransform().getOrigin().getX();
-        float sY = sphereBody->getWorldTransform().getOrigin().getY();
-        float sZ = sphereBody->getWorldTransform().getOrigin().getZ();
+        ImGui::Text("Character");
+        ImGui::Text("m_moveDir: (%.1f, %.1f)", characterController->m_moveDir.x, characterController->m_moveDir.z);
+        ImGui::Text("m_moving: %d", characterController->m_moving);
+        ImGui::Text("m_jumping: %d", characterController->m_jumping);
+        ImGui::Text("m_falling: %d", characterController->m_falling);
+        ImGui::Text("m_onGround: %d", characterController->m_onGround);
+        ImGui::Text("m_running: %d", characterController->m_running);
+        btVector3 linearVelocity = characterBody->getLinearVelocity();
+        btVector3 angularVelocity = characterBody->getAngularVelocity();
+        ImGui::Text("linearVelocity: (%.1f, %.1f, %.1f)", linearVelocity.getX(), linearVelocity.getY(), linearVelocity.getZ());
+        ImGui::Text("angularVelocity: (%.1f, %.1f, %.1f)", angularVelocity.getX(), angularVelocity.getY(), angularVelocity.getZ());
+        ImGui::Text("linearSpeed: %.1f", linearVelocity.distance(btVector3(0, 0, 0)));
+        ImGui::Text("hasContactResponse: %d", characterBody->hasContactResponse());
+        ImGui::Text("m_elevationDistance: %.3f", characterController->m_elevationDistance);
+        ImGui::Text("m_speedAtJumpStart: %.3f", characterController->m_speedAtJumpStart);
+        ImGui::DragFloat("m_moveForce", &characterController->m_moveForce, 0.1f, 0);
+        ImGui::DragFloat("m_jumpForce", &characterController->m_jumpForce, 0.1f, 0);
+        ImGui::DragFloat("m_maxWalkSpeed", &characterController->m_maxWalkSpeed, 0.1f, 0);
+        ImGui::DragFloat("m_maxRunSpeed", &characterController->m_maxRunSpeed, 0.1f, 0);
+        ImGui::DragFloat("m_toIdleForce", &characterController->m_toIdleForce, 0.1f, 0);
+        ImGui::DragFloat("m_toIdleForceHoriz", &characterController->m_toIdleForceHoriz, 0.1f, 0);
+        ImGui::DragFloat("m_groundTreshold", &characterController->m_groundTreshold, 0.1f, 0);
+        float gravityY = characterBody->getGravity().getY();
+        if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
+        {
+            characterBody->setGravity(btVector3(0, gravityY, 0));
+        }
+        float sX = characterBody->getWorldTransform().getOrigin().getX();
+        float sY = characterBody->getWorldTransform().getOrigin().getY();
+        float sZ = characterBody->getWorldTransform().getOrigin().getZ();
         if (ImGui::DragFloat("sX", &sX, 0.1f))
         {
-            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            characterBody->setLinearVelocity(btVector3(0, 0, 0));
         }
         if (ImGui::DragFloat("sY", &sY, 0.1))
         {
-            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            characterBody->setLinearVelocity(btVector3(0, 0, 0));
         }
         if (ImGui::DragFloat("sZ", &sZ, 0.1))
         {
-            sphereBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
+            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
+            characterBody->setLinearVelocity(btVector3(0, 0, 0));
         }
-        if (ImGui::Button("jump"))
+        float characterMass = characterBody->getMass();
+        if (ImGui::DragFloat("characterMass", &characterMass, 0.1))
         {
-            sphereBody->setActivationState(1);
-            sphereBody->setLinearVelocity(btVector3(0, 0, 0));
-            sphereBody->setAngularVelocity(btVector3(0, 0, 0));
-            sphereBody->applyCentralForce(btVector3(1000, 1000, 1000));
+            btVector3 interia;
+            characterBody->getCollisionShape()->calculateLocalInertia(characterMass, interia);
+            characterBody->setMassProps(characterMass, interia);
+        }
+        float friction = characterBody->getFriction();
+        if (ImGui::DragFloat("friction", &friction, 0.1))
+        {
+            characterBody->setFriction(friction);
+        }
+        float linearDamping = characterBody->getLinearDamping();
+        float angularDamping = characterBody->getLinearDamping();
+        if (ImGui::DragFloat("linearDamping", &linearDamping, 0.1))
+        {
+            characterBody->setDamping(linearDamping, angularDamping);
+        }
+        if (ImGui::DragFloat("angularDamping", &angularDamping, 0.1))
+        {
+            characterBody->setDamping(linearDamping, angularDamping);
         }
         ImGui::Separator();
         ImGui::Text("Terrain");
@@ -611,20 +672,19 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
-    soundEngine.playSource(soundSource);
+    soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
+    // soundEngine.playSource(soundSource);
 
     // Init Physics
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_NoDebug);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     btRigidBody *groundBody = physicsWorld.createBox(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
     // set ground bouncy
     groundBody->setRestitution(0.5f);
-    btRigidBody *sphereBody = physicsWorld.createSphere(1.0f, 1.0f, btVector3(spherePosition.x, spherePosition.y, spherePosition.z));
 
     // Physics debug drawer objects
     unsigned int vbo, vao, ebo;
@@ -659,7 +719,7 @@ int main(int argc, char **argv)
     // idle - walk
     animator.m_state.fromIndex = 0;
     animator.m_state.toIndex = 1;
-    animator.m_state.blendFactor = 0.5f;
+    animator.m_state.blendFactor = 0.0f;
 
     // set blend mask for turn-right and turn-left
     std::unordered_map<std::string, float> blendMask;
@@ -685,7 +745,17 @@ int main(int argc, char **argv)
     initShaders();
 
     // Camera
-    Camera editorCamera(glm::vec3(6757.0f, 14.0f, 3018.0f), glm::vec3(0.0f, 1.0f, 0.0f), -83.0f, -6.0f);
+    Camera editorCamera(modelPosition + glm::vec3(10.0f, 17.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
+
+    // Character
+    // TODO: bound to character controller
+    btRigidBody *characterBody = physicsWorld.createCapsule(10.0f, 1.0f, 0.5f, 2.0f, btVector3(modelPosition.x, modelPosition.y, modelPosition.z));
+    characterBody->setAngularFactor(btVector3(0.0f, 0.0f, 0.0f));
+    characterBody->setDamping(0.9f, 0.9f);
+    characterBody->setFriction(0.0f);
+    characterBody->setGravity(btVector3(0, -20.0f, 0));
+
+    CharacterController characterController(physicsWorld.dynamicsWorld, characterBody, &editorCamera);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -704,7 +774,7 @@ int main(int argc, char **argv)
     bool show_overlay = false;
 
     // Vehicle
-    Vehicle vehicle(&physicsWorld, btVector3(5725, 10, 5145));
+    Vehicle vehicle(&physicsWorld, btVector3(modelPosition.x + 40, 5, modelPosition.z + 40));
     glfwSetWindowUserPointer(window, &vehicle);
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
 
@@ -719,10 +789,11 @@ int main(int argc, char **argv)
 
     // Terrain
     // Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
-    Terrain terrain(&physicsWorld, "../src/assets/images/height-1.png", -1.0f, 517.0f, 6.0f);
+    // Terrain terrain(&physicsWorld, "../src/assets/images/height-1.png", -1.0f, 517.0f, 6.0f);
     // Terrain terrain(&physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f);
     // Terrain terrain(&physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f);
     // Terrain terrain(&physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f);
+    Terrain terrain(&physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f);
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
@@ -770,7 +841,7 @@ int main(int argc, char **argv)
         animator.update(deltaTime);
 
         // Update Physics
-        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 2);
+        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 1);
         if (physicsWorld.dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
         {
             btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.dynamicsWorld->getConstraintSolver();
@@ -789,20 +860,45 @@ int main(int argc, char **argv)
         physicsWorld.dynamicsWorld->debugDrawWorld();
 
         // Syncronize with Physics
-        if (sphereBody && sphereBody->getMotionState())
+        if (characterBody && characterBody->getMotionState())
         {
             btTransform trans;
-            sphereBody->getMotionState()->getWorldTransform(trans);
-            spherePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-            soundEngine.setSourcePosition(soundSource, spherePosition.x, spherePosition.y, spherePosition.z);
+            characterBody->getMotionState()->getWorldTransform(trans);
+            modelPosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
+            modelPosition -= glm::vec3(0, characterController.m_halfHeight, 0);
+            float cos;
+            float angle;
+            if (characterController.m_moveDir.x < 0)
+            {
+                cos = -characterController.m_moveDir.z;
+                angle = glm::acos(cos) + M_PI;
+            }
+            else
+            {
+                cos = characterController.m_moveDir.z;
+                angle = glm::acos(cos);
+            }
+            modelRotate.y = angle;
+            soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
+            float clamped = std::max(0.0f, std::min(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 1.0f));
+            animator.m_state.blendFactor = clamped;
         }
 
+        // Vehicle
         if (followVehicle && vehicle.m_carChassis && vehicle.m_carChassis->getMotionState())
         {
+            vehicle.update(window, deltaTime);
             btTransform trans;
             vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
             glm::vec3 vehiclePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-            editorCamera.position = vehiclePosition + followDistance;
+            editorCamera.position = vehiclePosition - editorCamera.front * glm::vec3(followDistance) + followOffset;
+        }
+
+        // Character
+        if (followCharacter)
+        {
+            characterController.update(window, deltaTime);
+            editorCamera.position = modelPosition - editorCamera.front * glm::vec3(followDistance) + followOffset;
         }
 
         // Update audio listener
@@ -823,9 +919,6 @@ int main(int argc, char **argv)
         // Update projection
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
         glm::mat4 projection = editorCamera.getProjectionMatrix((float)screenWidth, (float)screenHeight);
-
-        // Vehicle
-        vehicle.update(window, deltaTime);
 
         // Shadowmap
         shadowManager.setup((float)screenWidth, (float)screenHeight);
@@ -940,22 +1033,6 @@ int main(int argc, char **argv)
             wheel.draw(simpleShader);
         }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        // draw sphere
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), spherePosition);
-        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * model; // Model-View-Projection matrix
-        glm::mat4 mv = editorCamera.getViewMatrix() * model;
-        glm::mat3 ModelView3x3Matrix = glm::mat3(mv);
-
-        normalShader.use();
-        normalShader.setMat4("MVP", mvp);
-        normalShader.setMat4("M", model);
-        normalShader.setMat4("V", editorCamera.getViewMatrix());
-        normalShader.setMat3("MV3x3", ModelView3x3Matrix);
-        normalShader.setVec3("LightPosition_worldspace", shadowManager.m_lightPos);
-        normalShader.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
-        normalShader.setFloat("LightPower", lightPower);
-        sphere.draw(normalShader);
 
         // animation
         {
@@ -1150,7 +1227,7 @@ int main(int argc, char **argv)
         }
 
         // Draw light source
-        mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
+        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
         simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
@@ -1359,7 +1436,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(&animator, sphereBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&characterController, &animator, characterBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

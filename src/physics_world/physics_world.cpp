@@ -87,6 +87,27 @@ btRigidBody *PhysicsWorld::createSphere(const btScalar mass, const btScalar radi
 }
 
 // TODO: reuse shapes
+btRigidBody *PhysicsWorld::createCapsule(const btScalar mass, const btScalar axis, const btScalar radius, const btScalar height, const btVector3 &position)
+{
+    btCollisionShape *shape;
+
+    if (axis == 0)
+    {
+        shape = new btCapsuleShapeX(radius, height); 
+    }
+    else if (axis == 2)
+    {
+        shape = new btCapsuleShapeZ(radius, height);
+    }
+    else
+    {
+        shape = new btCapsuleShape(radius, height);
+    }
+
+    return this->createRigidBody(shape, mass, position);
+}
+
+// TODO: reuse shapes
 btRigidBody *PhysicsWorld::createCylinder(const btScalar mass, const btScalar axis, const btVector3 &halfExtend, const btVector3 &position)
 {
     btCollisionShape *shape;
