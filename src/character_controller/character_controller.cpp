@@ -1,5 +1,8 @@
 #include "character_controller.h"
 
+glm::vec3 lerp(glm::vec3 x, glm::vec3 y, float t);
+float lerp(float x, float y, float t);
+
 CharacterController::CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera)
     : m_dynamicsWorld(dynamicsWorld),
       m_rigidBody(rigidBody),
@@ -81,6 +84,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     }
 
     // max speed check
+    // TODO: blocking move input?
     if (m_jumping && m_verticalSpeed > m_speedAtJumpStart)
         return;
     else if (!m_running && m_verticalSpeed > m_maxWalkSpeed)
@@ -121,20 +125,64 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
         glm::vec3 rightXZ = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
         glm::vec3 right = rightXZ * rightForce;
         moveVec += right;
-        forceVec += btVector3(right.x * force , 0.0f, right.z * force );
+        forceVec += btVector3(right.x * force, 0.0f, right.z * force);
     }
 
     // TODO: prevent jump when move ends
 
     m_moving = move;
 
+    // TODO: remove sliding caused by 0 friction
     if (m_moving)
     {
-        // TODO: smooth transition of m_moveDir
-        m_moveDir = glm::normalize(moveVec);
+        moveVec = glm::normalize(moveVec);
+
+        float distance = glm::distance(m_moveDir, moveVec);
+        // avoid 180 degree
+        if (distance == 2.0f)
+        {
+            moveVec = glm::rotateY(moveVec, (float)M_PI_4);
+            distance = glm::distance(m_moveDir, moveVec);
+        }
+
+        m_turning = distance > m_turnTreshold;
+        float normalizedDistance = ((2.0f - distance) / 2.0f);
+        m_turnTarget = (1.0f - normalizedDistance) * m_turnAnimMaxFactor;
+
+        if (m_turning)
+        {
+            // turn direction
+            glm::mat2 mat = glm::mat2(
+                glm::vec2(m_moveDir.x, moveVec.x),
+                glm::vec2(m_moveDir.z, moveVec.z));
+            float det = glm::determinant(mat);
+            m_turnTarget *= det > 0.0f ? 1.0f : -1.0f;
+
+            m_moveDir = glm::normalize(lerp(m_moveDir, moveVec, m_turnForce));
+            forceVec *= normalizedDistance;
+        }
+        else
+        {
+            m_moveDir = moveVec;
+        }
+
         m_rigidBody->setActivationState(1);
         m_rigidBody->applyCentralForce(forceVec);
     }
+    else
+    {
+        m_turnTarget = 0.0f;
+
+        // TODO: better way?
+        if (m_turnFactor == 0.0f)
+            m_turning = false;
+    }
+
+    // turning animation
+    if (glm::abs(m_turnFactor - m_turnTarget) > 0.01f)
+        m_turnFactor = lerp(m_turnFactor, m_turnTarget, m_turnAnimForce);
+    else
+        m_turnFactor = m_turnTarget;
 
     // slow down and stop
     if (m_verticalSpeed > 0 && !m_moving && !m_jumping && !m_falling)
@@ -158,4 +206,14 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
         m_rigidBody->setWorldTransform(transform);
         m_rigidBody->setLinearVelocity(btVector3(m_velocity.getX(), 0, m_velocity.getZ()));
     }
+}
+
+glm::vec3 lerp(glm::vec3 x, glm::vec3 y, float t)
+{
+    return x * (1.f - t) + y * t;
+}
+
+float lerp(float x, float y, float t)
+{
+    return x * (1.f - t) + y * t;
 }

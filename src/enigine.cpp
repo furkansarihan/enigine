@@ -60,8 +60,8 @@ glm::vec3 lightColors[] = {
 bool firstPerson = false;
 bool followVehicle = false;
 bool followCharacter = true;
-float followDistance = 10.0f;
-glm::vec3 followOffset = glm::vec3(0.0f, 2.0f, 0.0f);
+float followDistance = 8.0f;
+glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
 float blurOffset = 0.01;
 bool firstMove = true;
 float lastX;
@@ -461,21 +461,27 @@ static void showOverlay(CharacterController *characterController, Animator *anim
         ImGui::Text("m_falling: %d", characterController->m_falling);
         ImGui::Text("m_onGround: %d", characterController->m_onGround);
         ImGui::Text("m_running: %d", characterController->m_running);
+        ImGui::Text("m_turning: %d", characterController->m_turning);
+        ImGui::Text("m_turnFactor: %.2f", characterController->m_turnFactor);
         btVector3 linearVelocity = characterBody->getLinearVelocity();
         btVector3 angularVelocity = characterBody->getAngularVelocity();
         ImGui::Text("linearVelocity: (%.1f, %.1f, %.1f)", linearVelocity.getX(), linearVelocity.getY(), linearVelocity.getZ());
         ImGui::Text("angularVelocity: (%.1f, %.1f, %.1f)", angularVelocity.getX(), angularVelocity.getY(), angularVelocity.getZ());
         ImGui::Text("linearSpeed: %.1f", linearVelocity.distance(btVector3(0, 0, 0)));
-        ImGui::Text("hasContactResponse: %d", characterBody->hasContactResponse());
         ImGui::Text("m_elevationDistance: %.3f", characterController->m_elevationDistance);
         ImGui::Text("m_speedAtJumpStart: %.3f", characterController->m_speedAtJumpStart);
         ImGui::DragFloat("m_moveForce", &characterController->m_moveForce, 0.1f, 0);
         ImGui::DragFloat("m_jumpForce", &characterController->m_jumpForce, 0.1f, 0);
+        ImGui::DragFloat("m_turnForce", &characterController->m_turnForce, 0.1f, 0);
         ImGui::DragFloat("m_maxWalkSpeed", &characterController->m_maxWalkSpeed, 0.1f, 0);
         ImGui::DragFloat("m_maxRunSpeed", &characterController->m_maxRunSpeed, 0.1f, 0);
         ImGui::DragFloat("m_toIdleForce", &characterController->m_toIdleForce, 0.1f, 0);
         ImGui::DragFloat("m_toIdleForceHoriz", &characterController->m_toIdleForceHoriz, 0.1f, 0);
         ImGui::DragFloat("m_groundTreshold", &characterController->m_groundTreshold, 0.1f, 0);
+        ImGui::DragFloat("m_turnTreshold", &characterController->m_turnTreshold, 0.001f, 0);
+        ImGui::DragFloat("m_walkToRunAnimTreshold", &characterController->m_walkToRunAnimTreshold, 0.1f, 0);
+        ImGui::DragFloat("m_turnAnimForce", &characterController->m_turnAnimForce, 0.01f, 0);
+        ImGui::DragFloat("m_turnAnimMaxFactor", &characterController->m_turnAnimMaxFactor, 0.1f, 0);
         float gravityY = characterBody->getGravity().getY();
         if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
         {
@@ -704,16 +710,19 @@ int main(int argc, char **argv)
 
     // Animation
     // TODO: single aiScene read
-    Model animModel("../src/assets/gltf/character.glb");
-    Animation animation0("../src/assets/gltf/character.glb", "idle", &animModel);
-    Animation animation1("../src/assets/gltf/character.glb", "walking", &animModel);
-    Animation animation2("../src/assets/gltf/character.glb", "left", &animModel);
-    Animation animation3("../src/assets/gltf/character.glb", "right", &animModel);
+    Model animModel("../src/assets/gltf/char2.glb");
+    Animation animation0("../src/assets/gltf/char2.glb", "idle", &animModel);
+    Animation animation1("../src/assets/gltf/char2.glb", "walking", &animModel);
+    Animation animation2("../src/assets/gltf/char2.glb", "left", &animModel);
+    Animation animation3("../src/assets/gltf/char2.glb", "right", &animModel);
+    Animation animation4("../src/assets/gltf/char2.glb", "running", &animModel);
+
     std::vector<Animation *> animations;
     animations.push_back(&animation0);
     animations.push_back(&animation1);
     animations.push_back(&animation2);
     animations.push_back(&animation3);
+    animations.push_back(&animation4);
     Animator animator(animations);
 
     // idle - walk
@@ -859,7 +868,7 @@ int main(int argc, char **argv)
         debugDrawer.getLines().clear();
         physicsWorld.dynamicsWorld->debugDrawWorld();
 
-        // Syncronize with Physics
+        // Syncronize with physics and animation
         if (characterBody && characterBody->getMotionState())
         {
             btTransform trans;
@@ -880,8 +889,29 @@ int main(int argc, char **argv)
             }
             modelRotate.y = angle;
             soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
-            float clamped = std::max(0.0f, std::min(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 1.0f));
-            animator.m_state.blendFactor = clamped;
+
+            // TODO: walk (edge) to run jiggle fix
+            if (characterController.m_verticalSpeed > characterController.m_maxWalkSpeed + characterController.m_walkToRunAnimTreshold)
+            {
+                float runnningGap = characterController.m_maxRunSpeed - characterController.m_maxWalkSpeed;
+                float runningLevel = characterController.m_verticalSpeed - characterController.m_maxWalkSpeed;
+                float clamped = std::max(0.0f, std::min(runningLevel / runnningGap, 1.0f));
+                animator.m_state.blendFactor = clamped;
+                animator.m_state.fromIndex = 1;
+                animator.m_state.toIndex = 4;
+            }
+            else
+            {
+                float clamped = std::max(0.0f, std::min(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 1.0f));
+                animator.m_state.blendFactor = clamped;
+                animator.m_state.fromIndex = 0;
+                animator.m_state.toIndex = 1;
+            }
+
+            AnimPose *animL = &animator.m_state.poses[0];
+            AnimPose *animR = &animator.m_state.poses[1];
+            animL->blendFactor = std::max(0.0f, std::min(-characterController.m_turnFactor, 1.0f));
+            animR->blendFactor = std::max(0.0f, std::min(characterController.m_turnFactor, 1.0f));            
         }
 
         // Vehicle
