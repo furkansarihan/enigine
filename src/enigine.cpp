@@ -468,6 +468,7 @@ static void showOverlay(CharacterController *characterController, Animator *anim
         ImGui::Text("linearVelocity: (%.1f, %.1f, %.1f)", linearVelocity.getX(), linearVelocity.getY(), linearVelocity.getZ());
         ImGui::Text("angularVelocity: (%.1f, %.1f, %.1f)", angularVelocity.getX(), angularVelocity.getY(), angularVelocity.getZ());
         ImGui::Text("linearSpeed: %.1f", linearVelocity.distance(btVector3(0, 0, 0)));
+        ImGui::Text("m_speed: %.3f", characterController->m_speed);
         ImGui::Text("m_elevationDistance: %.3f", characterController->m_elevationDistance);
         ImGui::Text("m_speedAtJumpStart: %.3f", characterController->m_speedAtJumpStart);
         ImGui::DragFloat("m_moveForce", &characterController->m_moveForce, 0.1f, 0);

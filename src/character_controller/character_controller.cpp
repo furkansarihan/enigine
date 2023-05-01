@@ -132,7 +132,6 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
 
     m_moving = move;
 
-    // TODO: remove sliding caused by 0 friction
     if (m_moving)
     {
         moveVec = glm::normalize(moveVec);
@@ -205,6 +204,17 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
         transform.setOrigin(btVector3(pos.getX(), surface, pos.getZ()));
         m_rigidBody->setWorldTransform(transform);
         m_rigidBody->setLinearVelocity(btVector3(m_velocity.getX(), 0, m_velocity.getZ()));
+    }
+
+    // remove sliding caused by 0 friction
+    if (!m_jumping && !m_falling && m_speed > 0.0f)
+    {
+        btVector3 moveDir(m_moveDir.x, m_moveDir.y, m_moveDir.z);
+        btScalar moveVelocity = m_velocity.dot(moveDir);
+        btVector3 velocity = moveDir * moveVelocity;
+        // Save horizontal velocity
+        velocity.setY(m_velocity.getY());
+        m_rigidBody->setLinearVelocity(velocity);
     }
 }
 
