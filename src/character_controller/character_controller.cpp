@@ -79,7 +79,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
         m_rigidBody->setActivationState(1);
         // m_rigidBody->setLinearVelocity(btVector3(0, 0, 0));
         m_rigidBody->setAngularVelocity(btVector3(0, 0, 0));
-        float force = m_rigidBody->getMass() * m_jumpForce;
+        float force = m_rigidBody->getMass() * m_jumpForce * deltaTime;
         m_rigidBody->applyCentralImpulse(btVector3(0, force, 0));
     }
 
@@ -111,7 +111,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     if (frontForce != 0.0f && !m_falling)
     {
         move = true;
-        float force = m_rigidBody->getMass() * m_moveForce;
+        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
         glm::vec3 frontXZ = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
         glm::vec3 front = frontXZ * frontForce;
         moveVec += front;
@@ -121,7 +121,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     if (rightForce != 0.0f && !m_falling)
     {
         move = true;
-        float force = m_rigidBody->getMass() * m_moveForce;
+        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
         glm::vec3 rightXZ = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
         glm::vec3 right = rightXZ * rightForce;
         moveVec += right;
@@ -186,14 +186,14 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     // slow down and stop
     if (m_verticalSpeed > 0 && !m_moving && !m_jumping && !m_falling)
     {
-        float force = m_rigidBody->getMass() * m_toIdleForce;
+        float force = m_rigidBody->getMass() * m_toIdleForce * deltaTime;
         m_rigidBody->applyCentralForce(-m_verticalVelocity * force);
     }
 
     // snap to ground
     if (m_moving && !m_jumping && !m_falling)
     {
-        // float force = m_rigidBody->getMass() * m_toIdleForceHoriz;
+        // float force = m_rigidBody->getMass() * m_toIdleForceHoriz * deltaTime;
         // m_rigidBody->applyCentralForce(btVector3(0, -force * m_elevationDistance, 0));
 
         btVector3 pos = m_rigidBody->getWorldTransform().getOrigin();

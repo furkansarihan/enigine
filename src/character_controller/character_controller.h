@@ -19,14 +19,14 @@ public:
     btRigidBody *m_rigidBody;
     Camera *m_followCamera;
 
-    float m_moveForce = 30.0f;
-    float m_jumpForce = 2.0f;
+    float m_moveForce = 4500.0f;
+    float m_jumpForce = 300.0f;
     float m_speedAtJumpStart = 0.0f;
     float m_maxWalkSpeed = 3.0f;
     float m_walkToRunAnimTreshold = 0.5f;
     float m_maxRunSpeed = 10.0f;
-    float m_toIdleForce = 15.0f;
-    float m_toIdleForceHoriz = 6.0f;
+    float m_toIdleForce = 2250.0f;
+    float m_toIdleForceHoriz = 900.0f;
     float m_elevationDistance = 0.0f;
     float m_groundTreshold = 0.2f;
     // turn
