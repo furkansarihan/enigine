@@ -23,7 +23,7 @@ public:
     float m_jumpForce = 300.0f;
     float m_speedAtJumpStart = 0.0f;
     float m_maxWalkSpeed = 3.0f;
-    float m_walkToRunAnimTreshold = 0.5f;
+    float m_walkToRunAnimTreshold = 0.8f;
     float m_maxRunSpeed = 10.0f;
     float m_toIdleForce = 2250.0f;
     float m_toIdleForceHoriz = 900.0f;
@@ -31,7 +31,7 @@ public:
     float m_groundTreshold = 0.2f;
     // turn
     float m_turnTreshold = 0.01f;
-    float m_turnForce = 0.1f;
+    float m_turnForce = 0.2f;
     float m_turnAnimForce = 0.1f;
     float m_turnFactor = 0.0f;
     float m_turnTarget = 0.0f;

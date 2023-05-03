@@ -473,7 +473,7 @@ static void showOverlay(CharacterController *characterController, Animator *anim
         ImGui::Text("m_speedAtJumpStart: %.3f", characterController->m_speedAtJumpStart);
         ImGui::DragFloat("m_moveForce", &characterController->m_moveForce, 0.1f, 0);
         ImGui::DragFloat("m_jumpForce", &characterController->m_jumpForce, 0.1f, 0);
-        ImGui::DragFloat("m_turnForce", &characterController->m_turnForce, 0.1f, 0);
+        ImGui::DragFloat("m_turnForce", &characterController->m_turnForce, 0.001f, 0);
         ImGui::DragFloat("m_maxWalkSpeed", &characterController->m_maxWalkSpeed, 0.1f, 0);
         ImGui::DragFloat("m_maxRunSpeed", &characterController->m_maxRunSpeed, 0.1f, 0);
         ImGui::DragFloat("m_toIdleForce", &characterController->m_toIdleForce, 0.1f, 0);
@@ -598,6 +598,17 @@ void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
     glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+float snappedClamp(float value, float min, float max, float snapLength)
+{
+    float clamped = std::max(min, std::min(value, max));
+    if (clamped > (max - snapLength))
+        clamped = max;
+    if (clamped < (min + snapLength))
+        clamped = min;
+
+    return clamped;
 }
 
 int main(int argc, char **argv)
@@ -891,19 +902,19 @@ int main(int argc, char **argv)
             modelRotate.y = angle;
             soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
 
-            // TODO: walk (edge) to run jiggle fix
-            if (characterController.m_verticalSpeed > characterController.m_maxWalkSpeed + characterController.m_walkToRunAnimTreshold)
+            float maxWalkSpeed = characterController.m_maxWalkSpeed + characterController.m_walkToRunAnimTreshold;
+            if (characterController.m_verticalSpeed > maxWalkSpeed)
             {
-                float runnningGap = characterController.m_maxRunSpeed - characterController.m_maxWalkSpeed;
-                float runningLevel = characterController.m_verticalSpeed - characterController.m_maxWalkSpeed;
-                float clamped = std::max(0.0f, std::min(runningLevel / runnningGap, 1.0f));
+                float runnningGap = characterController.m_maxRunSpeed - maxWalkSpeed;
+                float runningLevel = characterController.m_verticalSpeed - maxWalkSpeed;
+                float clamped = snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
                 animator.m_state.blendFactor = clamped;
                 animator.m_state.fromIndex = 1;
                 animator.m_state.toIndex = 4;
             }
             else
             {
-                float clamped = std::max(0.0f, std::min(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 1.0f));
+                float clamped = snappedClamp(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 0.0f, 1.0f, 0.08f);
                 animator.m_state.blendFactor = clamped;
                 animator.m_state.fromIndex = 0;
                 animator.m_state.toIndex = 1;
@@ -912,7 +923,7 @@ int main(int argc, char **argv)
             AnimPose *animL = &animator.m_state.poses[0];
             AnimPose *animR = &animator.m_state.poses[1];
             animL->blendFactor = std::max(0.0f, std::min(-characterController.m_turnFactor, 1.0f));
-            animR->blendFactor = std::max(0.0f, std::min(characterController.m_turnFactor, 1.0f));            
+            animR->blendFactor = std::max(0.0f, std::min(characterController.m_turnFactor, 1.0f));
         }
 
         // Vehicle

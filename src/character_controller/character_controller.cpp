@@ -157,7 +157,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
             float det = glm::determinant(mat);
             m_turnTarget *= det > 0.0f ? 1.0f : -1.0f;
 
-            m_moveDir = glm::normalize(lerp(m_moveDir, moveVec, m_turnForce));
+            m_moveDir = glm::normalize(lerp(m_moveDir, moveVec, m_turnForce * glm::abs(m_turnFactor)));
             forceVec *= normalizedDistance;
         }
         else
