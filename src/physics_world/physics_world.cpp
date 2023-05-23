@@ -93,7 +93,7 @@ btRigidBody *PhysicsWorld::createCapsule(const btScalar mass, const btScalar axi
 
     if (axis == 0)
     {
-        shape = new btCapsuleShapeX(radius, height); 
+        shape = new btCapsuleShapeX(radius, height);
     }
     else if (axis == 2)
     {
@@ -151,6 +151,12 @@ btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScal
     btTransform transform;
     transform.setIdentity();
     transform.setOrigin(position);
+
+    return this->createRigidBody(shape, mass, transform);
+}
+
+btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform)
+{
     bool isDynamic = (mass != 0.f);
     btVector3 localInertia(0, 0, 0);
     if (isDynamic)

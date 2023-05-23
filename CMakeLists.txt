@@ -45,12 +45,17 @@ add_executable( enigine
                 src/pbr_manager/pbr_manager.cpp
                 src/pbr_manager/pbr_manager.h
                 src/utils/assimp_to_glm.h
+                src/utils/bullet_glm.h
                 src/animation/bone.h
                 src/animation/bone.cpp
                 src/animation/animation.h
                 src/animation/animation.cpp
                 src/animation/animator.h
                 src/animation/animator.cpp
+                src/character_controller/character_controller.h
+                src/character_controller/character_controller.cpp
+                src/ragdoll/ragdoll.h
+                src/ragdoll/ragdoll.cpp
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp

@@ -8,6 +8,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 #include "../camera/camera.h"
+#include "../ragdoll/ragdoll.h"
 
 #include <GLFW/glfw3.h>
 #include "btBulletDynamicsCommon.h"
@@ -15,7 +16,7 @@
 class CharacterController
 {
 public:
-    btDiscreteDynamicsWorld * m_dynamicsWorld;
+    btDiscreteDynamicsWorld *m_dynamicsWorld;
     btRigidBody *m_rigidBody;
     Camera *m_followCamera;
 
@@ -53,11 +54,17 @@ public:
 
     glm::vec3 m_moveDir = glm::vec3(0.0f, 0.0f, 1.0f); // Z
 
-    CharacterController(btDiscreteDynamicsWorld * dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
+    // ragdoll
+    bool m_ragdollActive = false;
+    bool m_activateKeyPressed = false;
+    float m_impulseStrength = 600.f;
+
+    CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();
     void update(GLFWwindow *window, float deltaTime);
     void updateElevation();
     void updateVelocity();
+    void updateRagdollAction(Ragdoll *ragdoll, glm::vec3 &modelPosition, glm::vec3 &modelRotate, GLFWwindow *window, float deltaTime);
 };
 
 #endif /* character_controller_hpp */

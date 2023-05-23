@@ -28,6 +28,9 @@ public:
     btRigidBody *createTerrain(const int width, const int height, const float *heightfieldData,
                                btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position);
+    btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform);
+    
+    // TODO: freeze rigidbody
 
 private:
     bool useMCLPSolver;

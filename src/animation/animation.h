@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <assimp/scene.h>
+#include "btBulletDynamicsCommon.h"
 
 #include "bone.h"
 #include "../model/model.h"
@@ -15,10 +16,12 @@
 
 struct AssimpNodeData
 {
+    int index;
     glm::mat4 transformation;
     std::string name;
     int childrenCount;
     std::vector<AssimpNodeData> children;
+    btRigidBody *rigidBody = nullptr;
 };
 
 class Animation

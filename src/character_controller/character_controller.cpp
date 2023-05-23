@@ -218,6 +218,40 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     }
 }
 
+void CharacterController::updateRagdollAction(Ragdoll *ragdoll, glm::vec3 &modelPosition, glm::vec3 &modelRotate, GLFWwindow *window, float deltaTime)
+{
+    if (glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS && !m_activateKeyPressed)
+    {
+        m_activateKeyPressed = true;
+        m_rigidBody->setLinearFactor(btVector3(0.0f, 0.0f, 0.0f));
+        m_rigidBody->setActivationState(0);
+        m_rigidBody->setCollisionFlags(m_rigidBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+        btVector3 modelPos = BulletGLM::getBulletVec3(modelPosition);
+        ragdoll->resetTransforms(modelPos, modelRotate.y);
+        ragdoll->unFreezeBodies();
+        m_ragdollActive = true;
+
+        btRigidBody *pelvis = ragdoll->m_bodies[BODYPART_PELVIS];
+        btRigidBody *spine = ragdoll->m_bodies[BODYPART_SPINE];
+
+        pelvis->applyCentralImpulse(BulletGLM::getBulletVec3(m_followCamera->front * m_impulseStrength * 0.4f));
+        spine->applyCentralImpulse(BulletGLM::getBulletVec3(m_followCamera->front * m_impulseStrength * 0.6f));
+    }
+    if (glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_RELEASE)
+        m_activateKeyPressed = false;
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    {
+        btVector3 modelPos = BulletGLM::getBulletVec3(modelPosition + glm::vec3(0.f, 10.f, 0.f));
+        ragdoll->resetTransforms(modelPos, modelRotate.y);
+        ragdoll->freezeBodies();
+        m_rigidBody->setLinearFactor(btVector3(1.0f, 1.0f, 1.0f));
+        m_rigidBody->setActivationState(1);
+        m_rigidBody->setCollisionFlags(m_rigidBody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
+        m_ragdollActive = false;
+    }
+}
+
 glm::vec3 lerp(glm::vec3 x, glm::vec3 y, float t)
 {
     return x * (1.f - t) + y * t;

@@ -3,6 +3,8 @@
 #include <bit>
 #include <mach/mach.h>
 
+#define IN_PARALLELL_SOLVER
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -25,6 +27,8 @@
 #include "pbr_manager/pbr_manager.h"
 #include "animation/animator.h"
 #include "character_controller/character_controller.h"
+#include "ragdoll/ragdoll.h"
+#include "utils/bullet_glm.h"
 
 #include "external/stb_image/stb_image.h"
 
@@ -38,7 +42,11 @@ bool drawShadowmap = false;
 glm::vec3 modelPosition = glm::vec3(200.0f, 10.5f, 200.0f);
 glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
 float modelScale = 2.0;
-int selectedAnimPose = 0;
+float stateChangeSpeed = 10.f;
+int selectedAnimPose = 2;
+bool floatObject = false;
+bool activateObject = true;
+int floatIndex = 2;
 glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
 // Light
 static float lightColor[3] = {0.1f, 0.1f, 0.1f};
@@ -60,6 +68,7 @@ glm::vec3 lightColors[] = {
 bool firstPerson = false;
 bool followVehicle = false;
 bool followCharacter = true;
+bool controlCharacter = true;
 float followDistance = 8.0f;
 glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
 float blurOffset = 0.01;
@@ -162,6 +171,16 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
         editorCamera->processKeyboard(RIGHT, deltaTime);
     }
 
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+    // TODO: toggle debug physics
+
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {
         double xpos, ypos;
@@ -187,7 +206,7 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
     }
 }
 
-static void showOverlay(CharacterController *characterController, Animator *animator, btRigidBody *characterBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
+static void showOverlay(Ragdoll *ragdoll, CharacterController *characterController, Animator *animator, btRigidBody *characterBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
 {
     static int corner = 0;
     ImGuiIO &io = ImGui::GetIO();
@@ -221,6 +240,7 @@ static void showOverlay(CharacterController *characterController, Animator *anim
         ImGui::DragFloat("followOffsetY", &followOffset.y, 0.1f);
         ImGui::Checkbox("followVehicle", &followVehicle);
         ImGui::Checkbox("followCharacter", &followCharacter);
+        ImGui::Checkbox("controlCharacter", &controlCharacter);
         // TODO: change camera min pitch
         if (ImGui::Checkbox("firstPerson", &firstPerson))
         {
@@ -244,6 +264,38 @@ static void showOverlay(CharacterController *characterController, Animator *anim
             editorCamera->projectionMode = ProjectionMode::Ortho;
         }
         ImGui::Separator();
+        ImGui::Text("Ragdoll");
+        ImGui::Checkbox("floatObject", &floatObject);
+        ImGui::Checkbox("activateObject", &activateObject);
+        ImGui::DragInt("floatIndex", &floatIndex, 1, 0, BODYPART_COUNT - 1);
+        ImGui::DragFloat("stateChangeSpeed", &stateChangeSpeed, 0.1f);
+        ImGui::DragFloat("impulseStrength", &characterController->m_impulseStrength, 0.1f);
+        btRigidBody *rb = ragdoll->m_bodies[floatIndex];
+        float cX = rb->getWorldTransform().getOrigin().getX();
+        float cY = rb->getWorldTransform().getOrigin().getY();
+        float cZ = rb->getWorldTransform().getOrigin().getZ();
+        if (ImGui::DragFloat("cX", &cX, 0.1f))
+        {
+            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
+            rb->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (ImGui::DragFloat("cY", &cY, 0.1))
+        {
+            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
+            rb->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (ImGui::DragFloat("cZ", &cZ, 0.1))
+        {
+            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
+            rb->setLinearVelocity(btVector3(0, 0, 0));
+        }
+        if (floatObject)
+        {
+            if (activateObject)
+                rb->setActivationState(1);
+            rb->getWorldTransform().setOrigin(btVector3(cX, followDistance, cZ));
+            rb->setLinearVelocity(btVector3(0, 0, 0));
+        }
         ImGui::Text("Animation");
         int max = animator->m_animations.size() - 1;
         ImGui::DragInt("fromIndex", &animator->m_state.fromIndex, 1, 0, max);
@@ -638,7 +690,7 @@ int main(int argc, char **argv)
 #endif
 
     // Create window with graphics context
-    GLFWwindow *window = glfwCreateWindow(1280, 720, "enigine", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(1500, 1000, "enigine", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -728,6 +780,8 @@ int main(int argc, char **argv)
     Animation animation2("../src/assets/gltf/char2.glb", "left", &animModel);
     Animation animation3("../src/assets/gltf/char2.glb", "right", &animModel);
     Animation animation4("../src/assets/gltf/char2.glb", "running", &animModel);
+    // TODO: create empty at runtime?
+    Animation animationRagdoll("../src/assets/gltf/char2.glb", "pose", &animModel);
 
     std::vector<Animation *> animations;
     animations.push_back(&animation0);
@@ -735,6 +789,7 @@ int main(int argc, char **argv)
     animations.push_back(&animation2);
     animations.push_back(&animation3);
     animations.push_back(&animation4);
+    animations.push_back(&animationRagdoll);
     Animator animator(animations);
 
     // idle - walk
@@ -752,6 +807,7 @@ int main(int argc, char **argv)
 
     animation2.setBlendMask(blendMask);
     animation3.setBlendMask(blendMask);
+    // TODO: ragdoll mask for ragdoll hands - default position?
 
     // turn-left pose
     AnimPose animPose;
@@ -761,12 +817,16 @@ int main(int argc, char **argv)
     // turn-right pose
     animPose.index = 3;
     animator.m_state.poses.push_back(animPose);
+    // ragdoll
+    animPose.index = 5;
+    animPose.blendFactor = 0.0f;
+    animator.m_state.poses.push_back(animPose);
 
     // Init shaders
     initShaders();
 
     // Camera
-    Camera editorCamera(modelPosition + glm::vec3(10.0f, 17.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
+    Camera editorCamera(modelPosition + glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
 
     // Character
     // TODO: bound to character controller
@@ -777,6 +837,9 @@ int main(int argc, char **argv)
     characterBody->setGravity(btVector3(0, -20.0f, 0));
 
     CharacterController characterController(physicsWorld.dynamicsWorld, characterBody, &editorCamera);
+
+    // Ragdoll
+    Ragdoll ragdoll(&physicsWorld, &animationRagdoll, btVector3(modelPosition.x, modelPosition.y, modelPosition.z), 2.0f);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -861,6 +924,14 @@ int main(int argc, char **argv)
         // update animation
         animator.update(deltaTime);
 
+        // update ragdoll
+        if (characterController.m_ragdollActive)
+            ragdoll.syncToAnimation(modelPosition);
+
+        animator.m_state.poses[2].blendFactor += deltaTime * stateChangeSpeed * (characterController.m_ragdollActive ? 1.f : -1.f);
+        float clamped = std::max(0.0f, std::min(animator.m_state.poses[2].blendFactor, 1.0f));
+        animator.m_state.poses[2].blendFactor = clamped;
+
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 1);
         if (physicsWorld.dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
@@ -881,25 +952,13 @@ int main(int argc, char **argv)
         physicsWorld.dynamicsWorld->debugDrawWorld();
 
         // Syncronize with physics and animation
-        if (characterBody && characterBody->getMotionState())
+        if (characterBody && characterBody->getMotionState() && !characterController.m_ragdollActive)
         {
             btTransform trans;
             characterBody->getMotionState()->getWorldTransform(trans);
             modelPosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
             modelPosition -= glm::vec3(0, characterController.m_halfHeight, 0);
-            float cos;
-            float angle;
-            if (characterController.m_moveDir.x < 0)
-            {
-                cos = -characterController.m_moveDir.z;
-                angle = glm::acos(cos) + M_PI;
-            }
-            else
-            {
-                cos = characterController.m_moveDir.z;
-                angle = glm::acos(cos);
-            }
-            modelRotate.y = angle;
+            modelRotate.y = glm::atan(characterController.m_moveDir.x, characterController.m_moveDir.z);
             soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
 
             float maxWalkSpeed = characterController.m_maxWalkSpeed + characterController.m_walkToRunAnimTreshold;
@@ -937,11 +996,12 @@ int main(int argc, char **argv)
         }
 
         // Character
-        if (followCharacter)
-        {
+        characterController.updateRagdollAction(&ragdoll, modelPosition, modelRotate, window, deltaTime);
+        // TODO: split input control and others for npc
+        if (controlCharacter)
             characterController.update(window, deltaTime);
+        if (followCharacter)
             editorCamera.position = modelPosition - editorCamera.front * glm::vec3(followDistance) + followOffset;
-        }
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -1094,7 +1154,7 @@ int main(int argc, char **argv)
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, modelPosition);
             model = glm::rotate(model, modelRotate.x, glm::vec3(1, 0, 0));
-            model = glm::rotate(model, modelRotate.y, glm::vec3(0, 1, 0));
+            model = glm::rotate(model, modelRotate.y * (1.0f - animator.m_state.poses[2].blendFactor), glm::vec3(0, 1, 0));
             model = glm::rotate(model, modelRotate.z, glm::vec3(0, 0, 1));
             model = glm::scale(model, glm::vec3(modelScale, modelScale, modelScale));
             animShader.setMat4("model", model);
@@ -1478,7 +1538,7 @@ int main(int argc, char **argv)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        showOverlay(&characterController, &animator, characterBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
+        showOverlay(&ragdoll, &characterController, &animator, characterBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

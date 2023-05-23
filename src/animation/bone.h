@@ -55,6 +55,7 @@ public:
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
     ~Bone();
     void update(float animationTime);
+    void updateInternal(float animationTime);
     int getPositionIndex(float animationTime);
     int getRotationIndex(float animationTime);
     int getScaleIndex(float animationTime);

@@ -69,6 +69,11 @@ void Bone::update(float animationTime)
     if (m_animType == AnimationType::Pose)
         return;
 
+    updateInternal(animationTime);
+}
+
+void Bone::updateInternal(float animationTime)
+{
     m_translation = interpolatePosition(animationTime);
     m_rotation = interpolateRotation(animationTime);
     m_scale = interpolateScaling(animationTime);
