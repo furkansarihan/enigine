@@ -78,6 +78,7 @@ public:
     // Functions
     glm::mat4 getViewMatrix();
     glm::mat4 getProjectionMatrix(float width, float height);
+    void processInput(GLFWwindow *window, float deltaTime);
     void processKeyboard(Camera_Movement direction, float deltaTime);
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
     void updateFrustumPoints(float width, float height);

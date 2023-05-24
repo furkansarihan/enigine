@@ -46,6 +46,7 @@ add_executable( enigine
                 src/pbr_manager/pbr_manager.h
                 src/utils/assimp_to_glm.h
                 src/utils/bullet_glm.h
+                src/utils/common.h
                 src/animation/bone.h
                 src/animation/bone.cpp
                 src/animation/animation.h

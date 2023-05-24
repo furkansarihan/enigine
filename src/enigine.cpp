@@ -1,7 +1,6 @@
 #include <iostream>
 #include <ctime>
 #include <bit>
-#include <mach/mach.h>
 
 #define IN_PARALLELL_SOLVER
 
@@ -29,143 +28,18 @@
 #include "character_controller/character_controller.h"
 #include "ragdoll/ragdoll.h"
 #include "utils/bullet_glm.h"
+#include "utils/common.h"
 #include "ui/root_ui.h"
 #include "shader_manager/shader_manager.h"
 
 #include "external/stb_image/stb_image.h"
 
-static void glfwErrorCallback(int error, const char *description)
-{
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
-}
-
-static void printStartInfo()
-{
-    // current date/time based on current system
-    time_t now = time(0);
-    char *dateTime = ctime(&now);
-    // version, format -> x.xx.xxx
-    std::string version("000001");
-
-    std::cout << "enigine_version: " << version << std::endl;
-    std::cout << "cpp_version: " << __cplusplus << std::endl;
-    std::cout << "started_at: " << dateTime << std::endl;
-}
-
-// TODO: support other platforms than macOS
-static void refreshSystemMonitor(task_basic_info &t_info)
-{
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-
-    task_info(mach_task_self(),
-              TASK_BASIC_INFO, (task_info_t)&t_info,
-              &t_info_count);
-}
-
-void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
-{
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    {
-        editorCamera->processKeyboard(FORWARD, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    {
-        editorCamera->processKeyboard(BACKWARD, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-        editorCamera->processKeyboard(LEFT, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-        editorCamera->processKeyboard(RIGHT, deltaTime);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    }
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    }
-    // TODO: toggle debug physics
-
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
-    {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-
-        if (editorCamera->firstMove)
-        {
-            editorCamera->lastX = xpos;
-            editorCamera->lastY = ypos;
-            editorCamera->firstMove = false;
-        }
-        float xoffset = xpos - editorCamera->lastX;
-        float yoffset = editorCamera->lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-        editorCamera->lastX = xpos;
-        editorCamera->lastY = ypos;
-        editorCamera->processMouseMovement(xoffset, yoffset, true);
-    }
-
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
-        editorCamera->firstMove = true;
-}
-
-void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
-{
-    float quad_vertices[] = {
-        // top left
-        -1, 1,
-        0.0f, 1.0f,
-        // top right
-        1, 1,
-        1.0f, 1.0f,
-        // bottom left
-        -1, -1,
-        0.0f, 0.0f,
-        // bottom right
-        1, -1,
-        1.0f, 0.0f};
-    unsigned int quad_indices[] = {0, 1, 2, 1, 2, 3};
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-float snappedClamp(float value, float min, float max, float snapLength)
-{
-    float clamped = std::max(min, std::min(value, max));
-    if (clamped > (max - snapLength))
-        clamped = max;
-    if (clamped < (min + snapLength))
-        clamped = min;
-
-    return clamped;
-}
-
 int main(int argc, char **argv)
 {
-    printStartInfo();
+    CommonUtil::printStartInfo();
 
     // Setup window
-    glfwSetErrorCallback(glfwErrorCallback);
+    glfwSetErrorCallback(CommonUtil::glfwErrorCallback);
     if (!glfwInit())
         return 1;
 
@@ -401,7 +275,7 @@ int main(int argc, char **argv)
 
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
-    createQuad(q_vbo, q_vao, q_ebo);
+    CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
 
     // camera frustum
     unsigned int c_vbo, c_vao, c_ebo;
@@ -456,7 +330,7 @@ int main(int argc, char **argv)
     while (!glfwWindowShouldClose(window))
     {
         // System monitor
-        refreshSystemMonitor(t_info);
+        CommonUtil::refreshSystemMonitor(t_info);
 
         // Calculate deltaTime
         float currentFrame = (float)glfwGetTime();
@@ -467,7 +341,7 @@ int main(int argc, char **argv)
         glfwPollEvents();
 
         // Process input
-        processCameraInput(window, &editorCamera, deltaTime);
+        editorCamera.processInput(window, deltaTime);
 
         // update animation
         animator.update(deltaTime);
@@ -514,14 +388,14 @@ int main(int argc, char **argv)
             {
                 float runnningGap = characterController.m_maxRunSpeed - maxWalkSpeed;
                 float runningLevel = characterController.m_verticalSpeed - maxWalkSpeed;
-                float clamped = snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
+                float clamped = CommonUtil::snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
                 animator.m_state.blendFactor = clamped;
                 animator.m_state.fromIndex = 1;
                 animator.m_state.toIndex = 4;
             }
             else
             {
-                float clamped = snappedClamp(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 0.0f, 1.0f, 0.08f);
+                float clamped = CommonUtil::snappedClamp(characterController.m_verticalSpeed / characterController.m_maxWalkSpeed, 0.0f, 1.0f, 0.08f);
                 animator.m_state.blendFactor = clamped;
                 animator.m_state.fromIndex = 0;
                 animator.m_state.toIndex = 1;
