@@ -12,6 +12,8 @@
 
 #include "btBulletDynamicsCommon.h"
 
+#include "../../shader/shader.h"
+
 class DebugDrawer : public btIDebugDraw
 {
 
@@ -38,6 +40,7 @@ public:
     virtual int getDebugMode() const { return m_debugMode; }
 
     std::vector<Line> &getLines() { return lines; }
+    void drawLines(Shader &lineShader, glm::mat4 mvp, unsigned int vbo, unsigned int vao, unsigned int ebo);
 
 private:
     int m_debugMode = 1;
