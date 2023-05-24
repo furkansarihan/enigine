@@ -152,7 +152,6 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
     shaderManager.addShader(ShaderDynamic(&stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
     shaderManager.addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
-    shaderManager.initShaders();
 
     // Create geometries
     Model cube("assets/models/cube.obj");
@@ -218,6 +217,10 @@ int main(int argc, char **argv)
     animPose.index = 5;
     animPose.blendFactor = 0.0f;
     animator.m_state.poses.push_back(animPose);
+
+    // TODO: make independent or manageable
+    // init shaders after model read
+    shaderManager.initShaders();
 
     // Camera
     Camera editorCamera(modelPosition + glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
