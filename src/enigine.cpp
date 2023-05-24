@@ -463,7 +463,7 @@ int main(int argc, char **argv)
     CharacterUI characterUI(&characterController, characterBody);
     RagdollUI ragdollUI(&ragdoll, &characterController, &editorCamera);
     AnimationUI animationUI(&animator);
-    ShadowmapUI shadowmapUI(&shadowManager);
+    ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager, &editorCamera);
     SoundUI soundUI(&soundEngine, &soundSource);
     VehicleUI vehicleUI(&vehicle);
     CameraUI cameraUI(&editorCamera);
@@ -963,79 +963,9 @@ int main(int argc, char **argv)
         glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // Draw frustum
-        for (int i = 0; shadowmapUI.m_drawFrustum && i < shadowManager.m_splitCount; i++)
-        {
-            GLuint indices[] = {
-                // Near plane
-                0, 1, 1, 2, 2, 3, 3, 0,
-                // Far plane
-                4, 5, 5, 6, 6, 7, 7, 4,
-                // Connections between planes
-                0, 4, 1, 5, 2, 6, 3, 7};
-
-            glBindVertexArray(c_vao);
-
-            glBindBuffer(GL_ARRAY_BUFFER, c_vbo);
-            glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(float), shadowManager.m_frustums[i].points, GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c_ebo);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, 24 * sizeof(float), indices, GL_STATIC_DRAW);
-
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-
-            glm::mat4 mvp = projection * editorCamera.getViewMatrix();
-            simpleShader.use();
-            simpleShader.setMat4("MVP", mvp);
-            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
-
-            glBindVertexArray(c_vao);
-            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
-        }
-
-        // Draw light AABB
-        for (int i = 0; shadowmapUI.m_drawAABB && i < shadowManager.m_splitCount; i++)
-        {
-            // Define indices
-            GLuint indices[] = {
-                0, 1, 2, 2, 3, 0, // Front face
-                1, 5, 6, 6, 2, 1, // Right face
-                5, 4, 7, 7, 6, 5, // Back face
-                4, 0, 3, 3, 7, 4, // Left face
-                3, 2, 6, 6, 7, 3, // Top face
-                0, 1, 5, 5, 4, 0, // Bottom face
-            };
-
-            glBindVertexArray(c_vao_2);
-
-            glBindBuffer(GL_ARRAY_BUFFER, c_vbo_2);
-            glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(float), shadowManager.m_frustums[i].lightAABB, GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c_ebo_2);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(float), indices, GL_STATIC_DRAW);
-
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-
-            glm::mat4 mvp = projection * editorCamera.getViewMatrix() * inverseDepthViewMatrix;
-            simpleShader.use();
-            simpleShader.setMat4("MVP", mvp);
-            glm::vec4 color = glm::vec4(1.0, 1.0, 1.0, 0.2f);
-            color[i] *= 0.7;
-            simpleShader.setVec4("DiffuseColor", color);
-
-            glBindVertexArray(c_vao_2);
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 0.0, 0.0, 1.0f));
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            glBindVertexArray(0);
-        }
+        // Shadowmap debug
+        shadowmapUI.drawFrustum(simpleShader, mvp, vbo, vao, ebo);
+        shadowmapUI.drawLightAABB(simpleShader, mvp, inverseDepthViewMatrix, vbo, vao, ebo);
 
         // Draw skybox
         glDepthMask(GL_FALSE);
@@ -1069,45 +999,8 @@ int main(int argc, char **argv)
             glBindVertexArray(0);
         }
 
-        // Draw shadowmap
-        if (shadowmapUI.m_drawShadowmap)
-        {
-            textureArrayShader.use();
-
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(glGetUniformLocation(textureArrayShader.id, "renderedTexture"), 0);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-            for (int i = 0; i < shadowManager.m_splitCount; i++)
-            {
-                if (!shadowmapUI.m_drawShadowmap)
-                    break;
-                glm::mat4 model = glm::mat4(1.0f);
-
-                glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);    // Camera position
-                glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); // Point camera is looking at
-                glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);     // Up direction
-
-                glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-
-                float aspectRatio = (float)screenWidth / screenHeight;
-                glm::vec3 scale = glm::vec3(shadowmapUI.m_quadScale / aspectRatio, shadowmapUI.m_quadScale, 1.0f);
-
-                float posX = 1.0f - scale.x * ((i + 0.5) * 2);
-                float posY = -1.0f + scale.y;
-                glm::vec3 position = glm::vec3(posX, posY, 0);
-
-                glm::mat4 projection = glm::ortho(-1, 1, -1, 1, 0, 2);
-                projection = glm::scale(glm::translate(projection, position), scale);
-
-                textureArrayShader.setMat4("MVP", projection * view * model);
-                textureArrayShader.setInt("layer", i);
-
-                glBindVertexArray(q_vao);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                glBindVertexArray(0);
-            }
-        }
+        // Shadowmap debug - should be called after post process
+        shadowmapUI.drawShadowmap(textureArrayShader, screenWidth, screenHeight, q_vao);
 
         // Render UI
         rootUI.render();
