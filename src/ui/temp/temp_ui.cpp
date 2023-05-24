@@ -7,8 +7,7 @@ void TempUI::render()
 
     if (ImGui::Button("refresh shaders"))
     {
-        if (m_initShaderCallback)
-            m_initShaderCallback();
+        m_shaderManager->initShaders();
     }
     ImGui::Text("Post process");
     ImGui::DragFloat("exposure", &m_postProcess->m_exposure, 0.001);

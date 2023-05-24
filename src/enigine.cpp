@@ -30,30 +30,9 @@
 #include "ragdoll/ragdoll.h"
 #include "utils/bullet_glm.h"
 #include "ui/root_ui.h"
+#include "shader_manager/shader_manager.h"
 
 #include "external/stb_image/stb_image.h"
-
-// TODO: shader manager
-// Shaders
-Shader normalShader;
-Shader simpleShader;
-Shader depthShader;
-Shader simpleShadow;
-Shader terrainShader;
-Shader terrainShadow;
-Shader lineShader;
-Shader textureShader;
-Shader textureArrayShader;
-Shader postProcessShader;
-Shader hdrToCubemapShader;
-Shader cubemapShader;
-Shader irradianceShader;
-Shader pbrShader;
-Shader prefilterShader;
-Shader brdfShader;
-Shader grassShader;
-Shader stoneShader;
-Shader animShader;
 
 static void glfwErrorCallback(int error, const char *description)
 {
@@ -81,29 +60,6 @@ static void refreshSystemMonitor(task_basic_info &t_info)
     task_info(mach_task_self(),
               TASK_BASIC_INFO, (task_info_t)&t_info,
               &t_info_count);
-}
-
-void initShaders()
-{
-    normalShader.init(FileManager::read("../src/assets/shaders/normal-shader.vs"), FileManager::read("../src/assets/shaders/normal-shader.fs"));
-    simpleShader.init(FileManager::read("../src/assets/shaders/simple-shader.vs"), FileManager::read("../src/assets/shaders/simple-shader.fs"));
-    depthShader.init(FileManager::read("../src/assets/shaders/simple-shader.vs"), FileManager::read("../src/assets/shaders/depth-shader.fs"));
-    simpleShadow.init(FileManager::read("../src/assets/shaders/simple-shadow.vs"), FileManager::read("../src/assets/shaders/simple-shadow.fs"));
-    terrainShader.init(FileManager::read("../src/assets/shaders/terrain-shader.vs"), FileManager::read("../src/assets/shaders/terrain-shader.fs"));
-    terrainShadow.init(FileManager::read("../src/assets/shaders/terrain-shadow.vs"), FileManager::read("../src/assets/shaders/depth-shader.fs"));
-    lineShader.init(FileManager::read("../src/assets/shaders/line-shader.vs"), FileManager::read("../src/assets/shaders/line-shader.fs"));
-    textureShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/simple-texture.fs"));
-    textureArrayShader.init(FileManager::read("../src/assets/shaders/simple-texture.vs"), FileManager::read("../src/assets/shaders/texture-array.fs"));
-    postProcessShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/post-process.fs"));
-    hdrToCubemapShader.init(FileManager::read("../src/assets/shaders/hdr-to-cubemap.vs"), FileManager::read("../src/assets/shaders/hdr-to-cubemap.fs"));
-    cubemapShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/cubemap.fs"));
-    irradianceShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/irradiance.fs"));
-    pbrShader.init(FileManager::read("../src/assets/shaders/pbr.vs"), FileManager::read("../src/assets/shaders/pbr.fs"));
-    prefilterShader.init(FileManager::read("../src/assets/shaders/cubemap.vs"), FileManager::read("../src/assets/shaders/prefilter.fs"));
-    brdfShader.init(FileManager::read("../src/assets/shaders/post-process.vs"), FileManager::read("../src/assets/shaders/brdf.fs"));
-    grassShader.init(FileManager::read("../src/assets/shaders/grass.vs"), FileManager::read("../src/assets/shaders/grass.fs"));
-    stoneShader.init(FileManager::read("../src/assets/shaders/stone.vs"), FileManager::read("../src/assets/shaders/stone.fs"));
-    animShader.init(FileManager::read("../src/assets/shaders/anim.vs"), FileManager::read("../src/assets/shaders/anim.fs"));
 }
 
 void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTime)
@@ -300,6 +256,30 @@ int main(int argc, char **argv)
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
 
+    // Shaders
+    ShaderManager shaderManager;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader;
+    shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&simpleShadow, "../src/assets/shaders/simple-shadow.vs", "../src/assets/shaders/simple-shadow.fs"));
+    shaderManager.addShader(ShaderDynamic(&terrainShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&terrainShadow, "../src/assets/shaders/terrain-shadow.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&lineShader, "../src/assets/shaders/line-shader.vs", "../src/assets/shaders/line-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&textureShader, "../src/assets/shaders/simple-texture.vs", "../src/assets/shaders/simple-texture.fs"));
+    shaderManager.addShader(ShaderDynamic(&textureArrayShader, "../src/assets/shaders/simple-texture.vs", "../src/assets/shaders/texture-array.fs"));
+    shaderManager.addShader(ShaderDynamic(&postProcessShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/post-process.fs"));
+    shaderManager.addShader(ShaderDynamic(&hdrToCubemapShader, "../src/assets/shaders/hdr-to-cubemap.vs", "../src/assets/shaders/hdr-to-cubemap.fs"));
+    shaderManager.addShader(ShaderDynamic(&cubemapShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/cubemap.fs"));
+    shaderManager.addShader(ShaderDynamic(&irradianceShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/irradiance.fs"));
+    shaderManager.addShader(ShaderDynamic(&pbrShader, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
+    shaderManager.addShader(ShaderDynamic(&prefilterShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/prefilter.fs"));
+    shaderManager.addShader(ShaderDynamic(&brdfShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/brdf.fs"));
+    shaderManager.addShader(ShaderDynamic(&grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
+    shaderManager.addShader(ShaderDynamic(&stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
+    shaderManager.addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
+    shaderManager.initShaders();
+
     // Create geometries
     Model cube("assets/models/cube.obj");
     Model sphere("assets/models/sphere.obj");
@@ -364,9 +344,6 @@ int main(int argc, char **argv)
     animPose.index = 5;
     animPose.blendFactor = 0.0f;
     animator.m_state.poses.push_back(animPose);
-
-    // Init shaders
-    initShaders();
 
     // Camera
     Camera editorCamera(modelPosition + glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
@@ -464,7 +441,7 @@ int main(int argc, char **argv)
     VehicleUI vehicleUI(&vehicle);
     CameraUI cameraUI(&editorCamera);
     TerrainUI terrainUI(&terrain);
-    TempUI tempUI(&postProcess, &debugDrawer, initShaders);
+    TempUI tempUI(&postProcess, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
     rootUI.m_uiList.push_back(&ragdollUI);

@@ -4,19 +4,20 @@
 #include "../base_ui.h"
 #include "../../post_process/post_process.h"
 #include "../../physics_world/debug_drawer/debug_drawer.h"
+#include "../../shader_manager/shader_manager.h"
 
 class TempUI : public BaseUI
 {
 private:
     PostProcess *m_postProcess;
     DebugDrawer *m_debugDrawer;
-    std::function<void()> m_initShaderCallback;
+    ShaderManager *m_shaderManager;
 
 public:
-    TempUI(PostProcess *postProcess, DebugDrawer *debugDrawer, std::function<void()> initShaderCallback)
+    TempUI(PostProcess *postProcess, DebugDrawer *debugDrawer, ShaderManager* shaderManager)
         : m_postProcess(postProcess),
           m_debugDrawer(debugDrawer),
-          m_initShaderCallback(initShaderCallback)
+          m_shaderManager(shaderManager)
     {
     }
 
