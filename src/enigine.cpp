@@ -29,52 +29,11 @@
 #include "character_controller/character_controller.h"
 #include "ragdoll/ragdoll.h"
 #include "utils/bullet_glm.h"
+#include "ui/root_ui.h"
 
 #include "external/stb_image/stb_image.h"
 
-// Shadowmap
-float quadScale = 0.2f;
-float bias = 0.005;
-bool drawFrustum = false;
-bool drawAABB = false;
-bool drawShadowmap = false;
-// Sphere
-glm::vec3 modelPosition = glm::vec3(200.0f, 10.5f, 200.0f);
-glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
-float modelScale = 2.0;
-float stateChangeSpeed = 10.f;
-int selectedAnimPose = 2;
-bool floatObject = false;
-bool activateObject = true;
-int floatIndex = 2;
-glm::vec3 groundPos = glm::vec3(0, 0, 0.75);
-// Light
-static float lightColor[3] = {0.1f, 0.1f, 0.1f};
-static float ambientColor[3] = {0.4f, 0.4f, 0.4f};
-static float specularColor[3] = {0.15f, 0.15f, 0.15f};
-static float lightPower = 10.0;
-static float radius = 12.0;
-static float speed = 2.0;
-// PBR
-static float albedo[3] = {0.5f, 0.0f, 0.0f};
-static float ao = 1.0;
-glm::vec3 lightPositions[] = {
-    glm::vec3(0.0f, 0.0f, 10.0f),
-};
-glm::vec3 lightColors[] = {
-    glm::vec3(350.0f, 410.0f, 458.0f),
-};
-// Camera
-bool firstPerson = false;
-bool followVehicle = false;
-bool followCharacter = true;
-bool controlCharacter = true;
-float followDistance = 8.0f;
-glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
-float blurOffset = 0.01;
-bool firstMove = true;
-float lastX;
-float lastY;
+// TODO: shader manager
 // Shaders
 Shader normalShader;
 Shader simpleShader;
@@ -95,8 +54,6 @@ Shader brdfShader;
 Shader grassShader;
 Shader stoneShader;
 Shader animShader;
-// System Monitor
-task_basic_info t_info;
 
 static void glfwErrorCallback(int error, const char *description)
 {
@@ -117,7 +74,7 @@ static void printStartInfo()
 }
 
 // TODO: support other platforms than macOS
-static void refreshSystemMonitor()
+static void refreshSystemMonitor(task_basic_info &t_info)
 {
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
@@ -186,438 +143,22 @@ void processCameraInput(GLFWwindow *window, Camera *editorCamera, float deltaTim
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
 
-        if (firstMove)
+        if (editorCamera->firstMove)
         {
-            lastX = xpos;
-            lastY = ypos;
-            firstMove = false;
+            editorCamera->lastX = xpos;
+            editorCamera->lastY = ypos;
+            editorCamera->firstMove = false;
         }
-        float xoffset = xpos - lastX;
-        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+        float xoffset = xpos - editorCamera->lastX;
+        float yoffset = editorCamera->lastY - ypos; // reversed since y-coordinates go from bottom to top
 
-        lastX = xpos;
-        lastY = ypos;
+        editorCamera->lastX = xpos;
+        editorCamera->lastY = ypos;
         editorCamera->processMouseMovement(xoffset, yoffset, true);
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
-    {
-        firstMove = true;
-    }
-}
-
-static void showOverlay(Ragdoll *ragdoll, CharacterController *characterController, Animator *animator, btRigidBody *characterBody, PostProcess *postProcess, ShadowManager *shadowManager, Camera *editorCamera, Vehicle *vehicle, SoundEngine *soundEngine, Terrain *terrain, DebugDrawer *debugDrawer, SoundSource soundSource, float deltaTime, bool *p_open)
-{
-    static int corner = 0;
-    ImGuiIO &io = ImGui::GetIO();
-    if (corner != -1)
-    {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x : 0, (corner & 2) ? io.DisplaySize.y : 0);
-        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    }
-    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-    if (ImGui::Begin("overlay", p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-        if (ImGui::IsMousePosValid())
-            ImGui::Text("Mouse Position: (%.1f, %.1f)", io.MousePos.x, io.MousePos.y);
-        else
-            ImGui::Text("Mouse Position: <invalid>");
-        ImGui::Text("FPS: %.1f", io.Framerate);
-        ImGui::Text("RAM: %d", (int)t_info.resident_size);
-        ImGui::Separator();
-        ImGui::Text("Camera");
-        ImGui::Text("position: (%.1f, %.1f, %.1f)", editorCamera->position.x, editorCamera->position.y, editorCamera->position.z);
-        ImGui::Text("pitch: %.1f", editorCamera->pitch);
-        ImGui::Text("yaw: %.1f", editorCamera->yaw);
-        ImGui::DragFloat("near", &editorCamera->near, 0.001f);
-        ImGui::DragFloat("far", &editorCamera->far, 10.0f);
-        ImGui::DragFloat("fov", &editorCamera->fov, 0.01f);
-        ImGui::DragFloat("movementSpeed", &editorCamera->movementSpeed, 10.0f);
-        ImGui::DragFloat("scaleOrtho", &editorCamera->scaleOrtho, 0.1f);
-        // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
-        ImGui::DragFloat("followDistance", &followDistance, 0.1f);
-        ImGui::DragFloat("followOffsetY", &followOffset.y, 0.1f);
-        ImGui::Checkbox("followVehicle", &followVehicle);
-        ImGui::Checkbox("followCharacter", &followCharacter);
-        ImGui::Checkbox("controlCharacter", &controlCharacter);
-        // TODO: change camera min pitch
-        if (ImGui::Checkbox("firstPerson", &firstPerson))
-        {
-            if (firstPerson)
-            {
-                followDistance = -1.0f;
-                followOffset.y = 3.3f;
-            }
-            else
-            {
-                followDistance = 10.0f;
-                followOffset.y = 1.5f;
-            }
-        }
-        if (ImGui::RadioButton("perspective", editorCamera->projectionMode == ProjectionMode::Perspective))
-        {
-            editorCamera->projectionMode = ProjectionMode::Perspective;
-        }
-        if (ImGui::RadioButton("ortho", editorCamera->projectionMode == ProjectionMode::Ortho))
-        {
-            editorCamera->projectionMode = ProjectionMode::Ortho;
-        }
-        ImGui::Separator();
-        ImGui::Text("Ragdoll");
-        ImGui::Checkbox("floatObject", &floatObject);
-        ImGui::Checkbox("activateObject", &activateObject);
-        ImGui::DragInt("floatIndex", &floatIndex, 1, 0, BODYPART_COUNT - 1);
-        ImGui::DragFloat("stateChangeSpeed", &stateChangeSpeed, 0.1f);
-        ImGui::DragFloat("impulseStrength", &characterController->m_impulseStrength, 0.1f);
-        btRigidBody *rb = ragdoll->m_bodies[floatIndex];
-        float cX = rb->getWorldTransform().getOrigin().getX();
-        float cY = rb->getWorldTransform().getOrigin().getY();
-        float cZ = rb->getWorldTransform().getOrigin().getZ();
-        if (ImGui::DragFloat("cX", &cX, 0.1f))
-        {
-            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
-            rb->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        if (ImGui::DragFloat("cY", &cY, 0.1))
-        {
-            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
-            rb->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        if (ImGui::DragFloat("cZ", &cZ, 0.1))
-        {
-            rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
-            rb->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        if (floatObject)
-        {
-            if (activateObject)
-                rb->setActivationState(1);
-            rb->getWorldTransform().setOrigin(btVector3(cX, followDistance, cZ));
-            rb->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        ImGui::Text("Animation");
-        int max = animator->m_animations.size() - 1;
-        ImGui::DragInt("fromIndex", &animator->m_state.fromIndex, 1, 0, max);
-        ImGui::DragInt("toIndex", &animator->m_state.toIndex, 1, 0, max);
-        ImGui::DragFloat("blendFactor", &animator->m_state.blendFactor, 0.01f, 0.0f, 1.0f);
-        ImGui::Separator();
-        ImGui::DragInt("selectedAnimPose", &selectedAnimPose, 1, 0, animator->m_state.poses.size() - 1);
-        if (selectedAnimPose >= 0 && selectedAnimPose < animator->m_state.poses.size())
-        {
-            AnimPose *animPose = &animator->m_state.poses[selectedAnimPose];
-            ImGui::Text("animPose.index: %d", animPose->index);
-            ImGui::DragFloat("animPose.blendFactor", &animPose->blendFactor, 0.01f, 0.0f, 1.0f);
-            auto bonesMap = &animator->m_animations[animPose->index]->m_bones;
-            for (auto it = bonesMap->begin(); it != bonesMap->end(); ++it)
-            {
-                Bone *bone = it->second;
-                ImGui::DragFloat(bone->m_Name.c_str(), &bone->m_blendFactor, 0.01f, 0.0f, 1.0f);
-            }
-        }
-        ImGui::Separator();
-        // ImGui::Text("left plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[0].x, terrain->m_planes[0].y, terrain->m_planes[0].z, terrain->m_planes[0].w);
-        // ImGui::Text("right plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[1].x, terrain->m_planes[1].y, terrain->m_planes[1].z, terrain->m_planes[1].w);
-        ImGui::Text("camPos");
-        ImGui::DragFloat("camPosX", &shadowManager->m_camera->position.x, 0.5f);
-        ImGui::DragFloat("camPosY", &shadowManager->m_camera->position.y, 0.5f);
-        ImGui::DragFloat("camPosZ", &shadowManager->m_camera->position.z, 0.5f);
-        ImGui::Text("camView");
-        ImGui::DragFloat("camViewX", &shadowManager->m_camera->front.x, 0.01f);
-        ImGui::DragFloat("camViewY", &shadowManager->m_camera->front.y, 0.01f);
-        ImGui::DragFloat("camViewZ", &shadowManager->m_camera->front.z, 0.01f);
-        shadowManager->m_camera->front = glm::normalize(shadowManager->m_camera->front);
-        ImGui::DragFloat("camNear", &shadowManager->m_near, 1);
-        ImGui::DragFloat("camFar", &shadowManager->m_far, 1, 26, 1000);
-        if (ImGui::Button("refresh shaders"))
-        {
-            initShaders();
-        }
-        ImGui::Text("model");
-        ImGui::DragFloat("modelX", &modelPosition.x, 0.5f);
-        ImGui::DragFloat("modelY", &modelPosition.y, 0.5f);
-        ImGui::DragFloat("modelZ", &modelPosition.z, 0.5f);
-        ImGui::DragFloat("modelScale", &modelScale, 0.01f);
-        ImGui::DragFloat("modelRotateX", &modelRotate.x, 0.01f);
-        ImGui::DragFloat("modelRotateY", &modelRotate.y, 0.01f);
-        ImGui::DragFloat("modelRotateZ", &modelRotate.z, 0.01f);
-        ImGui::Separator();
-        ImGui::Text("Shadowmap");
-        ImGui::Checkbox("drawShadowmap", &drawShadowmap);
-        ImGui::Checkbox("drawFrustum", &drawFrustum);
-        ImGui::Checkbox("drawAABB", &drawAABB);
-        ImGui::Checkbox("showCascade", &terrain->showCascade);
-        ImGui::DragFloat("quadScale", &quadScale, 0.1f);
-        ImGui::DragFloat("splitWeight", &shadowManager->m_splitWeight, 0.01f);
-        ImGui::DragFloat("bias", &bias, 0.001f);
-        ImGui::DragFloat("terrainBias0", &terrain->shadowBias.x, 0.001f);
-        ImGui::DragFloat("terrainBias1", &terrain->shadowBias.y, 0.001f);
-        ImGui::DragFloat("terrainBias2", &terrain->shadowBias.z, 0.001f);
-        ImGui::Separator();
-        ImGui::Text("Light");
-        ImGui::DragFloat("X", &shadowManager->m_lightPos.x, 0.01f);
-        ImGui::DragFloat("Y", &shadowManager->m_lightPos.y, 0.01f);
-        ImGui::DragFloat("Z", &shadowManager->m_lightPos.z, 0.01f);
-        ImGui::Text("Light - look at");
-        ImGui::DragFloat("llaX", &shadowManager->m_lightLookAt.x, 0.01f);
-        ImGui::DragFloat("llaY", &shadowManager->m_lightLookAt.y, 0.01);
-        ImGui::DragFloat("llaZ", &shadowManager->m_lightLookAt.z, 0.01);
-        ImGui::Separator();
-        ImGui::DragFloat("power", &lightPower, 0.1);
-        ImGui::DragFloat("radius", &radius, 0.1);
-        ImGui::DragFloat("speed", &speed, 0.01);
-        ImGui::ColorEdit3("lightColor", lightColor);
-        ImGui::ColorEdit3("ambientColor", ambientColor);
-        ImGui::ColorEdit3("specularColor", specularColor);
-        ImGui::Separator();
-        ImGui::Text("Post process");
-        ImGui::DragFloat("exposure", &postProcess->m_exposure, 0.001);
-        ImGui::Separator();
-        ImGui::Text("Vehicle");
-        ImGui::Text("gVehicleSteering = %f", vehicle->gVehicleSteering);
-        ImGui::DragFloat("steeringClamp", &vehicle->steeringClamp, 0.1f);
-        ImGui::DragFloat("maxEngineForce", &vehicle->maxEngineForce, 2.0f);
-        ImGui::DragFloat("accelerationVelocity", &vehicle->accelerationVelocity, 2.0f);
-        ImGui::DragFloat("decreaseVelocity", &vehicle->decreaseVelocity, 2.0f);
-        ImGui::DragFloat("breakingVelocity", &vehicle->breakingVelocity, 2.0f);
-        ImGui::DragFloat("steeringIncrement", &vehicle->steeringIncrement, 0.2f);
-        ImGui::DragFloat("steeringVelocity", &vehicle->steeringVelocity, 10.0f);
-        if (ImGui::DragFloat("lowerLimit", &vehicle->lowerLimit, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheels[i]->setLimit(2, vehicle->lowerLimit, vehicle->upperLimit);
-            }
-        }
-        if (ImGui::DragFloat("upperLimit", &vehicle->upperLimit, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheels[i]->setLimit(2, vehicle->lowerLimit, vehicle->upperLimit);
-            }
-        }
-        if (ImGui::DragFloat("wheel damping", &vehicle->damping, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheelBodies[i]->setDamping(vehicle->damping, vehicle->damping);
-            }
-        }
-        if (ImGui::DragFloat("wheel friction", &vehicle->friction, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheelBodies[i]->setFriction(vehicle->friction);
-            }
-        }
-        if (ImGui::DragFloat("wheel stifness", &vehicle->stifness, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheels[i]->setStiffness(2, vehicle->stifness);
-            }
-        }
-        if (ImGui::DragFloat("wheel damping", &vehicle->wheelDamping, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheels[i]->setDamping(2, vehicle->wheelDamping);
-            }
-        }
-        if (ImGui::DragFloat("wheel bounce", &vehicle->bounce, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheels[i]->setBounce(2, vehicle->bounce);
-            }
-        }
-        float restitution = vehicle->wheelBodies[0]->getRestitution();
-        if (ImGui::DragFloat("wheel restitution", &restitution, 0.1f))
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                vehicle->wheelBodies[i]->setRestitution(restitution);
-            }
-        }
-        float mass = vehicle->m_carChassis->getMass();
-        if (ImGui::DragFloat("mass", &mass, 1.0f, 1, 10000))
-        {
-            btVector3 interia;
-            vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
-            vehicle->m_carChassis->setMassProps(mass, interia);
-        }
-        ImGui::Separator();
-        ImGui::Text("Audio");
-        ALint state = soundEngine->getSourceState(soundSource);
-        if (state == AL_PLAYING)
-        {
-            if (ImGui::Button("state: playing"))
-            {
-                soundEngine->pauseSource(soundSource);
-            }
-        }
-        else if (state == AL_PAUSED)
-        {
-            if (ImGui::Button("state: paused"))
-            {
-                soundEngine->playSource(soundSource);
-            }
-        }
-        else if (state == AL_STOPPED)
-        {
-            if (ImGui::Button("state: stopped"))
-            {
-                soundEngine->playSource(soundSource);
-            }
-        }
-        else
-        {
-            ImGui::Text("state: unknown");
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("reset"))
-        {
-            soundEngine->setSourceGain(soundSource, 1.0f);
-            soundEngine->setSourcePitch(soundSource, 1.0f);
-        }
-        ALfloat gain = soundEngine->getSourceGain(soundSource);
-        if (ImGui::SliderFloat("gain", &gain, 0.0f, 1.0f, "%.3f"))
-        {
-            soundEngine->setSourceGain(soundSource, gain);
-        }
-        ALfloat pitch = soundEngine->getSourcePitch(soundSource);
-        if (ImGui::SliderFloat("pitch", &pitch, 0.5f, 2.0f, "%.3f"))
-        {
-            soundEngine->setSourcePitch(soundSource, pitch);
-        }
-        ALint looping = soundEngine->getSourceLooping(soundSource);
-        bool isLooping = looping == AL_TRUE;
-        if (ImGui::Checkbox("looping", &isLooping))
-        {
-            soundEngine->setSourceLooping(soundSource, looping ? AL_FALSE : AL_TRUE);
-        }
-        ImGui::Separator();
-        ImGui::Text("Physics");
-        bool debugEnabled = debugDrawer->getDebugMode();
-        if (ImGui::Checkbox("wireframe", &debugEnabled))
-        {
-            debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawWireframe : btIDebugDraw::DBG_NoDebug);
-        }
-        int lines = debugDrawer->getLines().size();
-        ImGui::DragInt("lines", &lines);
-        ImGui::Separator();
-        ImGui::Text("Character");
-        ImGui::Text("m_moveDir: (%.1f, %.1f)", characterController->m_moveDir.x, characterController->m_moveDir.z);
-        ImGui::Text("m_moving: %d", characterController->m_moving);
-        ImGui::Text("m_jumping: %d", characterController->m_jumping);
-        ImGui::Text("m_falling: %d", characterController->m_falling);
-        ImGui::Text("m_onGround: %d", characterController->m_onGround);
-        ImGui::Text("m_running: %d", characterController->m_running);
-        ImGui::Text("m_turning: %d", characterController->m_turning);
-        ImGui::Text("m_turnFactor: %.2f", characterController->m_turnFactor);
-        btVector3 linearVelocity = characterBody->getLinearVelocity();
-        btVector3 angularVelocity = characterBody->getAngularVelocity();
-        ImGui::Text("linearVelocity: (%.1f, %.1f, %.1f)", linearVelocity.getX(), linearVelocity.getY(), linearVelocity.getZ());
-        ImGui::Text("angularVelocity: (%.1f, %.1f, %.1f)", angularVelocity.getX(), angularVelocity.getY(), angularVelocity.getZ());
-        ImGui::Text("linearSpeed: %.1f", linearVelocity.distance(btVector3(0, 0, 0)));
-        ImGui::Text("m_speed: %.3f", characterController->m_speed);
-        ImGui::Text("m_elevationDistance: %.3f", characterController->m_elevationDistance);
-        ImGui::Text("m_speedAtJumpStart: %.3f", characterController->m_speedAtJumpStart);
-        ImGui::DragFloat("m_moveForce", &characterController->m_moveForce, 0.1f, 0);
-        ImGui::DragFloat("m_jumpForce", &characterController->m_jumpForce, 0.1f, 0);
-        ImGui::DragFloat("m_turnForce", &characterController->m_turnForce, 0.001f, 0);
-        ImGui::DragFloat("m_maxWalkSpeed", &characterController->m_maxWalkSpeed, 0.1f, 0);
-        ImGui::DragFloat("m_maxRunSpeed", &characterController->m_maxRunSpeed, 0.1f, 0);
-        ImGui::DragFloat("m_toIdleForce", &characterController->m_toIdleForce, 0.1f, 0);
-        ImGui::DragFloat("m_toIdleForceHoriz", &characterController->m_toIdleForceHoriz, 0.1f, 0);
-        ImGui::DragFloat("m_groundTreshold", &characterController->m_groundTreshold, 0.1f, 0);
-        ImGui::DragFloat("m_turnTreshold", &characterController->m_turnTreshold, 0.001f, 0);
-        ImGui::DragFloat("m_walkToRunAnimTreshold", &characterController->m_walkToRunAnimTreshold, 0.1f, 0);
-        ImGui::DragFloat("m_turnAnimForce", &characterController->m_turnAnimForce, 0.01f, 0);
-        ImGui::DragFloat("m_turnAnimMaxFactor", &characterController->m_turnAnimMaxFactor, 0.1f, 0);
-        float gravityY = characterBody->getGravity().getY();
-        if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
-        {
-            characterBody->setGravity(btVector3(0, gravityY, 0));
-        }
-        float sX = characterBody->getWorldTransform().getOrigin().getX();
-        float sY = characterBody->getWorldTransform().getOrigin().getY();
-        float sZ = characterBody->getWorldTransform().getOrigin().getZ();
-        if (ImGui::DragFloat("sX", &sX, 0.1f))
-        {
-            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            characterBody->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        if (ImGui::DragFloat("sY", &sY, 0.1))
-        {
-            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            characterBody->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        if (ImGui::DragFloat("sZ", &sZ, 0.1))
-        {
-            characterBody->getWorldTransform().setOrigin(btVector3(sX, sY, sZ));
-            characterBody->setLinearVelocity(btVector3(0, 0, 0));
-        }
-        float characterMass = characterBody->getMass();
-        if (ImGui::DragFloat("characterMass", &characterMass, 0.1))
-        {
-            btVector3 interia;
-            characterBody->getCollisionShape()->calculateLocalInertia(characterMass, interia);
-            characterBody->setMassProps(characterMass, interia);
-        }
-        float friction = characterBody->getFriction();
-        if (ImGui::DragFloat("friction", &friction, 0.1))
-        {
-            characterBody->setFriction(friction);
-        }
-        float linearDamping = characterBody->getLinearDamping();
-        float angularDamping = characterBody->getLinearDamping();
-        if (ImGui::DragFloat("linearDamping", &linearDamping, 0.1))
-        {
-            characterBody->setDamping(linearDamping, angularDamping);
-        }
-        if (ImGui::DragFloat("angularDamping", &angularDamping, 0.1))
-        {
-            characterBody->setDamping(linearDamping, angularDamping);
-        }
-        ImGui::Separator();
-        ImGui::Text("Terrain");
-        ImGui::Checkbox("wirewrame", &terrain->wireframe);
-        ImGui::DragInt("level", &terrain->level);
-        if (ImGui::DragFloat("scaleHoriz", &terrain->m_scaleHoriz, 0.05f))
-        {
-            terrain->updateHorizontalScale();
-        }
-        if (ImGui::DragFloat("minHeight", &terrain->m_minHeight, 1.0f))
-        {
-            terrain->updateHorizontalScale();
-        }
-        if (ImGui::DragFloat("maxHeight", &terrain->m_maxHeight, 1.0f))
-        {
-            terrain->updateHorizontalScale();
-        }
-        ImGui::DragFloat("fogMaxDist", &terrain->fogMaxDist, 100.0f);
-        ImGui::DragFloat("fogMinDist", &terrain->fogMinDist, 100.0f);
-        ImGui::ColorEdit4("fogColor", &terrain->fogColor[0]);
-        ImGui::DragFloat("ambientMult", &terrain->ambientMult, 0.01f);
-        ImGui::DragFloat("diffuseMult", &terrain->diffuseMult, 0.01f);
-        ImGui::DragFloat("specularMult", &terrain->specularMult, 0.01f);
-        ImGui::DragFloat("terrainCenter-X", &terrain->terrainCenter.x, 1.0f);
-        ImGui::DragFloat("terrainCenter-Z", &terrain->terrainCenter.z, 1.0);
-        ImGui::DragFloat("uvOffset-X", &terrain->uvOffset.x, 0.001f);
-        ImGui::DragFloat("uvOffset-Y", &terrain->uvOffset.y, 0.001);
-        ImGui::DragInt("grassTileSize", &terrain->m_grassTileSize, 1, 0, 128);
-        ImGui::DragFloat("grassDensity", &terrain->m_grassDensity, 0.01, 0, 10);
-        ImGui::DragInt("stoneTileSize", &terrain->m_stoneTileSize, 1, 0, 128);
-        ImGui::DragFloat("stoneDensity", &terrain->m_stoneDensity, 0.01, 0, 10);
-        ImGui::DragFloat("windIntensity", &terrain->m_windIntensity, 0.2, 0, 50);
-        float trestitution = terrain->terrainBody->getRestitution();
-        if (ImGui::DragFloat("terrain restitution", &trestitution, 0.1f))
-        {
-            terrain->terrainBody->setRestitution(trestitution);
-        }
-    }
-    ImGui::End();
+        editorCamera->firstMove = true;
 }
 
 void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
@@ -719,6 +260,8 @@ int main(int argc, char **argv)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
+    task_basic_info t_info;
+
     // Init OpenAL
     SoundEngine soundEngine;
 
@@ -742,7 +285,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    soundEngine.setSourcePosition(soundSource, modelPosition.x, modelPosition.y, modelPosition.z);
     // soundEngine.playSource(soundSource);
 
     // Init Physics
@@ -771,6 +313,11 @@ int main(int argc, char **argv)
     // Model spherePBR("../src/assets/spaceship/sphere.obj");
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
+
+    // TODO: transformation struct
+    glm::vec3 modelPosition = glm::vec3(200.0f, 10.5f, 200.0f);
+    glm::vec3 modelRotate = glm::vec3(0.0f, 0.0f, 0.0f);
+    float modelScale = 2.0;
 
     // Animation
     // TODO: single aiScene read
@@ -905,10 +452,38 @@ int main(int argc, char **argv)
     // pbrManager.setupPrefilterMap(cube, prefilterShader);
     // pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
 
+    float albedo[3] = {0.5f, 0.0f, 0.0f};
+    float ao = 1.0;
+    glm::vec3 lightPositions[] = {glm::vec3(0.0f, 0.0f, 10.0f)};
+    glm::vec3 lightColors[] = {glm::vec3(350.0f, 410.0f, 458.0f)};
+
+    // UI
+    RootUI rootUI;
+    SystemMonitorUI systemMonitorUI(&t_info);
+    CharacterUI characterUI(&characterController, characterBody);
+    RagdollUI ragdollUI(&ragdoll, &characterController, &editorCamera);
+    AnimationUI animationUI(&animator);
+    ShadowmapUI shadowmapUI(&shadowManager);
+    SoundUI soundUI(&soundEngine, &soundSource);
+    VehicleUI vehicleUI(&vehicle);
+    CameraUI cameraUI(&editorCamera);
+    TerrainUI terrainUI(&terrain);
+    TempUI tempUI(&postProcess, &debugDrawer, initShaders);
+    rootUI.m_uiList.push_back(&systemMonitorUI);
+    rootUI.m_uiList.push_back(&characterUI);
+    rootUI.m_uiList.push_back(&ragdollUI);
+    rootUI.m_uiList.push_back(&animationUI);
+    rootUI.m_uiList.push_back(&shadowmapUI);
+    rootUI.m_uiList.push_back(&soundUI);
+    rootUI.m_uiList.push_back(&vehicleUI);
+    rootUI.m_uiList.push_back(&cameraUI);
+    rootUI.m_uiList.push_back(&terrainUI);
+    rootUI.m_uiList.push_back(&tempUI);
+
     while (!glfwWindowShouldClose(window))
     {
         // System monitor
-        refreshSystemMonitor();
+        refreshSystemMonitor(t_info);
 
         // Calculate deltaTime
         float currentFrame = (float)glfwGetTime();
@@ -928,7 +503,7 @@ int main(int argc, char **argv)
         if (characterController.m_ragdollActive)
             ragdoll.syncToAnimation(modelPosition);
 
-        animator.m_state.poses[2].blendFactor += deltaTime * stateChangeSpeed * (characterController.m_ragdollActive ? 1.f : -1.f);
+        animator.m_state.poses[2].blendFactor += deltaTime * characterController.m_stateChangeSpeed * (characterController.m_ragdollActive ? 1.f : -1.f);
         float clamped = std::max(0.0f, std::min(animator.m_state.poses[2].blendFactor, 1.0f));
         animator.m_state.poses[2].blendFactor = clamped;
 
@@ -986,22 +561,22 @@ int main(int argc, char **argv)
         }
 
         // Vehicle
-        if (followVehicle && vehicle.m_carChassis && vehicle.m_carChassis->getMotionState())
+        if (editorCamera.followVehicle && vehicle.m_carChassis && vehicle.m_carChassis->getMotionState())
         {
             vehicle.update(window, deltaTime);
             btTransform trans;
             vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
             glm::vec3 vehiclePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-            editorCamera.position = vehiclePosition - editorCamera.front * glm::vec3(followDistance) + followOffset;
+            editorCamera.position = vehiclePosition - editorCamera.front * glm::vec3(editorCamera.followDistance) + editorCamera.followOffset;
         }
 
         // Character
         characterController.updateRagdollAction(&ragdoll, modelPosition, modelRotate, window, deltaTime);
         // TODO: split input control and others for npc
-        if (controlCharacter)
+        if (editorCamera.controlCharacter)
             characterController.update(window, deltaTime);
-        if (followCharacter)
-            editorCamera.position = modelPosition - editorCamera.front * glm::vec3(followDistance) + followOffset;
+        if (editorCamera.followCharacter)
+            editorCamera.position = modelPosition - editorCamera.front * glm::vec3(editorCamera.followDistance) + editorCamera.followOffset;
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -1070,7 +645,7 @@ int main(int argc, char **argv)
             cube.draw(depthShader);
 
             // ground
-            position = groundPos;
+            position = glm::vec3(0, 0, 0.75);
             scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
@@ -1142,8 +717,8 @@ int main(int argc, char **argv)
             animShader.setMat4("projection", projection);
             animShader.setMat4("view", editorCamera.getViewMatrix());
             animShader.setVec3("lightDir", shadowManager.m_lightPos);
-            animShader.setVec3("lightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
-            animShader.setFloat("lightPower", lightPower);
+            animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
+            animShader.setFloat("lightPower", tempUI.m_lightPower);
 
             auto transforms = animator.m_FinalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
@@ -1164,8 +739,8 @@ int main(int argc, char **argv)
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
-        terrain.drawColor(terrainShader, shadowManager.m_lightPos, glm::vec3(lightColor[0], lightColor[1], lightColor[2]),
-                          lightPower,
+        terrain.drawColor(terrainShader, shadowManager.m_lightPos, glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]),
+                          tempUI.m_lightPower,
                           editorCamera.getViewMatrix(), projection,
                           shadowmapManager.m_textureArray,
                           editorCamera.position, editorCamera.front,
@@ -1181,12 +756,12 @@ int main(int argc, char **argv)
             glm::vec3 objectColor(0.6f, 0.6f, 0.6f);
 
             simpleShadow.use();
-            simpleShadow.setFloat("biasMult", bias);
-            simpleShadow.setVec3("AmbientColor", glm::vec3(ambientColor[0], ambientColor[1], ambientColor[2]));
+            simpleShadow.setFloat("biasMult", shadowManager.m_bias);
+            simpleShadow.setVec3("AmbientColor", glm::vec3(tempUI.m_ambientColor[0], tempUI.m_ambientColor[1], tempUI.m_ambientColor[2]));
             simpleShadow.setVec3("DiffuseColor", objectColor);
-            simpleShadow.setVec3("SpecularColor", glm::vec3(specularColor[0], specularColor[1], specularColor[2]));
-            simpleShadow.setVec3("LightColor", glm::vec3(lightColor[0], lightColor[1], lightColor[2]));
-            simpleShadow.setFloat("LightPower", lightPower);
+            simpleShadow.setVec3("SpecularColor", glm::vec3(tempUI.m_specularColor[0], tempUI.m_specularColor[1], tempUI.m_specularColor[2]));
+            simpleShadow.setVec3("LightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
+            simpleShadow.setFloat("LightPower", tempUI.m_lightPower);
             simpleShadow.setVec3("CamPos", shadowManager.m_camera->position);
             simpleShadow.setVec3("CamView", shadowManager.m_camera->front);
             simpleShadow.setVec4("FrustumDistances", frustumDistances);
@@ -1217,7 +792,7 @@ int main(int argc, char **argv)
             cube.draw(simpleShadow);
 
             // ground
-            position = groundPos;
+            position = glm::vec3(0, 0, 0.75);
             scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
@@ -1254,9 +829,9 @@ int main(int argc, char **argv)
         }
 
         // animate light source
-        lightPositions[0].x = radius * glm::sin(currentFrame * speed);
-        lightPositions[0].y = radius * glm::sin(currentFrame * (speed / 6)) + 20;
-        lightPositions[0].z = radius * glm::cos(currentFrame * speed) + 6;
+        lightPositions[0].x = tempUI.m_radius * glm::sin(currentFrame * tempUI.m_speed);
+        lightPositions[0].y = tempUI.m_radius * glm::sin(currentFrame * (tempUI.m_speed / 6)) + 20;
+        lightPositions[0].z = tempUI.m_radius * glm::cos(currentFrame * tempUI.m_speed) + 6;
 
         // draw pbr
         // TODO: toggle
@@ -1332,7 +907,7 @@ int main(int argc, char **argv)
         glm::mat4 mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
-        simpleShader.setVec4("DiffuseColor", glm::vec4(lightColor[0], lightColor[1], lightColor[2], 1.0f));
+        simpleShader.setVec4("DiffuseColor", glm::vec4(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2], 1.0f));
         sphere.draw(simpleShader);
 
         // Draw physics debug lines
@@ -1389,7 +964,7 @@ int main(int argc, char **argv)
         glBindVertexArray(0);
 
         // Draw frustum
-        for (int i = 0; drawFrustum && i < shadowManager.m_splitCount; i++)
+        for (int i = 0; shadowmapUI.m_drawFrustum && i < shadowManager.m_splitCount; i++)
         {
             GLuint indices[] = {
                 // Near plane
@@ -1421,7 +996,7 @@ int main(int argc, char **argv)
         }
 
         // Draw light AABB
-        for (int i = 0; drawAABB && i < shadowManager.m_splitCount; i++)
+        for (int i = 0; shadowmapUI.m_drawAABB && i < shadowManager.m_splitCount; i++)
         {
             // Define indices
             GLuint indices[] = {
@@ -1482,7 +1057,7 @@ int main(int argc, char **argv)
         {
             postProcessShader.use();
             postProcessShader.setVec2("screenSize", glm::vec2((float)screenWidth, (float)screenHeight));
-            postProcessShader.setFloat("blurOffset", blurOffset);
+            // postProcessShader.setFloat("blurOffset", blurOffset);
             postProcessShader.setFloat("exposure", postProcess.m_exposure);
 
             glActiveTexture(GL_TEXTURE0);
@@ -1495,7 +1070,7 @@ int main(int argc, char **argv)
         }
 
         // Draw shadowmap
-        if (drawShadowmap)
+        if (shadowmapUI.m_drawShadowmap)
         {
             textureArrayShader.use();
 
@@ -1505,7 +1080,7 @@ int main(int argc, char **argv)
 
             for (int i = 0; i < shadowManager.m_splitCount; i++)
             {
-                if (!drawShadowmap)
+                if (!shadowmapUI.m_drawShadowmap)
                     break;
                 glm::mat4 model = glm::mat4(1.0f);
 
@@ -1516,7 +1091,7 @@ int main(int argc, char **argv)
                 glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
 
                 float aspectRatio = (float)screenWidth / screenHeight;
-                glm::vec3 scale = glm::vec3(quadScale / aspectRatio, quadScale, 1.0f);
+                glm::vec3 scale = glm::vec3(shadowmapUI.m_quadScale / aspectRatio, shadowmapUI.m_quadScale, 1.0f);
 
                 float posX = 1.0f - scale.x * ((i + 0.5) * 2);
                 float posY = -1.0f + scale.y;
@@ -1535,12 +1110,7 @@ int main(int argc, char **argv)
         }
 
         // Render UI
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        showOverlay(&ragdoll, &characterController, &animator, characterBody, &postProcess, &shadowManager, &editorCamera, &vehicle, &soundEngine, &terrain, &debugDrawer, soundSource, deltaTime, &show_overlay);
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        rootUI.render();
 
         // Swap buffers
         glfwSwapBuffers(window);

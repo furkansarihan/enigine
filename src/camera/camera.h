@@ -62,6 +62,19 @@ public:
     // Camera options
     float movementSpeed;
     float mouseSensitivity;
+    // Move
+    bool firstMove = true;
+    float lastX;
+    float lastY;
+
+    // TODO: PlayerCamera
+    bool firstPerson = false;
+    bool followVehicle = false;
+    bool followCharacter = true;
+    bool controlCharacter = true;
+    float followDistance = 8.0f;
+    glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
+
     // Functions
     glm::mat4 getViewMatrix();
     glm::mat4 getProjectionMatrix(float width, float height);

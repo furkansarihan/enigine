@@ -56,6 +56,30 @@ add_executable( enigine
                 src/character_controller/character_controller.cpp
                 src/ragdoll/ragdoll.h
                 src/ragdoll/ragdoll.cpp
+                # ui
+                src/ui/root_ui.h
+                src/ui/root_ui.cpp
+                src/ui/base_ui.h
+                src/ui/animation/animation_ui.h
+                src/ui/animation/animation_ui.cpp
+                src/ui/camera/camera_ui.h
+                src/ui/camera/camera_ui.cpp
+                src/ui/character/character_ui.h
+                src/ui/character/character_ui.cpp
+                src/ui/ragdoll/ragdoll_ui.h
+                src/ui/ragdoll/ragdoll_ui.cpp
+                src/ui/shadowmap/shadowmap_ui.h
+                src/ui/shadowmap/shadowmap_ui.cpp
+                src/ui/sound/sound_ui.h
+                src/ui/sound/sound_ui.cpp
+                src/ui/system_monitor/system_monitor_ui.h
+                src/ui/system_monitor/system_monitor_ui.cpp
+                src/ui/temp/temp_ui.h
+                src/ui/temp/temp_ui.cpp
+                src/ui/terrain/terrain_ui.h
+                src/ui/terrain/terrain_ui.cpp
+                src/ui/vehicle/vehicle_ui.h
+                src/ui/vehicle/vehicle_ui.cpp
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp

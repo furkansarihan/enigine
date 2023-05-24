@@ -33,6 +33,7 @@ public:
     float m_splitWeight = 0.75f;
     float m_near = 0.1f;
     float m_far = 200.0f;
+    float m_bias = 0.005f;
 
     std::vector<unsigned int> m_shaderIds;
 

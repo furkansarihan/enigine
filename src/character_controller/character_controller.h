@@ -58,6 +58,7 @@ public:
     bool m_ragdollActive = false;
     bool m_activateKeyPressed = false;
     float m_impulseStrength = 600.f;
+    float m_stateChangeSpeed = 10.f;
 
     CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();
