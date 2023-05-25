@@ -8,9 +8,9 @@ void RagdollUI::render()
     ImGui::Checkbox("floatObject", &m_floatObject);
     ImGui::Checkbox("activateObject", &m_activateObject);
     ImGui::DragInt("floatIndex", &m_floatIndex, 1, 0, BODYPART_COUNT - 1);
-    ImGui::DragFloat("stateChangeSpeed", &m_characterController->m_stateChangeSpeed, 0.1f);
-    ImGui::DragFloat("impulseStrength", &m_characterController->m_impulseStrength, 0.1f);
-    btRigidBody *rb = m_ragdoll->m_bodies[m_floatIndex];
+    ImGui::DragFloat("stateChangeSpeed", &m_character->m_stateChangeSpeed, 0.1f);
+    ImGui::DragFloat("impulseStrength", &m_character->m_impulseStrength, 0.1f);
+    btRigidBody *rb = m_character->m_ragdoll->m_bodies[m_floatIndex];
     float cX = rb->getWorldTransform().getOrigin().getX();
     float cY = rb->getWorldTransform().getOrigin().getY();
     float cZ = rb->getWorldTransform().getOrigin().getZ();

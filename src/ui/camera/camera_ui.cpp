@@ -15,20 +15,6 @@ void CameraUI::render()
     ImGui::DragFloat("scaleOrtho", &m_camera->scaleOrtho, 0.1f);
     // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
     ImGui::Checkbox("followVehicle", &m_camera->followVehicle);
-    // TODO: change camera min pitch
-    if (ImGui::Checkbox("firstPerson", &m_camera->firstPerson))
-    {
-        if (m_camera->firstPerson)
-        {
-            m_camera->followDistance = -1.0f;
-            m_camera->followOffset.y = 3.3f;
-        }
-        else
-        {
-            m_camera->followDistance = 10.0f;
-            m_camera->followOffset.y = 1.5f;
-        }
-    }
     if (ImGui::RadioButton("perspective", m_camera->projectionMode == ProjectionMode::Perspective))
     {
         m_camera->projectionMode = ProjectionMode::Perspective;

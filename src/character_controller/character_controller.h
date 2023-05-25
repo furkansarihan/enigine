@@ -60,19 +60,12 @@ public:
 
     glm::vec3 m_moveDir = glm::vec3(0.0f, 0.0f, 1.0f); // Z
 
-    // ragdoll
-    bool m_ragdollActive = false;
-    bool m_activateKeyPressed = false;
-    float m_impulseStrength = 600.f;
-    float m_stateChangeSpeed = 10.f;
-
     CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();
     void recieveInput(GLFWwindow *window, float deltaTime);
     void update(float deltaTime);
     void updateElevation();
     void updateVelocity();
-    void updateRagdollAction(Ragdoll *ragdoll, glm::vec3 &modelPosition, glm::vec3 &modelRotate, GLFWwindow *window, float deltaTime);
 };
 
 #endif /* character_controller_hpp */

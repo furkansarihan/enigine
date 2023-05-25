@@ -2,20 +2,18 @@
 #define ragdoll_ui_hpp
 
 #include "../base_ui.h"
-#include "../../character_controller/character_controller.h"
+#include "../../character/character.h"
 #include "../../ragdoll/ragdoll.h"
 
 class RagdollUI : public BaseUI
 {
 private:
-    Ragdoll *m_ragdoll;
-    CharacterController *m_characterController;
+    Character *m_character;
     Camera *m_camera;
 
 public:
-    RagdollUI(Ragdoll *ragdoll, CharacterController *characterController, Camera *camera)
-        : m_ragdoll(ragdoll),
-          m_characterController(characterController),
+    RagdollUI(Character *character, Camera *camera)
+        : m_character(character),
           m_camera(camera)
     {
     }

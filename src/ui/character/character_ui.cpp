@@ -5,6 +5,20 @@ void CharacterUI::render()
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    // TODO: change camera min pitch
+    if (ImGui::Checkbox("m_firstPerson", &m_character->m_firstPerson))
+    {
+        if (m_character->m_firstPerson)
+        {
+            m_character->m_followDistance = -1.0f;
+            m_character->m_followOffset.y = 3.3f;
+        }
+        else
+        {
+            m_character->m_followDistance = 10.0f;
+            m_character->m_followOffset.y = 1.5f;
+        }
+    }
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
     ImGui::DragFloat("m_followDistance", &m_character->m_followDistance, 0.1f);

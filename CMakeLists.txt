@@ -63,6 +63,8 @@ add_executable( enigine
                 src/character/character.cpp
                 src/character/playable_character.h
                 src/character/playable_character.cpp
+                src/character/np_character.h
+                src/character/np_character.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

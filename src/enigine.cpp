@@ -34,6 +34,7 @@
 #include "shader_manager/shader_manager.h"
 #include "character/character.h"
 #include "character/playable_character.h"
+#include "character/np_character.h"
 
 int main(int argc, char **argv)
 {
@@ -157,9 +158,16 @@ int main(int argc, char **argv)
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
 
-    // Character
+    // Characters
+    NPCharacter npc1(&shaderManager, &physicsWorld, &editorCamera);
     PCharacter character(&shaderManager, &physicsWorld, &editorCamera);
-    editorCamera.position += character.m_position;
+
+    std::vector<Character *> characters;
+    characters.push_back(&character);
+    characters.push_back(&npc1);
+
+    npc1.m_avoidAimList.push_back(&character);
+    character.m_npcList.push_back(&npc1);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -226,7 +234,7 @@ int main(int argc, char **argv)
     RootUI rootUI;
     SystemMonitorUI systemMonitorUI(&t_info);
     CharacterUI characterUI(&character, character.m_controller, character.m_rigidbody);
-    RagdollUI ragdollUI(character.m_ragdoll, character.m_controller, &editorCamera);
+    RagdollUI ragdollUI(&character, &editorCamera);
     AnimationUI animationUI(character.m_animator);
     ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager, &editorCamera);
     SoundUI soundUI(&soundEngine, &soundSource);
@@ -263,6 +271,7 @@ int main(int argc, char **argv)
 
         // Update character
         character.update(window, deltaTime);
+        npc1.update(window, deltaTime);
 
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 1);
@@ -427,7 +436,9 @@ int main(int argc, char **argv)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // animation
+        for (int i = 0; i < characters.size(); i++)
         {
+            Character *character = characters[i];
             animShader.use();
             animShader.setMat4("projection", projection);
             animShader.setMat4("view", editorCamera.getViewMatrix());
@@ -435,20 +446,20 @@ int main(int argc, char **argv)
             animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
             animShader.setFloat("lightPower", tempUI.m_lightPower);
 
-            auto transforms = character.m_animator->m_FinalBoneMatrices;
+            auto transforms = character->m_animator->m_FinalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
             {
                 animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
             }
 
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, character.m_position);
-            model = glm::rotate(model, character.m_rotation.x, glm::vec3(1, 0, 0));
-            model = glm::rotate(model, character.m_rotation.y * (1.0f - character.m_animator->m_state.poses[2].blendFactor), glm::vec3(0, 1, 0));
-            model = glm::rotate(model, character.m_rotation.z, glm::vec3(0, 0, 1));
-            model = glm::scale(model, glm::vec3(character.m_scale));
+            model = glm::translate(model, character->m_position);
+            model = glm::rotate(model, character->m_rotation.x, glm::vec3(1, 0, 0));
+            model = glm::rotate(model, character->m_rotation.y * (1.0f - character->m_animator->m_state.poses[2].blendFactor), glm::vec3(0, 1, 0));
+            model = glm::rotate(model, character->m_rotation.z, glm::vec3(0, 0, 1));
+            model = glm::scale(model, glm::vec3(character->m_scale));
             animShader.setMat4("model", model);
-            character.m_model->draw(animShader);
+            character->m_model->draw(animShader);
         }
 
         // Render scene

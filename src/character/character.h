@@ -5,7 +5,10 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <vector>
+
 #include <glm/gtx/rotate_vector.hpp>
+#include "btBulletDynamicsCommon.h"
 
 #include "../camera/camera.h"
 #include "../model/model.h"
@@ -15,9 +18,6 @@
 #include "../utils/common.h"
 #include "../utils/bullet_glm.h"
 #include "../shader_manager/shader_manager.h"
-
-#include <GLFW/glfw3.h>
-#include "btBulletDynamicsCommon.h"
 
 class Character
 {
@@ -36,10 +36,17 @@ public:
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     float m_scale = 2.0;
 
+    // ragdoll
+    bool m_ragdollActive = false;
+    float m_impulseStrength = 600.f;
+    float m_stateChangeSpeed = 10.f;
+
     Character(ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);
+    void activateRagdoll(glm::vec3 impulseDirection, float impulseStrength);
+    void resetRagdoll();
 };
 
 #endif /* character_hpp */
