@@ -31,7 +31,6 @@ void Character::init()
     animations.push_back(animationRagdoll);
 
     // TODO: setup multiple animators from same Model
-    // TODO: chain animator for ragdoll and character controller
     m_animator = new Animator(animations);
 
     // idle - walk

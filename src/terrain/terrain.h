@@ -46,8 +46,8 @@ public:
 
     int m_grassTileSize = 12;
     float m_grassDensity = 2;
-    int m_stoneTileSize = 30;
-    float m_stoneDensity = 0.05;
+    int m_stoneTileSize = 56;
+    float m_stoneDensity = 0.02;
     float m_windIntensity = 6.0;
 
     float ambientMult = 0.5f;

@@ -14,6 +14,7 @@ Model::Model(std::string const &path)
 
 Model::~Model()
 {
+    // TODO: destruction
 }
 
 void Model::draw(Shader shader)

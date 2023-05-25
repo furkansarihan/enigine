@@ -90,6 +90,7 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
     m_BoneInfoMap = boneInfoMap;
 }
 
+// TODO: only read bones?
 void Animation::readHierarchy(AssimpNodeData &dest, const aiNode *src)
 {
     assert(src);

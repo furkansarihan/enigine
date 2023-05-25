@@ -640,6 +640,7 @@ void Terrain::drawInstance(Shader instanceShader, Model *model, int tileSize, fl
     float x = roundUpf(viewPos.x, mult);
     float z = roundUpf(viewPos.z, mult);
 
+    // TODO: variable level
     glm::vec2 positions[] = {
         // level 1
         glm::vec2(x, z) + topLeft1,
@@ -752,6 +753,7 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
 
 bool Terrain::inFrustum(glm::vec2 topLeft, glm::vec2 topRight, glm::vec2 bottomLeft, glm::vec2 bottomRight, glm::vec3 viewPos, bool ortho)
 {
+    // TODO: min, max height from low res pre calculated chunks array
     glm::vec3 corners[] = {
         glm::vec3(topLeft.x, m_minHeight, topLeft.y),
         glm::vec3(topRight.x, m_minHeight, topRight.y),

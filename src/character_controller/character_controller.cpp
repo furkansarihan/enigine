@@ -218,6 +218,7 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     }
 }
 
+// TODO: does not belong here
 void CharacterController::updateRagdollAction(Ragdoll *ragdoll, glm::vec3 &modelPosition, glm::vec3 &modelRotate, GLFWwindow *window, float deltaTime)
 {
     if (glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS && !m_activateKeyPressed)

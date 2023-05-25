@@ -10,6 +10,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include "external/imgui/imgui.h"
+#include "external/stb_image/stb_image.h"
 
 #include "shader/shader.h"
 #include "file_manager/file_manager.h"
@@ -32,8 +33,6 @@
 #include "ui/root_ui.h"
 #include "shader_manager/shader_manager.h"
 #include "character/character.h"
-
-#include "external/stb_image/stb_image.h"
 
 int main(int argc, char **argv)
 {
@@ -121,16 +120,6 @@ int main(int argc, char **argv)
     debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
-    btRigidBody *groundBody = physicsWorld.createBox(0, btVector3(10.0f, 10.0f, 10.0f), btVector3(0, -10, 0));
-    // set ground bouncy
-    groundBody->setRestitution(0.5f);
-
-    // Physics debug drawer objects
-    unsigned int vbo, vao, ebo;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
     // Shaders
     ShaderManager shaderManager;
     Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader;
@@ -185,8 +174,6 @@ int main(int argc, char **argv)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    bool show_overlay = false;
-
     // Vehicle
     Vehicle vehicle(&physicsWorld, btVector3(character.m_position.x + 40, 5, character.m_position.z + 40));
     glfwSetWindowUserPointer(window, &vehicle);
@@ -213,17 +200,11 @@ int main(int argc, char **argv)
     unsigned int q_vbo, q_vao, q_ebo;
     CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
 
-    // camera frustum
-    unsigned int c_vbo, c_vao, c_ebo;
-    glGenVertexArrays(1, &c_vao);
-    glGenBuffers(1, &c_vbo);
-    glGenBuffers(1, &c_ebo);
-
-    // light view frustum
-    unsigned int c_vbo_2, c_vao_2, c_ebo_2;
-    glGenVertexArrays(1, &c_vao_2);
-    glGenBuffers(1, &c_vbo_2);
-    glGenBuffers(1, &c_ebo_2);
+    // Debug draw objects
+    unsigned int vbo, vao, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
     // Post process
     PostProcess postProcess((float)screenWidth, (float)screenHeight);

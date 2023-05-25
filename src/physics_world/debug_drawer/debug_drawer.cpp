@@ -21,6 +21,9 @@ void DebugDrawer::drawLine(const btVector3 &from, const btVector3 &to, const btV
 // TODO: own shader with only lines
 void DebugDrawer::drawLines(Shader &lineShader, glm::mat4 mvp, unsigned int vbo, unsigned int vao, unsigned int ebo)
 {
+    if (this->lines.size() == 0)
+        return;
+
     std::vector<GLfloat> vertices;
     std::vector<GLuint> indices;
     unsigned int indexI = 0;
