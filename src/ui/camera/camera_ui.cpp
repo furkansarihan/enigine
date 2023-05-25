@@ -14,11 +14,7 @@ void CameraUI::render()
     ImGui::DragFloat("movementSpeed", &m_camera->movementSpeed, 10.0f);
     ImGui::DragFloat("scaleOrtho", &m_camera->scaleOrtho, 0.1f);
     // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
-    ImGui::DragFloat("followDistance", &m_camera->followDistance, 0.1f);
-    ImGui::DragFloat("followOffsetY", &m_camera->followOffset.y, 0.1f);
     ImGui::Checkbox("followVehicle", &m_camera->followVehicle);
-    ImGui::Checkbox("followCharacter", &m_camera->followCharacter);
-    ImGui::Checkbox("controlCharacter", &m_camera->controlCharacter);
     // TODO: change camera min pitch
     if (ImGui::Checkbox("firstPerson", &m_camera->firstPerson))
     {

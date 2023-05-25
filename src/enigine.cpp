@@ -33,6 +33,7 @@
 #include "ui/root_ui.h"
 #include "shader_manager/shader_manager.h"
 #include "character/character.h"
+#include "character/playable_character.h"
 
 int main(int argc, char **argv)
 {
@@ -157,7 +158,7 @@ int main(int argc, char **argv)
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
 
     // Character
-    Character character(&shaderManager, &physicsWorld, &editorCamera);
+    PCharacter character(&shaderManager, &physicsWorld, &editorCamera);
     editorCamera.position += character.m_position;
 
     // Time
@@ -224,7 +225,7 @@ int main(int argc, char **argv)
     // UI
     RootUI rootUI;
     SystemMonitorUI systemMonitorUI(&t_info);
-    CharacterUI characterUI(character.m_controller, character.m_rigidbody);
+    CharacterUI characterUI(&character, character.m_controller, character.m_rigidbody);
     RagdollUI ragdollUI(character.m_ragdoll, character.m_controller, &editorCamera);
     AnimationUI animationUI(character.m_animator);
     ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager, &editorCamera);
@@ -261,14 +262,7 @@ int main(int argc, char **argv)
         editorCamera.processInput(window, deltaTime);
 
         // Update character
-        character.update(deltaTime);
-        // TODO: split input control and others for npc
-        if (editorCamera.controlCharacter)
-            character.m_controller->update(window, deltaTime);
-        // TODO: move
-        character.m_controller->updateRagdollAction(character.m_ragdoll, character.m_position, character.m_rotation, window, deltaTime);
-        if (editorCamera.followCharacter)
-            editorCamera.position = character.m_position - editorCamera.front * glm::vec3(editorCamera.followDistance) + editorCamera.followOffset;
+        character.update(window, deltaTime);
 
         // Update Physics
         physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 1);

@@ -61,6 +61,8 @@ add_executable( enigine
                 src/shader_manager/shader_manager.cpp
                 src/character/character.h
                 src/character/character.cpp
+                src/character/playable_character.h
+                src/character/playable_character.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

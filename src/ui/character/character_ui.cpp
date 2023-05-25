@@ -5,6 +5,11 @@ void CharacterUI::render()
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
+    ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
+    ImGui::DragFloat("m_followDistance", &m_character->m_followDistance, 0.1f);
+    ImGui::DragFloat("m_followOffsetY", &m_character->m_followOffset.y, 0.1f);
+    ImGui::Separator();
     ImGui::Text("m_moveDir: (%.1f, %.1f)", m_controller->m_moveDir.x, m_controller->m_moveDir.z);
     ImGui::Text("m_moving: %d", m_controller->m_moving);
     ImGui::Text("m_jumping: %d", m_controller->m_jumping);

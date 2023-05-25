@@ -93,6 +93,9 @@ Character::~Character()
 
 void Character::update(float deltaTime)
 {
+    // update character
+    m_controller->update(deltaTime);
+
     // update ragdoll
     if (m_controller->m_ragdollActive)
         m_ragdoll->syncToAnimation(m_position);

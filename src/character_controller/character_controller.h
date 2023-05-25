@@ -10,8 +10,12 @@
 #include "../camera/camera.h"
 #include "../ragdoll/ragdoll.h"
 
-#include <GLFW/glfw3.h>
 #include "btBulletDynamicsCommon.h"
+
+struct ActionState
+{
+    bool left, right, forward, backward, run, jump;
+};
 
 class CharacterController
 {
@@ -45,6 +49,8 @@ public:
     btVector3 m_verticalVelocity;
     float m_verticalSpeed;
     float m_horizontalSpeed;
+
+    ActionState m_actionState;
     bool m_moving = false;
     bool m_onGround = false;
     bool m_falling = false;
@@ -62,7 +68,8 @@ public:
 
     CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();
-    void update(GLFWwindow *window, float deltaTime);
+    void recieveInput(GLFWwindow *window, float deltaTime);
+    void update(float deltaTime);
     void updateElevation();
     void updateVelocity();
     void updateRagdollAction(Ragdoll *ragdoll, glm::vec3 &modelPosition, glm::vec3 &modelRotate, GLFWwindow *window, float deltaTime);

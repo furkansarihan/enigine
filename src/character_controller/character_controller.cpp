@@ -43,8 +43,21 @@ void CharacterController::updateVelocity()
     m_horizontalSpeed = horizontalVelocity.distance(origin);
 }
 
-void CharacterController::update(GLFWwindow *window, float deltaTime)
+void CharacterController::recieveInput(GLFWwindow *window, float deltaTime)
 {
+    m_actionState.forward = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
+    m_actionState.backward = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
+    m_actionState.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+    m_actionState.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+    m_actionState.run = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+    m_actionState.jump = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+}
+
+void CharacterController::update(float deltaTime)
+{
+    if (m_ragdollActive)
+        return;
+
     float prevElevation = m_elevationDistance;
 
     this->updateElevation();
@@ -68,10 +81,10 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
         m_falling = false;
     }
 
-    m_running = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+    m_running = m_actionState.run;
 
     // jump
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && m_onGround && !m_jumping)
+    if (m_actionState.jump && m_onGround && !m_jumping)
     {
         m_jumping = true;
         m_speedAtJumpStart = m_verticalSpeed;
@@ -98,14 +111,14 @@ void CharacterController::update(GLFWwindow *window, float deltaTime)
     float frontForce = 0.0f;
     float rightForce = 0.0f;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (m_actionState.forward)
         frontForce += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (m_actionState.backward)
         frontForce -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        rightForce += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (m_actionState.left)
         rightForce -= 1.0f;
+    if (m_actionState.right)
+        rightForce += 1.0f;
 
     bool move = false;
     if (frontForce != 0.0f && !m_falling)

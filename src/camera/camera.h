@@ -70,8 +70,6 @@ public:
     // TODO: PlayerCamera
     bool firstPerson = false;
     bool followVehicle = false;
-    bool followCharacter = true;
-    bool controlCharacter = true;
     float followDistance = 8.0f;
     glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
 
