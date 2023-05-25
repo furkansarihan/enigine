@@ -59,6 +59,8 @@ add_executable( enigine
                 src/ragdoll/ragdoll.cpp
                 src/shader_manager/shader_manager.h
                 src/shader_manager/shader_manager.cpp
+                src/character/character.h
+                src/character/character.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp
