@@ -23,6 +23,7 @@ public:
     }
 
     void render() override;
+    void renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string name);
 };
 
 #endif /* character_ui_hpp */

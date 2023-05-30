@@ -16,11 +16,21 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     if (m_controlCharacter)
         m_controller->recieveInput(window, deltaTime);
     if (m_followCharacter)
-        m_followCamera->position = m_position - m_followCamera->front * glm::vec3(m_followDistance) + m_followOffset;
+    {
+        if (m_controller->m_onGround)
+            m_followHeightTarget = m_controller->m_worldElevation;
+        else
+            m_followHeightTarget = m_position.y;
+
+        m_followHeight = CommonUtil::lerp(m_followHeight, m_followHeightTarget, m_followHeightFactor);
+
+        glm::vec3 worldRef(m_position.x, m_followHeight, m_position.z);
+        m_followCamera->position = worldRef - m_followCamera->front * glm::vec3(m_followDistance) + m_followOffset;
+    }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
-        // 1 hit per seconds
+        // 1 hit per second
         float now = (float)glfwGetTime();
         if (now - m_lastFire > 1.0f)
         {
@@ -33,6 +43,16 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     {
         for (int i = 0; i < m_npcList.size(); i++)
             m_npcList[i]->resetRagdoll();
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    {
+        m_controller->m_turnLocked = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        m_controller->m_turnLocked = true;
     }
 }
 

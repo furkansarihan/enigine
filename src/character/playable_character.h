@@ -17,6 +17,10 @@ public:
     float m_followDistance = 8.0f;
     glm::vec3 m_followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
 
+    float m_followHeight = 0.f;
+    float m_followHeightTarget = 0.f;
+    float m_followHeightFactor = 0.1f;
+
     float m_lastFire;
 
     void update(GLFWwindow *window, float deltaTime);

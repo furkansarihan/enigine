@@ -49,6 +49,33 @@ public:
         return clamped;
     }
 
+    static inline float lerp(float x, float y, float t)
+    {
+        return x * (1.f - t) + y * t;
+    }
+
+    static inline float lerpAngle(float startAngle, float targetAngle, float t)
+    {
+        float shortestAngle = targetAngle - startAngle;
+
+        // Wrap the angle to the range -π to π
+        if (shortestAngle > M_PI)
+            shortestAngle -= 2 * M_PI;
+        else if (shortestAngle < -M_PI)
+            shortestAngle += 2 * M_PI;
+
+        // Perform linear interpolation
+        float result = startAngle + t * shortestAngle;
+
+        // Wrap the result to the range -π to π
+        if (result > M_PI)
+            result -= 2 * M_PI;
+        else if (result < -M_PI)
+            result += 2 * M_PI;
+
+        return result;
+    }
+
     // TODO: primitive creation
     static inline void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
     {

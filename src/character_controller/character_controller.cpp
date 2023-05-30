@@ -1,8 +1,5 @@
 #include "character_controller.h"
 
-glm::vec3 lerp(glm::vec3 x, glm::vec3 y, float t);
-float lerp(float x, float y, float t);
-
 CharacterController::CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera)
     : m_dynamicsWorld(dynamicsWorld),
       m_rigidBody(rigidBody),
@@ -10,6 +7,16 @@ CharacterController::CharacterController(btDiscreteDynamicsWorld *dynamicsWorld,
 {
     btCapsuleShape *shape = (btCapsuleShape *)m_rigidBody->getCollisionShape();
     m_halfHeight = shape->getHalfHeight() + shape->getRadius();
+
+    m_walkSpeed.m_constantValue = 3.f;
+    m_walkSpeed.m_points.push_back(LimiterPoint(M_PI, 0.7f, 1.f));  // back
+    m_walkSpeed.m_points.push_back(LimiterPoint(2.0f, 1.5f, 0.1f)); // right-back spot
+    m_walkSpeed.m_points.push_back(LimiterPoint(4.3f, 1.5f, 0.1f)); // left-back spot
+
+    m_runSpeed.m_constantValue = 10.f;
+    m_runSpeed.m_points.push_back(LimiterPoint(M_PI, 4.f, 1.f));
+    m_runSpeed.m_points.push_back(LimiterPoint(2.0f, 4.f, 0.1f));
+    m_runSpeed.m_points.push_back(LimiterPoint(4.3f, 4.f, 0.1f));
 }
 
 CharacterController::~CharacterController()
@@ -25,7 +32,8 @@ void CharacterController::updateElevation()
     m_dynamicsWorld->rayTest(from, to, callback);
     if (callback.hasHit())
     {
-        m_elevationDistance = (callback.m_hitPointWorld - from).length();
+        m_worldElevation = callback.m_hitPointWorld.getY();
+        m_elevationDistance = from.getY() - m_worldElevation;
         // btRigidBody *colliderBeneath = btRigidBody::upcast(callback.m_collisionObject);
     }
 }
@@ -55,6 +63,8 @@ void CharacterController::recieveInput(GLFWwindow *window, float deltaTime)
 
 void CharacterController::update(float deltaTime)
 {
+    // TODO: exit if no input provided and speed is 0
+
     float prevElevation = m_elevationDistance;
 
     this->updateElevation();
@@ -93,18 +103,8 @@ void CharacterController::update(float deltaTime)
         m_rigidBody->applyCentralImpulse(btVector3(0, force, 0));
     }
 
-    // max speed check
-    // TODO: blocking move input?
-    if (m_jumping && m_verticalSpeed > m_speedAtJumpStart)
-        return;
-    else if (!m_running && m_verticalSpeed > m_maxWalkSpeed)
-        return;
-    else if (m_running && m_verticalSpeed > m_maxRunSpeed)
-        return;
-
     // move
-    btVector3 forceVec(0.0f, 0.0f, 0.0f);
-    glm::vec3 moveVec(0.0f, 0.0f, 0.0f);
+    glm::vec3 moveTarget(0.0f, 0.0f, 0.0f);
     float frontForce = 0.0f;
     float rightForce = 0.0f;
 
@@ -121,62 +121,59 @@ void CharacterController::update(float deltaTime)
     if (frontForce != 0.0f && !m_falling)
     {
         move = true;
-        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
         glm::vec3 frontXZ = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
         glm::vec3 front = frontXZ * frontForce;
-        moveVec += front;
-        forceVec += btVector3(front.x * force, 0.0f, front.z * force);
+        moveTarget += front;
     }
 
     if (rightForce != 0.0f && !m_falling)
     {
         move = true;
-        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
         glm::vec3 rightXZ = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
         glm::vec3 right = rightXZ * rightForce;
-        moveVec += right;
-        forceVec += btVector3(right.x * force, 0.0f, right.z * force);
+        moveTarget += right;
     }
 
     // TODO: prevent jump when move ends
 
     m_moving = move;
 
-    if (m_moving)
-    {
-        moveVec = glm::normalize(moveVec);
+    // look
+    glm::vec3 lookTarget;
+    if (m_turnLocked)
+        lookTarget = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
+    else
+        lookTarget = glm::normalize(moveTarget);
 
-        float distance = glm::distance(m_moveDir, moveVec);
+    // turn
+    float normalizedDistance = 1.f;
+    if (m_moving || m_turnLocked)
+    {
+        float distance = glm::distance(m_lookDir, lookTarget);
         // avoid 180 degree
         if (distance == 2.0f)
         {
-            moveVec = glm::rotateY(moveVec, (float)M_PI_4);
-            distance = glm::distance(m_moveDir, moveVec);
+            lookTarget = glm::rotateY(lookTarget, (float)M_PI_4);
+            distance = glm::distance(m_lookDir, lookTarget);
         }
 
         m_turning = distance > m_turnTreshold;
-        float normalizedDistance = ((2.0f - distance) / 2.0f);
+        normalizedDistance = ((2.0f - distance) / 2.0f);
         m_turnTarget = (1.0f - normalizedDistance) * m_turnAnimMaxFactor;
 
         if (m_turning)
         {
             // turn direction
             glm::mat2 mat = glm::mat2(
-                glm::vec2(m_moveDir.x, moveVec.x),
-                glm::vec2(m_moveDir.z, moveVec.z));
-            float det = glm::determinant(mat);
-            m_turnTarget *= det > 0.0f ? 1.0f : -1.0f;
+                glm::vec2(m_lookDir.x, lookTarget.x),
+                glm::vec2(m_lookDir.z, lookTarget.z));
+            m_det = glm::determinant(mat);
+            m_turnTarget *= m_det > 0.0f ? 1.0f : -1.0f;
 
-            m_moveDir = glm::normalize(lerp(m_moveDir, moveVec, m_turnForce * glm::abs(m_turnFactor)));
-            forceVec *= normalizedDistance;
+            m_lookDir = glm::normalize(glm::mix(m_lookDir, lookTarget, m_turnForce * glm::abs(m_turnFactor)));
         }
         else
-        {
-            m_moveDir = moveVec;
-        }
-
-        m_rigidBody->setActivationState(1);
-        m_rigidBody->applyCentralForce(forceVec);
+            m_lookDir = lookTarget;
     }
     else
     {
@@ -189,9 +186,57 @@ void CharacterController::update(float deltaTime)
 
     // turning animation
     if (glm::abs(m_turnFactor - m_turnTarget) > 0.01f)
-        m_turnFactor = lerp(m_turnFactor, m_turnTarget, m_turnAnimForce);
+        m_turnFactor = CommonUtil::lerp(m_turnFactor, m_turnTarget, m_turnAnimForce);
     else
         m_turnFactor = m_turnTarget;
+
+    // move
+    if (m_moving)
+    {
+        // TODO: calculate forceVec
+        btVector3 forceVec = BulletGLM::getBulletVec3(moveTarget);
+        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
+
+        forceVec *= force;
+        forceVec *= normalizedDistance;
+
+        glm::vec3 moveDir = glm::normalize(BulletGLM::getGLMVec3(m_velocity));
+        m_dotFront = glm::dot(m_lookDir, moveDir);
+
+        m_signedMoveAngleTarget = glm::acos(m_dotFront);
+        glm::vec3 cross = glm::cross(m_lookDir, moveDir);
+        float crossDotAxis = glm::dot(cross, glm::vec3(0.f, 1.f, 0.f));
+        if (crossDotAxis > 0.0f)
+            m_signedMoveAngleTarget = -m_signedMoveAngleTarget;
+
+        // max speed check
+        m_maxWalkRelative = m_walkSpeed.getSpeed(m_signedMoveAngleTarget);
+        m_maxRunRelative = m_runSpeed.getSpeed(m_signedMoveAngleTarget);
+
+        bool moveBlocked = false;
+        if (m_jumping && m_verticalSpeed > m_speedAtJumpStart)
+            moveBlocked = true;
+        else if (!m_running && m_verticalSpeed > m_maxWalkRelative)
+            moveBlocked = true;
+        else if (m_running && m_verticalSpeed > m_maxRunRelative)
+            moveBlocked = true;
+
+        if (!moveBlocked)
+        {
+            // TODO: has force
+            m_rigidBody->setActivationState(1);
+            m_rigidBody->applyCentralForce(forceVec);
+        }
+    }
+
+    if (!m_moving)
+        m_dotFront = 0.f;
+
+    // interpolate move angle
+    if (glm::abs(m_signedMoveAngle - m_signedMoveAngleTarget) > 0.01f)
+        m_signedMoveAngle = CommonUtil::lerpAngle(m_signedMoveAngle, m_signedMoveAngleTarget, m_moveAngleForce);
+    else
+        m_signedMoveAngle = m_signedMoveAngleTarget;
 
     // slow down and stop
     if (m_verticalSpeed > 0 && !m_moving && !m_jumping && !m_falling)
@@ -200,6 +245,7 @@ void CharacterController::update(float deltaTime)
         m_rigidBody->applyCentralForce(-m_verticalVelocity * force);
     }
 
+    // TODO: remove teleport while walking on a rigidbody over terrain
     // snap to ground
     if (m_moving && !m_jumping && !m_falling)
     {
@@ -211,29 +257,9 @@ void CharacterController::update(float deltaTime)
         float surface = pos.getY() - gap;
         btTransform transform;
         transform.setIdentity();
-        transform.setOrigin(btVector3(pos.getX(), surface, pos.getZ()));
+        // removes sliding caused by 0 friction - m_floatElevation
+        transform.setOrigin(btVector3(pos.getX(), surface + m_floatElevation, pos.getZ()));
         m_rigidBody->setWorldTransform(transform);
         m_rigidBody->setLinearVelocity(btVector3(m_velocity.getX(), 0, m_velocity.getZ()));
     }
-
-    // remove sliding caused by 0 friction
-    if (!m_jumping && !m_falling && m_speed > 0.0f)
-    {
-        btVector3 moveDir(m_moveDir.x, m_moveDir.y, m_moveDir.z);
-        btScalar moveVelocity = m_velocity.dot(moveDir);
-        btVector3 velocity = moveDir * moveVelocity;
-        // Save horizontal velocity
-        velocity.setY(m_velocity.getY());
-        m_rigidBody->setLinearVelocity(velocity);
-    }
-}
-
-glm::vec3 lerp(glm::vec3 x, glm::vec3 y, float t)
-{
-    return x * (1.f - t) + y * t;
-}
-
-float lerp(float x, float y, float t)
-{
-    return x * (1.f - t) + y * t;
 }

@@ -9,6 +9,9 @@
 
 #include "../camera/camera.h"
 #include "../ragdoll/ragdoll.h"
+#include "../utils/common.h"
+#include "../utils/bullet_glm.h"
+#include "speed_limiter.h"
 
 #include "btBulletDynamicsCommon.h"
 
@@ -24,23 +27,30 @@ public:
     btRigidBody *m_rigidBody;
     Camera *m_followCamera;
 
+    SpeedLimiter m_walkSpeed;
+    SpeedLimiter m_runSpeed;
+    float m_maxWalkRelative;
+    float m_maxRunRelative;
+
     float m_moveForce = 4500.0f;
     float m_jumpForce = 300.0f;
     float m_speedAtJumpStart = 0.0f;
-    float m_maxWalkSpeed = 3.0f;
     float m_walkToRunAnimTreshold = 0.8f;
-    float m_maxRunSpeed = 10.0f;
     float m_toIdleForce = 2250.0f;
     float m_toIdleForceHoriz = 900.0f;
     float m_elevationDistance = 0.0f;
+    float m_worldElevation = 0.0f;
     float m_groundTreshold = 0.2f;
+    float m_floatElevation = 0.05f;
     // turn
     float m_turnTreshold = 0.01f;
     float m_turnForce = 0.2f;
     float m_turnAnimForce = 0.1f;
     float m_turnFactor = 0.0f;
+    float m_det = 0.0f;
     float m_turnTarget = 0.0f;
     float m_turnAnimMaxFactor = 0.4f;
+    float m_turnAnimMult = 1.f;
 
     float m_halfHeight = 0.0f;
 
@@ -57,8 +67,13 @@ public:
     bool m_jumping = false;
     bool m_running = false;
     bool m_turning = false;
+    bool m_turnLocked = false;
 
-    glm::vec3 m_moveDir = glm::vec3(0.0f, 0.0f, 1.0f); // Z
+    glm::vec3 m_lookDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
+    float m_signedMoveAngle = M_PI; // +Z
+    float m_signedMoveAngleTarget = M_PI;
+    float m_moveAngleForce = 0.1f;
+    float m_dotFront;
 
     CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();

@@ -32,9 +32,13 @@ public:
     Model *m_model;
 
     // TODO: transformation struct
-    glm::vec3 m_position = glm::vec3(200.0f, 10.5f, 200.0f);
+    glm::vec3 m_position = glm::vec3(200.0f, 10.5f, 250.0f);
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     float m_scale = 2.0;
+
+    // animation
+    float m_blendTargets[13];
+    float m_blendSpeed = 0.2f;
 
     // ragdoll
     bool m_ragdollActive = false;
@@ -45,6 +49,7 @@ public:
     ~Character();
     void init();
     void update(float deltaTime);
+    void interpolateBlendTargets();
     void activateRagdoll(glm::vec3 impulseDirection, float impulseStrength);
     void resetRagdoll();
 };
