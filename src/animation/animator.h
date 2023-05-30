@@ -13,6 +13,12 @@
 
 #define MAX_BONES 200
 
+struct Anim
+{
+    int index;
+    float blendFactor;
+};
+
 struct AnimPose
 {
     int index;
@@ -21,9 +27,7 @@ struct AnimPose
 
 struct AnimatorState
 {
-    int fromIndex;
-    int toIndex;
-    float blendFactor;
+    std::vector<Anim> animations;
     std::vector<AnimPose> poses;
 };
 

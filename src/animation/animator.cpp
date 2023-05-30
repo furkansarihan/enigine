@@ -8,9 +8,7 @@ Animator::Animator(std::vector<Animation *> animations)
     for (int i = 0; i < m_animations.size(); i++)
         m_timers.push_back(0.0f);
 
-    m_state.fromIndex = 0;
-    m_state.toIndex = 0;
-    m_state.blendFactor = 0.0f;
+    // TODO: initial state
 
     // TODO: better way?
     m_FinalBoneMatrices.reserve(MAX_BONES);
@@ -26,18 +24,6 @@ Animator::~Animator()
 // TODO: move validations to setters
 void Animator::update(float deltaTime)
 {
-    if (m_animations.size() == 0)
-        return;
-
-    if ((m_state.fromIndex < 0) || (m_state.fromIndex >= m_animations.size()))
-        return;
-
-    if ((m_state.toIndex < 0) || (m_state.toIndex >= m_animations.size()))
-        return;
-
-    if ((m_state.blendFactor < 0.0f) || (m_state.blendFactor > 1.0f))
-        return;
-
     for (int i = 0; i < m_animations.size(); i++)
     {
         m_timers[i] += m_animations[i]->m_TicksPerSecond * deltaTime;
@@ -52,55 +38,69 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     std::string nodeName = node->name;
     glm::mat4 nodeTransform = node->transformation;
 
-    Bone *bone1 = m_animations[m_state.fromIndex]->getBone(nodeName);
-    Bone *bone2 = m_animations[m_state.toIndex]->getBone(nodeName);
-
-    bool validBonePair = bone1 && bone2;
-    bool seperatedPair = (m_state.blendFactor == 0.0f) || (m_state.blendFactor == 1.0f);
-    bool singleAnimation = seperatedPair || (bone1 == bone2);
-
     glm::vec3 blendedT;
     glm::quat blendedR;
     glm::vec3 blendedS;
-    if (validBonePair && singleAnimation)
-    {
-        int singleAnimIndex = seperatedPair ? (m_state.blendFactor == 0 ? m_state.fromIndex : m_state.toIndex) : m_state.fromIndex;
-        Bone *bone = singleAnimIndex == m_state.fromIndex ? bone1 : bone2;
-        bone->update(m_timers[singleAnimIndex]);
 
-        blendedT = bone->m_translation;
-        blendedR = bone->m_rotation;
-        blendedS = bone->m_scale;
-    }
-    else if (validBonePair)
+    bool boneProcessed = false;
+    float totalWeight = 0.0f;
+    for (int i = 0; i < m_state.animations.size(); i++)
     {
-        bone1->update(m_timers[m_state.fromIndex]);
-        bone2->update(m_timers[m_state.toIndex]);
+        Anim anim = m_state.animations[i];
+        Bone *bone = m_animations[anim.index]->getBone(nodeName);
+        float blendWeight = anim.blendFactor * bone->m_blendFactor;
 
-        blendedT = glm::mix(bone1->m_translation, bone2->m_translation, m_state.blendFactor);
-        blendedR = glm::slerp(bone1->m_rotation, bone2->m_rotation, m_state.blendFactor);
-        blendedS = glm::mix(bone1->m_scale, bone2->m_scale, m_state.blendFactor);
-    }
+        if (!bone)
+            continue;
+        if (blendWeight == 0.0f)
+            continue;
 
-    if (validBonePair)
-    {
-        // AnimPose influence
-        for (int i = 0; i < m_state.poses.size(); i++)
+        bone->update(m_timers[anim.index]);
+
+        totalWeight += blendWeight;
+
+        // TODO: blend weight influence
+        if (!boneProcessed) // first bone
         {
-            AnimPose animPose = m_state.poses[i];
-            if (animPose.blendFactor == 0.0f || animPose.index < 0 || animPose.index >= m_animations.size())
-                continue;
+            blendedT = bone->m_translation;
+            blendedR = bone->m_rotation;
+            blendedS = bone->m_scale;
+        }
+        else
+        {
+            float weight = blendWeight / totalWeight;
+            if (isnan(weight))
+                weight = 1.0f;
 
-            Bone *bone = m_animations[animPose.index]->getBone(nodeName);
-
-            if (bone->m_blendFactor == 0.0f)
-                continue;
-
-            blendedT = glm::mix(blendedT, bone->m_translation, bone->m_blendFactor * animPose.blendFactor);
-            blendedR = glm::slerp(blendedR, bone->m_rotation, bone->m_blendFactor * animPose.blendFactor);
-            blendedS = glm::mix(blendedS, bone->m_scale, bone->m_blendFactor * animPose.blendFactor);
+            blendedT = glm::mix(blendedT, bone->m_translation, weight);
+            blendedR = glm::slerp(blendedR, bone->m_rotation, weight);
+            blendedS = glm::mix(blendedS, bone->m_scale, weight);
         }
 
+        boneProcessed = true;
+    }
+
+    // AnimPose influence
+    for (int i = 0; i < m_state.poses.size(); i++)
+    {
+        AnimPose animPose = m_state.poses[i];
+        if (animPose.blendFactor == 0.0f || animPose.index < 0 || animPose.index >= m_animations.size())
+            continue;
+
+        Bone *bone = m_animations[animPose.index]->getBone(nodeName);
+
+        if (!bone)
+            continue;
+        if (bone->m_blendFactor == 0.0f)
+            continue;
+
+        blendedT = glm::mix(blendedT, bone->m_translation, bone->m_blendFactor * animPose.blendFactor);
+        blendedR = glm::slerp(blendedR, bone->m_rotation, bone->m_blendFactor * animPose.blendFactor);
+        blendedS = glm::mix(blendedS, bone->m_scale, bone->m_blendFactor * animPose.blendFactor);
+    }
+
+    if (boneProcessed)
+    {
         nodeTransform = glm::translate(glm::mat4(1), blendedT) *
                         glm::toMat4(glm::normalize(blendedR)) *
                         glm::scale(glm::mat4(1), blendedS);
@@ -113,7 +113,7 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     if (boneInfoMap.find(nodeName) != boneInfoMap.end())
     {
         int index = boneInfoMap[nodeName].id;
-        glm::mat4 offset = boneInfoMap[nodeName].offset; // ?
+        glm::mat4 offset = boneInfoMap[nodeName].offset;
         m_FinalBoneMatrices[index] = globalTransformation * offset;
     }
 

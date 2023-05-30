@@ -6,9 +6,12 @@ void AnimationUI::render()
         return;
 
     int max = m_animator->m_animations.size() - 1;
-    ImGui::DragInt("fromIndex", &m_animator->m_state.fromIndex, 1, 0, max);
-    ImGui::DragInt("toIndex", &m_animator->m_state.toIndex, 1, 0, max);
-    ImGui::DragFloat("blendFactor", &m_animator->m_state.blendFactor, 0.01f, 0.0f, 1.0f);
+    for (int i = 0; i < m_animator->m_state.animations.size(); i++)
+    {
+        // ImGui::DragInt("index", &m_animator->m_state.animations[i].index, 1, 0, max);
+        // ImGui::DragFloat("blendFactor", &m_animator->m_state.animations[i].blendFactor, 0.01f, 0.0f, 1.0f);
+        ImGui::Text("index: %d, blendFactor: %.3f", m_animator->m_state.animations[i].index, m_animator->m_state.animations[i].blendFactor);
+    }
     ImGui::Separator();
     ImGui::DragInt("selectedAnimPose", &m_selectedAnimPose, 1, 0, m_animator->m_state.poses.size() - 1);
     if (m_selectedAnimPose >= 0 && m_selectedAnimPose < m_animator->m_state.poses.size())
