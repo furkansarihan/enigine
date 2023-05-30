@@ -35,7 +35,7 @@ public:
     std::map<std::string, BoneInfo> m_BoneInfoMap;
     std::unordered_map<std::string, float> m_blendMask;
 
-    Animation(const std::string &animationPath, const std::string &animationName, Model *model);
+    Animation(const std::string &animationName, Model *model);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);

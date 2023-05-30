@@ -11,25 +11,24 @@ Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, C
 void Character::init()
 {
     // Animation
-    // TODO: single aiScene read
     m_model = new Model("../src/assets/gltf/char4.glb");
-    Animation *animation0 = new Animation("../src/assets/gltf/char4.glb", "idle", m_model);
-    Animation *animation1 = new Animation("../src/assets/gltf/char4.glb", "walking-forward", m_model);
-    Animation *animation2 = new Animation("../src/assets/gltf/char4.glb", "left", m_model);
-    Animation *animation3 = new Animation("../src/assets/gltf/char4.glb", "right", m_model);
-    Animation *animation4 = new Animation("../src/assets/gltf/char4.glb", "running-forward", m_model);
-    Animation *animation5 = new Animation("../src/assets/gltf/char4.glb", "walking-left", m_model);
-    Animation *animation6 = new Animation("../src/assets/gltf/char4.glb", "walking-right", m_model);
-    Animation *animation7 = new Animation("../src/assets/gltf/char4.glb", "walking-back", m_model);
-    Animation *animation8 = new Animation("../src/assets/gltf/char4.glb", "running-left", m_model);
-    Animation *animation9 = new Animation("../src/assets/gltf/char4.glb", "running-right", m_model);
-    Animation *animation10 = new Animation("../src/assets/gltf/char4.glb", "running-back", m_model);
-    Animation *animation11 = new Animation("../src/assets/gltf/char4.glb", "walking-back-left", m_model);
-    Animation *animation12 = new Animation("../src/assets/gltf/char4.glb", "walking-back-right", m_model);
-    Animation *animation13 = new Animation("../src/assets/gltf/char4.glb", "running-back-left", m_model);
-    Animation *animation14 = new Animation("../src/assets/gltf/char4.glb", "running-back-right", m_model);
+    Animation *animation0 = new Animation("idle", m_model);
+    Animation *animation1 = new Animation("walking-forward", m_model);
+    Animation *animation2 = new Animation("left", m_model);
+    Animation *animation3 = new Animation("right", m_model);
+    Animation *animation4 = new Animation("running-forward", m_model);
+    Animation *animation5 = new Animation("walking-left", m_model);
+    Animation *animation6 = new Animation("walking-right", m_model);
+    Animation *animation7 = new Animation("walking-back", m_model);
+    Animation *animation8 = new Animation("running-left", m_model);
+    Animation *animation9 = new Animation("running-right", m_model);
+    Animation *animation10 = new Animation("running-back", m_model);
+    Animation *animation11 = new Animation("walking-back-left", m_model);
+    Animation *animation12 = new Animation("walking-back-right", m_model);
+    Animation *animation13 = new Animation("running-back-left", m_model);
+    Animation *animation14 = new Animation("running-back-right", m_model);
     // TODO: create empty at runtime?
-    Animation *animationRagdoll = new Animation("../src/assets/gltf/char4.glb", "pose", m_model);
+    Animation *animationRagdoll = new Animation("pose", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;

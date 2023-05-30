@@ -2,18 +2,17 @@
 
 #include "animation.h"
 
-Animation::Animation(const std::string &animationPath, const std::string &animationName, Model *model)
+Animation::Animation(const std::string &animationName, Model *model)
 {
-    Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
+    const aiScene *scene = model->m_scene;
     assert(scene && scene->mRootNode);
-    std::cout << "Animation: mNumAnimations: " << scene->mNumAnimations << std::endl;
+    // std::cout << "Animation: mNumAnimations: " << scene->mNumAnimations << std::endl;
 
     aiAnimation *animation;
     for (int i = 0; i < scene->mNumAnimations; i++)
     {
         auto anim = scene->mAnimations[i];
-        if (strcmp(anim->mName.C_Str(), animationName.c_str()) == 0)
+        if (anim && strcmp(anim->mName.C_Str(), animationName.c_str()) == 0)
         {
             animation = anim;
             break;
@@ -26,11 +25,11 @@ Animation::Animation(const std::string &animationPath, const std::string &animat
         return;
     }
 
-    std::cout << "Animation: mName: " << animation->mName.C_Str() << std::endl;
-    std::cout << "Animation: mDuration: " << animation->mDuration << std::endl;
-    std::cout << "Animation: mTicksPerSecond: " << animation->mTicksPerSecond << std::endl;
-    std::cout << "Animation: mNumChannels: " << animation->mNumChannels << std::endl
-              << std::endl;
+    // std::cout << "Animation: mName: " << animation->mName.C_Str() << std::endl;
+    // std::cout << "Animation: mDuration: " << animation->mDuration << std::endl;
+    // std::cout << "Animation: mTicksPerSecond: " << animation->mTicksPerSecond << std::endl;
+    // std::cout << "Animation: mNumChannels: " << animation->mNumChannels << std::endl
+    //           << std::endl;
 
     m_Duration = animation->mDuration;
     m_TicksPerSecond = animation->mTicksPerSecond;

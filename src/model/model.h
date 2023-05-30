@@ -43,9 +43,10 @@ public:
     std::map<std::string, BoneInfo> m_boneInfoMap;
     int m_boneCounter = 0;
 
-private:
+    Assimp::Importer *m_importer;
     const aiScene *m_scene;
 
+private:
     void loadModel(std::string const &path);
     void processNode(aiNode *node);
     Mesh processMesh(aiMesh *mesh);

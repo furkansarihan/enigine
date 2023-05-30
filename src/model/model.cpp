@@ -9,12 +9,17 @@ unsigned int loadTexture(void *image_data, int width, int height, int nrComponen
 
 Model::Model(std::string const &path)
 {
+    m_importer = new Assimp::Importer();
+
     loadModel(path);
 }
 
 Model::~Model()
 {
     // TODO: destruction
+    m_importer->FreeScene();
+    // TODO: seg fault
+    // delete m_importer;
 }
 
 void Model::draw(Shader shader)
@@ -34,12 +39,11 @@ void Model::drawInstanced(Shader shader, int instanceCount)
 void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
-    Assimp::Importer importer;
-    m_scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    m_scene = m_importer->ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
     // check for errors
     if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) // if is Not Zero
     {
-        std::cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
+        std::cout << "ERROR::ASSIMP:: " << m_importer->GetErrorString() << std::endl;
         return;
     }
     // retrieve the directory path of the filepath
