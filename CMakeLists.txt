@@ -65,6 +65,8 @@ add_executable( enigine
                 src/character/playable_character.cpp
                 src/character/np_character.h
                 src/character/np_character.cpp
+                src/character_controller/speed_limiter.h
+                src/character_controller/speed_limiter.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp
