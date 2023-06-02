@@ -33,6 +33,7 @@ void CharacterUI::render()
         ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
     }
+    ImGui::DragFloat("m_aimStateChangeSpeed", &m_character->m_aimStateChangeSpeed, 0.1f);
     ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
     ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
     ImGui::DragFloat("m_rightBlendEdge", &m_character->m_rightBlendEdge, 0.01f);

@@ -6,6 +6,9 @@
 #include <sstream>
 #include <iostream>
 
+#include "../physics_world/physics_world.h"
+#include "../utils/common.h"
+
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
@@ -16,7 +19,6 @@
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
 #include "BulletDynamics/MLCPSolvers/btMLCPSolver.h"
 
-#include "../physics_world/physics_world.h"
 
 class Vehicle
 {
@@ -61,7 +63,6 @@ private:
     void resetVehicle(btTransform tr);
     void updateSteering(GLFWwindow *window, float deltaTime);
     void updateAcceleration(GLFWwindow *window, float deltaTime);
-    glm::vec2 cubicBezier(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, double t);
 };
 
 #endif /* vehicle_hpp */

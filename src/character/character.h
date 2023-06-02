@@ -38,6 +38,7 @@ public:
 
     // animation
     float m_blendTargets[13];
+    float m_blendTargetsPose[2];
     float m_blendSpeed = 0.2f;
 
     float m_leftBlendEdge = 1.45f;
@@ -46,6 +47,7 @@ public:
     float m_rightForward = 0.05f;
 
     float m_aimBlend = 0.0f;
+    float m_aimStateChangeSpeed = 4.f;
 
     // ragdoll
     bool m_ragdollActive = false;

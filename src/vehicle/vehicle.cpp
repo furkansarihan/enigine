@@ -211,7 +211,7 @@ void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
             glm::vec2 p2(0.57, 1);
             glm::vec2 p3(1, 1);
 
-            wheels[i]->setTargetVelocity(5, deltaTime * cubicBezier(p0, p1, p2, p3, distance).y * steeringVelocity);
+            wheels[i]->setTargetVelocity(5, deltaTime * CommonUtil::cubicBezier(p0, p1, p2, p3, distance).y * steeringVelocity);
         }
     }
 }
@@ -280,13 +280,6 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
 
     float normalized = (gEngineForce - minEngineForce) / (maxEngineForce - minEngineForce);
 
-    wheels[2]->setTargetVelocity(3, deltaTime * -cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
-    wheels[3]->setTargetVelocity(3, deltaTime * -cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
-}
-
-glm::vec2 Vehicle::cubicBezier(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, double t)
-{
-    double x = pow(1 - t, 3) * p0.x + 3 * t * pow(1 - t, 2) * p1.x + 3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x;
-    double y = pow(1 - t, 3) * p0.y + 3 * t * pow(1 - t, 2) * p1.y + 3 * pow(t, 2) * (1 - t) * p2.y + pow(t, 3) * p3.y;
-    return glm::vec2(x, y);
+    wheels[2]->setTargetVelocity(3, deltaTime * -CommonUtil::cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
+    wheels[3]->setTargetVelocity(3, deltaTime * -CommonUtil::cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
 }

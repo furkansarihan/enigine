@@ -201,7 +201,7 @@ void Character::update(float deltaTime)
     ragdolPose.blendFactor = clamped;
 
     // update pistol-aim blend
-    m_aimBlend += deltaTime * m_stateChangeSpeed * (m_controller->m_aimLocked ? 1.f : -1.f);
+    m_aimBlend += deltaTime * m_aimStateChangeSpeed * (m_controller->m_aimLocked ? 1.f : -1.f);
     m_aimBlend = std::max(0.0f, std::min(m_aimBlend, 1.0f));
     updateAimPoseBlendMask(m_aimBlend);
 
@@ -329,12 +329,10 @@ void Character::update(float deltaTime)
             m_blendTargets[6] *= (1.f - turn);
         }
 
-        interpolateBlendTargets();
-
-        AnimPose *animL = &m_animator->m_state.poses[0];
-        AnimPose *animR = &m_animator->m_state.poses[1];
-        animL->blendFactor = std::max(0.0f, std::min(-m_controller->m_turnFactor, 1.0f));
-        animR->blendFactor = std::max(0.0f, std::min(m_controller->m_turnFactor, 1.0f));
+        float &animL = m_blendTargetsPose[0];
+        float &animR = m_blendTargetsPose[1];
+        animL = std::max(0.0f, std::min(-m_controller->m_turnFactor, 1.0f));
+        animR = std::max(0.0f, std::min(m_controller->m_turnFactor, 1.0f));
 
         // adaptive turn for pistol-aim
         if (m_controller->m_aimLocked)
@@ -346,10 +344,12 @@ void Character::update(float deltaTime)
             float rightB = rightBlend + m_rightForward;
 
             if (leftB > 0.f)
-                animR->blendFactor = std::max(0.0f, std::min(leftB / m_leftBlendEdge, 1.0f));
+                animR = std::max(0.0f, std::min(leftB / m_leftBlendEdge, 1.0f));
             if (rightB > 0.f)
-                animL->blendFactor = std::max(0.0f, std::min(rightB / m_rightBlendEdge, 1.0f));
+                animL = std::max(0.0f, std::min(rightB / m_rightBlendEdge, 1.0f));
         }
+
+        interpolateBlendTargets();
     }
 }
 
@@ -357,6 +357,8 @@ void Character::interpolateBlendTargets()
 {
     for (int i = 0; i < 13; i++)
         m_animator->m_state.animations[i].blendFactor = CommonUtil::lerp(m_animator->m_state.animations[i].blendFactor, m_blendTargets[i], m_blendSpeed);
+    for (int i = 0; i < 2; i++)
+        m_animator->m_state.poses[i].blendFactor = CommonUtil::lerp(m_animator->m_state.poses[i].blendFactor, m_blendTargetsPose[i], m_blendSpeed);
 }
 
 void Character::activateRagdoll(glm::vec3 impulseDirection, float impulseStrength)
@@ -407,11 +409,19 @@ void Character::updateAimPoseBlendMask(float blendFactor)
 
     std::unordered_map<std::string, float> blendMask;
 
-    blendMask["mixamorig:Head"] = blendFactor;
-    blendMask["mixamorig:RightShoulder"] = blendFactor;
-    blendMask["mixamorig:RightArm"] = blendFactor;
-    blendMask["mixamorig:RightForeArm"] = blendFactor;
-    blendMask["mixamorig:RightHand"] = blendFactor;
+    glm::vec2 p0(0, 0);
+    glm::vec2 p1(0.5, 1);
+    glm::vec2 p2(0.15, 1);
+    glm::vec2 p3(1, 1);
+    float cubicBlend = CommonUtil::cubicBezier(p0, p1, p2, p3, blendFactor).y;
+
+    blendMask["mixamorig:Head"] = cubicBlend;
+    blendMask["mixamorig:Neck"] = cubicBlend;
+    blendMask["mixamorig:Spine2"] = cubicBlend;
+    blendMask["mixamorig:RightShoulder"] = cubicBlend;
+    blendMask["mixamorig:RightArm"] = cubicBlend;
+    blendMask["mixamorig:RightForeArm"] = cubicBlend;
+    blendMask["mixamorig:RightHand"] = cubicBlend;
 
     // always on
     blendMask["mixamorig:RightHandThumb1"] = 1.0f;

@@ -6,6 +6,7 @@
 #include <mach/mach.h>
 
 #include <GL/glew.h>
+#include <glm/glm.hpp>
 
 class CommonUtil
 {
@@ -74,6 +75,13 @@ public:
             result += 2 * M_PI;
 
         return result;
+    }
+
+    static glm::vec2 cubicBezier(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, double t)
+    {
+        double x = pow(1 - t, 3) * p0.x + 3 * t * pow(1 - t, 2) * p1.x + 3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x;
+        double y = pow(1 - t, 3) * p0.y + 3 * t * pow(1 - t, 2) * p1.y + 3 * pow(t, 2) * (1 - t) * p2.y + pow(t, 3) * p3.y;
+        return glm::vec2(x, y);
     }
 
     // TODO: primitive creation
