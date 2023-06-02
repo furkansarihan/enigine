@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
@@ -144,16 +144,18 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
     shaderManager.addShader(ShaderDynamic(&stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
     shaderManager.addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
+    shaderManager.addShader(ShaderDynamic(&texture2Shader, "../src/assets/shaders/texture-2.vs", "../src/assets/shaders/anim.fs"));
 
     // Create geometries
-    Model cube("assets/models/cube.obj");
-    Model sphere("assets/models/sphere.obj");
-    Model wheel("assets/models/wheel.obj");
-    Model cylinder("assets/models/cylinder.obj");
-    Model suzanne("assets/models/suzanne.obj");
+    Model cube("../src/assets/models/cube.obj");
+    Model sphere("../src/assets/models/sphere.obj");
+    Model wheel("../src/assets/models/wheel.obj");
+    Model cylinder("../src/assets/models/cylinder.obj");
+    Model suzanne("../src/assets/models/suzanne.obj");
     // Model spherePBR("../src/assets/spaceship/sphere.obj");
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
+    Model pistol("../src/assets/gltf/colt.glb");
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
@@ -435,6 +437,7 @@ int main(int argc, char **argv)
         }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+        // TODO: pbr
         // animation
         for (int i = 0; i < characters.size(); i++)
         {
@@ -455,11 +458,38 @@ int main(int argc, char **argv)
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, character->m_position);
             model = glm::rotate(model, character->m_rotation.x, glm::vec3(1, 0, 0));
-            model = glm::rotate(model, character->m_rotation.y * (1.0f - character->m_animator->m_state.poses[2].blendFactor), glm::vec3(0, 1, 0));
+            model = glm::rotate(model, character->m_rotation.y * (1.0f - character->getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
             model = glm::rotate(model, character->m_rotation.z, glm::vec3(0, 0, 1));
             model = glm::scale(model, glm::vec3(character->m_scale));
             animShader.setMat4("model", model);
             character->m_model->draw(animShader);
+        }
+
+        // TODO: pbr
+        // draw pistol
+        {
+            int index = character.m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:RightHand"].id;
+            glm::mat4 model = character.m_animator->m_globalMatrices[index];
+
+            glm::mat4 model2(1.0f);
+            model2 = glm::translate(model2, character.m_position);
+            model2 = glm::rotate(model2, character.m_rotation.y * (1.0f - character.getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+            model2 = glm::scale(model2, glm::vec3(character.m_scale));
+
+            model2 = model2 * model;
+
+            model2 = glm::translate(model2, character.m_pistolOffset);
+            model2 = model2 * glm::mat4_cast(character.m_pistolOrientation);
+            model2 = glm::scale(model2, glm::vec3(character.m_pistolScale));
+
+            texture2Shader.use();
+            texture2Shader.setMat4("projection", projection);
+            texture2Shader.setMat4("view", editorCamera.getViewMatrix());
+            texture2Shader.setVec3("lightDir", shadowManager.m_lightPos);
+            texture2Shader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
+            texture2Shader.setFloat("lightPower", tempUI.m_lightPower);
+            texture2Shader.setMat4("model", model2);
+            pistol.draw(texture2Shader);
         }
 
         // Render scene
@@ -643,6 +673,9 @@ int main(int argc, char **argv)
         // Shadowmap debug
         shadowmapUI.drawFrustum(simpleShader, mvp, vbo, vao, ebo);
         shadowmapUI.drawLightAABB(simpleShader, mvp, inverseDepthViewMatrix, vbo, vao, ebo);
+        
+        // character debug
+        characterUI.drawArmatureBones(character, simpleShader, cube, projection * editorCamera.getViewMatrix());
 
         // Draw skybox
         glDepthMask(GL_FALSE);

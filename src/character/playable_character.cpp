@@ -17,15 +17,15 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
         m_controller->recieveInput(window, deltaTime);
     if (m_followCharacter)
     {
-        if (m_controller->m_onGround)
-            m_followHeightTarget = m_controller->m_worldElevation;
-        else
-            m_followHeightTarget = m_position.y;
+        m_followOffsetTarget = m_controller->m_aimLocked ? m_followOffsetAim : m_followOffsetNormal;
+        m_followOffsetTarget.y += m_controller->m_onGround ? m_controller->m_worldElevation : m_position.y;
 
-        m_followHeight = CommonUtil::lerp(m_followHeight, m_followHeightTarget, m_followHeightFactor);
+        m_followOffset = glm::mix(m_followOffset, m_followOffsetTarget, m_followOffsetFactor);
 
-        glm::vec3 worldRef(m_position.x, m_followHeight, m_position.z);
-        m_followCamera->position = worldRef - m_followCamera->front * glm::vec3(m_followDistance) + m_followOffset;
+        glm::vec3 worldRef(m_position.x, m_followOffset.y, m_position.z);
+        glm::vec3 offsetX = m_followCamera->right * glm::vec3(m_followOffset.x);
+        glm::vec3 offsetZ = m_followCamera->front * glm::vec3(m_followOffset.z);
+        m_followCamera->position = worldRef + offsetX + offsetZ;
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
@@ -47,12 +47,12 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
 
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
-        m_controller->m_turnLocked = false;
+        m_controller->m_aimLocked = false;
     }
 
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
-        m_controller->m_turnLocked = true;
+        m_controller->m_aimLocked = true;
     }
 }
 

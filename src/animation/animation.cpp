@@ -3,6 +3,7 @@
 #include "animation.h"
 
 Animation::Animation(const std::string &animationName, Model *model)
+    : m_name(animationName)
 {
     const aiScene *scene = model->m_scene;
     assert(scene && scene->mRootNode);
@@ -106,14 +107,14 @@ void Animation::readHierarchy(AssimpNodeData &dest, const aiNode *src)
     }
 }
 
-void Animation::setBlendMask(std::unordered_map<std::string, float> blendMask)
+void Animation::setBlendMask(std::unordered_map<std::string, float> blendMask, float defaultValue)
 {
     m_blendMask = blendMask;
 
     for (auto it = m_bones.begin(); it != m_bones.end(); ++it)
     {
         Bone *bone = it->second;
-        bone->m_blendFactor = 0.0;
+        bone->m_blendFactor = defaultValue;
     }
 
     for (auto it = m_blendMask.begin(); it != m_blendMask.end(); ++it)

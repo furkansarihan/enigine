@@ -140,14 +140,14 @@ void CharacterController::update(float deltaTime)
 
     // look
     glm::vec3 lookTarget;
-    if (m_turnLocked)
+    if (m_aimLocked)
         lookTarget = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
     else
         lookTarget = glm::normalize(moveTarget);
 
     // turn
     float normalizedDistance = 1.f;
-    if (m_moving || m_turnLocked)
+    if (m_moving || m_aimLocked)
     {
         float distance = glm::distance(m_lookDir, lookTarget);
         // avoid 180 degree

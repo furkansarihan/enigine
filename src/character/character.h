@@ -40,6 +40,13 @@ public:
     float m_blendTargets[13];
     float m_blendSpeed = 0.2f;
 
+    float m_leftBlendEdge = 1.45f;
+    float m_rightBlendEdge = 1.2f;
+    float m_leftForward = 0.35f;
+    float m_rightForward = 0.05f;
+
+    float m_aimBlend = 0.0f;
+
     // ragdoll
     bool m_ragdollActive = false;
     float m_impulseStrength = 600.f;
@@ -52,6 +59,9 @@ public:
     void interpolateBlendTargets();
     void activateRagdoll(glm::vec3 impulseDirection, float impulseStrength);
     void resetRagdoll();
+    AnimPose &getRagdolPose();
+    AnimPose &getAimPose();
+    void updateAimPoseBlendMask(float blendFactor);
 };
 
 #endif /* character_hpp */

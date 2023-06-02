@@ -14,6 +14,10 @@ Animator::Animator(std::vector<Animation *> animations)
     m_FinalBoneMatrices.reserve(MAX_BONES);
     for (int i = 0; i < MAX_BONES; i++)
         m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
+
+    m_globalMatrices.reserve(MAX_BONES);
+    for (int i = 0; i < MAX_BONES; i++)
+        m_globalMatrices.push_back(glm::mat4(1.0f));
 }
 
 Animator::~Animator()
@@ -84,19 +88,19 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     for (int i = 0; i < m_state.poses.size(); i++)
     {
         AnimPose animPose = m_state.poses[i];
-        if (animPose.blendFactor == 0.0f || animPose.index < 0 || animPose.index >= m_animations.size())
-            continue;
-
         Bone *bone = m_animations[animPose.index]->getBone(nodeName);
+        float blendWeight = animPose.blendFactor * bone->m_blendFactor;
 
         if (!bone)
             continue;
-        if (bone->m_blendFactor == 0.0f)
+        if (blendWeight == 0.0f)
             continue;
 
-        blendedT = glm::mix(blendedT, bone->m_translation, bone->m_blendFactor * animPose.blendFactor);
-        blendedR = glm::slerp(blendedR, bone->m_rotation, bone->m_blendFactor * animPose.blendFactor);
-        blendedS = glm::mix(blendedS, bone->m_scale, bone->m_blendFactor * animPose.blendFactor);
+        bone->update(m_timers[animPose.index]);
+
+        blendedT = glm::mix(blendedT, bone->m_translation, blendWeight);
+        blendedR = glm::slerp(blendedR, bone->m_rotation, blendWeight);
+        blendedS = glm::mix(blendedS, bone->m_scale, blendWeight);
     }
 
     if (boneProcessed)
@@ -115,6 +119,7 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
         int index = boneInfoMap[nodeName].id;
         glm::mat4 offset = boneInfoMap[nodeName].offset;
         m_FinalBoneMatrices[index] = globalTransformation * offset;
+        m_globalMatrices[index] = globalTransformation;
     }
 
     for (int i = 0; i < node->childrenCount; i++)

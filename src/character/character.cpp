@@ -11,7 +11,7 @@ Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, C
 void Character::init()
 {
     // Animation
-    m_model = new Model("../src/assets/gltf/char4.glb");
+    m_model = new Model("../src/assets/gltf/char5.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model);
@@ -27,6 +27,7 @@ void Character::init()
     Animation *animation12 = new Animation("walking-back-right", m_model);
     Animation *animation13 = new Animation("running-back-left", m_model);
     Animation *animation14 = new Animation("running-back-right", m_model);
+    Animation *animation15 = new Animation("pistol-aim-1", m_model);
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model);
 
@@ -47,6 +48,7 @@ void Character::init()
     animations.push_back(animation12);
     animations.push_back(animation13);
     animations.push_back(animation14);
+    animations.push_back(animation15);
     animations.push_back(animationRagdoll);
 
     // TODO: setup multiple animators from same Model
@@ -103,11 +105,11 @@ void Character::init()
     blendMask["mixamorig:Neck"] = 1.0f;
     blendMask["mixamorig:Head"] = 1.0f;
 
-    animation2->setBlendMask(blendMask);
-    animation3->setBlendMask(blendMask);
+    animation2->setBlendMask(blendMask, 0.f);
+    animation3->setBlendMask(blendMask, 0.f);
     // TODO: ragdoll mask for ragdoll hands - default position?
 
-    // TODO: fix animation - no armsd
+    // TODO: fix animation - no arms
     blendMask.clear();
     blendMask["mixamorig:Hips"] = 1.0f;
     blendMask["mixamorig:Spine"] = 1.0f;
@@ -126,10 +128,10 @@ void Character::init()
     blendMask["mixamorig:LeftFoot"] = 1.0f;
     blendMask["mixamorig:LeftToeBase"] = 1.0f;
 
-    animation11->setBlendMask(blendMask);
-    animation12->setBlendMask(blendMask);
-    animation13->setBlendMask(blendMask);
-    animation14->setBlendMask(blendMask);
+    animation11->setBlendMask(blendMask, 0.f);
+    animation12->setBlendMask(blendMask, 0.f);
+    animation13->setBlendMask(blendMask, 0.f);
+    animation14->setBlendMask(blendMask, 0.f);
 
     // turn-left pose
     AnimPose animPose;
@@ -139,8 +141,12 @@ void Character::init()
     // turn-right pose
     animPose.index = 3;
     m_animator->m_state.poses.push_back(animPose);
-    // ragdoll
+    // pistol-aim
     animPose.index = 15;
+    animPose.blendFactor = 1.0f;
+    m_animator->m_state.poses.push_back(animPose);
+    // ragdoll
+    animPose.index = 16;
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
 
@@ -189,9 +195,15 @@ void Character::update(float deltaTime)
     m_animator->update(deltaTime);
 
     // update ragdoll animator blend
-    m_animator->m_state.poses[2].blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
-    float clamped = std::max(0.0f, std::min(m_animator->m_state.poses[2].blendFactor, 1.0f));
-    m_animator->m_state.poses[2].blendFactor = clamped;
+    AnimPose &ragdolPose = getRagdolPose();
+    ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
+    float clamped = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
+    ragdolPose.blendFactor = clamped;
+
+    // update pistol-aim blend
+    m_aimBlend += deltaTime * m_stateChangeSpeed * (m_controller->m_aimLocked ? 1.f : -1.f);
+    m_aimBlend = std::max(0.0f, std::min(m_aimBlend, 1.0f));
+    updateAimPoseBlendMask(m_aimBlend);
 
     // sync animator with controller
     if (m_rigidbody && m_rigidbody->getMotionState() && !m_ragdollActive)
@@ -323,6 +335,21 @@ void Character::update(float deltaTime)
         AnimPose *animR = &m_animator->m_state.poses[1];
         animL->blendFactor = std::max(0.0f, std::min(-m_controller->m_turnFactor, 1.0f));
         animR->blendFactor = std::max(0.0f, std::min(m_controller->m_turnFactor, 1.0f));
+
+        // adaptive turn for pistol-aim
+        if (m_controller->m_aimLocked)
+        {
+            float &leftBlend = m_animator->m_state.animations[5].blendFactor;
+            float &rightBlend = m_animator->m_state.animations[6].blendFactor;
+
+            float leftB = leftBlend + m_leftForward;
+            float rightB = rightBlend + m_rightForward;
+
+            if (leftB > 0.f)
+                animR->blendFactor = std::max(0.0f, std::min(leftB / m_leftBlendEdge, 1.0f));
+            if (rightB > 0.f)
+                animL->blendFactor = std::max(0.0f, std::min(rightB / m_rightBlendEdge, 1.0f));
+        }
     }
 }
 
@@ -358,4 +385,55 @@ void Character::resetRagdoll()
     m_rigidbody->setActivationState(1);
     m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
     m_ragdollActive = false;
+}
+
+AnimPose &Character::getRagdolPose()
+{
+    return m_animator->m_state.poses[3];
+}
+
+AnimPose &Character::getAimPose()
+{
+    return m_animator->m_state.poses[2];
+}
+
+// TODO: single run in a thread
+void Character::updateAimPoseBlendMask(float blendFactor)
+{
+    // early exit
+    Bone *bone = m_animator->m_animations[15]->getBone("mixamorig:Head");
+    if (bone && bone->m_blendFactor == blendFactor)
+        return;
+
+    std::unordered_map<std::string, float> blendMask;
+
+    blendMask["mixamorig:Head"] = blendFactor;
+    blendMask["mixamorig:RightShoulder"] = blendFactor;
+    blendMask["mixamorig:RightArm"] = blendFactor;
+    blendMask["mixamorig:RightForeArm"] = blendFactor;
+    blendMask["mixamorig:RightHand"] = blendFactor;
+
+    // always on
+    blendMask["mixamorig:RightHandThumb1"] = 1.0f;
+    blendMask["mixamorig:RightHandThumb2"] = 1.0f;
+    blendMask["mixamorig:RightHandThumb3"] = 1.0f;
+    blendMask["mixamorig:RightHandThumb4"] = 1.0f;
+    blendMask["mixamorig:RightHandIndex1"] = 1.0f;
+    blendMask["mixamorig:RightHandIndex2"] = 1.0f;
+    blendMask["mixamorig:RightHandIndex3"] = 1.0f;
+    blendMask["mixamorig:RightHandIndex4"] = 1.0f;
+    blendMask["mixamorig:RightHandMiddle1"] = 1.0f;
+    blendMask["mixamorig:RightHandMiddle2"] = 1.0f;
+    blendMask["mixamorig:RightHandMiddle3"] = 1.0f;
+    blendMask["mixamorig:RightHandMiddle4"] = 1.0f;
+    blendMask["mixamorig:RightHandRing1"] = 1.0f;
+    blendMask["mixamorig:RightHandRing2"] = 1.0f;
+    blendMask["mixamorig:RightHandRing3"] = 1.0f;
+    blendMask["mixamorig:RightHandRing4"] = 1.0f;
+    blendMask["mixamorig:RightHandPinky1"] = 1.0f;
+    blendMask["mixamorig:RightHandPinky2"] = 1.0f;
+    blendMask["mixamorig:RightHandPinky3"] = 1.0f;
+    blendMask["mixamorig:RightHandPinky4"] = 1.0f;
+
+    m_animator->m_animations[15]->setBlendMask(blendMask, 0.0f);
 }

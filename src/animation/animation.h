@@ -28,6 +28,7 @@ struct AssimpNodeData
 class Animation
 {
 public:
+    std::string m_name;
     float m_Duration;
     int m_TicksPerSecond;
     std::unordered_map<std::string, Bone*> m_bones;
@@ -40,7 +41,7 @@ public:
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);
     void readHierarchy(AssimpNodeData &dest, const aiNode *src);
-    void setBlendMask(std::unordered_map<std::string, float> blendMask);
+    void setBlendMask(std::unordered_map<std::string, float> blendMask, float defaultValue);
 };
 
 #endif /* animation_hpp */

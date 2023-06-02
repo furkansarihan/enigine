@@ -67,7 +67,7 @@ public:
     bool m_jumping = false;
     bool m_running = false;
     bool m_turning = false;
-    bool m_turnLocked = false;
+    bool m_aimLocked = false;
 
     glm::vec3 m_lookDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
     float m_signedMoveAngle = M_PI; // +Z

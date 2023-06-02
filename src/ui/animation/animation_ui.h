@@ -16,6 +16,7 @@ public:
     int m_selectedAnimPose = 2;
 
     void render() override;
+    void renderBoneList();
 };
 
 #endif /* animation_ui_hpp */

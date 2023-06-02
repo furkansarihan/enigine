@@ -1,30 +1,43 @@
 #include "character_ui.h"
 
+void renderQuaternion(const char* label, glm::quat& quaternion);
+
 void CharacterUI::render()
 {
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    // TODO: change camera min pitch
-    if (ImGui::Checkbox("m_firstPerson", &m_character->m_firstPerson))
-    {
-        if (m_character->m_firstPerson)
-        {
-            m_character->m_followDistance = -1.0f;
-            m_character->m_followOffset.y = 3.3f;
-        }
-        else
-        {
-            m_character->m_followDistance = 10.0f;
-            m_character->m_followOffset.y = 1.5f;
-        }
-    }
-    ImGui::Checkbox("m_turnLocked", &m_controller->m_turnLocked);
+    // TODO: fps camera - change camera min pitch
+    ImGui::Checkbox("m_aimLocked", &m_controller->m_aimLocked);
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
-    ImGui::DragFloat("m_followDistance", &m_character->m_followDistance, 0.1f);
-    ImGui::DragFloat("m_followOffsetY", &m_character->m_followOffset.y, 0.1f);
-    ImGui::DragFloat("m_followHeightFactor", &m_character->m_followHeightFactor, 0.1f);
+    ImGui::Checkbox("m_drawBones", &m_drawBones);
+    if (ImGui::CollapsingHeader("m_followOffsetNormal", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_followOffsetNormalX", &m_character->m_followOffsetNormal.x, 0.1f);
+        ImGui::DragFloat("m_followOffsetNormalY", &m_character->m_followOffsetNormal.y, 0.1f);
+        ImGui::DragFloat("m_followOffsetNormalZ", &m_character->m_followOffsetNormal.z, 0.1f);
+    }
+    if (ImGui::CollapsingHeader("m_followOffsetAim", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_followOffsetAimX", &m_character->m_followOffsetAim.x, 0.1f);
+        ImGui::DragFloat("m_followOffsetAimY", &m_character->m_followOffsetAim.y, 0.1f);
+        ImGui::DragFloat("m_followOffsetAimZ", &m_character->m_followOffsetAim.z, 0.1f);
+    }
+    if (ImGui::CollapsingHeader("Pistol", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_pistolOffsetX", &m_character->m_pistolOffset.x, 0.1f);
+        ImGui::DragFloat("m_pistolOffsetY", &m_character->m_pistolOffset.y, 0.1f);
+        ImGui::DragFloat("m_pistolOffsetZ", &m_character->m_pistolOffset.z, 0.1f);
+        renderQuaternion("m_pistolOrientation", m_character->m_pistolOrientation);
+        ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
+        ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
+    }
+    ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
+    ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
+    ImGui::DragFloat("m_rightBlendEdge", &m_character->m_rightBlendEdge, 0.01f);
+    ImGui::DragFloat("m_leftForward", &m_character->m_leftForward, 0.01f);
+    ImGui::DragFloat("m_rightForward", &m_character->m_rightForward, 0.01f);
     ImGui::Separator();
     if (ImGui::CollapsingHeader("m_walkSpeed", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         renderSpeedLimiter(m_character->m_controller->m_walkSpeed, "m_walkSpeed");
@@ -135,5 +148,49 @@ void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string nam
         ImGui::DragFloat((name + nameHeight + std::to_string(i)).c_str(), &point.heightFactor, 0.1f);
         ImGui::DragFloat((name + nameLength + std::to_string(i)).c_str(), &point.lengthFactor, 0.1f);
         ImGui::Separator();
+    }
+}
+
+void renderQuaternion(const char* label, glm::quat& quaternion)
+{
+    float eulerX = glm::degrees(glm::pitch(quaternion));
+    float eulerY = glm::degrees(glm::yaw(quaternion));
+    float eulerZ = glm::degrees(glm::roll(quaternion));
+
+    if (ImGui::SliderFloat((std::string(label) + "_X").c_str(), &eulerX, -180.0f, 180.0f))
+        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
+
+    if (ImGui::SliderFloat((std::string(label) + "_Y").c_str(), &eulerY, -180.0f, 180.0f))
+        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
+
+    if (ImGui::SliderFloat((std::string(label) + "_Z").c_str(), &eulerZ, -180.0f, 180.0f))
+        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
+
+    ImGui::Text("Quaternion: (%.3f, %.3f, %.3f, %.3f)", quaternion.w, quaternion.x, quaternion.y, quaternion.z);
+}
+
+void CharacterUI::drawArmatureBones(Character &character, Shader &simpleShader, Model &cube, glm::mat4 viewProjection)
+{
+    if (!m_drawBones)
+        return;
+
+    simpleShader.use();
+    simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 0.0, 1.0, 1.0f));
+    for (int i = 0; i < m_bones.size(); i++)
+    {
+        int index = character.m_animator->m_animations[0]->m_BoneInfoMap[m_bones[i]].id;
+        glm::mat4 model = character.m_animator->m_globalMatrices[index];
+
+        glm::mat4 model2(1.0f);
+        model2 = glm::translate(model2, character.m_position);
+        model2 = glm::rotate(model2, character.m_rotation.y * (1.0f - character.getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+        model2 = glm::scale(model2, glm::vec3(character.m_scale));
+
+        model2 = model2 * model;
+
+        model2 = glm::scale(model2, glm::vec3(m_boneScale));
+
+        simpleShader.setMat4("MVP", viewProjection * model2);
+        cube.draw(simpleShader);
     }
 }
