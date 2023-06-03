@@ -3,7 +3,8 @@
 Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
     : m_shaderManager(shaderManager),
       m_physicsWorld(physicsWorld),
-      m_followCamera(followCamera)
+      m_followCamera(followCamera),
+      m_firing(false)
 {
     init();
 }
@@ -30,6 +31,7 @@ void Character::init()
     Animation *animation15 = new Animation("pistol-aim-1", m_model);
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model);
+    Animation *animation17 = new Animation("firing", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -50,6 +52,7 @@ void Character::init()
     animations.push_back(animation14);
     animations.push_back(animation15);
     animations.push_back(animationRagdoll);
+    animations.push_back(animation17);
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
@@ -133,6 +136,17 @@ void Character::init()
     animation13->setBlendMask(blendMask, 0.f);
     animation14->setBlendMask(blendMask, 0.f);
 
+    // firing
+    blendMask.clear();
+    blendMask["mixamorig:Neck"] = 1.0f;
+    blendMask["mixamorig:Spine2"] = 1.0f;
+    blendMask["mixamorig:RightShoulder"] = 1.0f;
+    blendMask["mixamorig:RightArm"] = 1.0f;
+    blendMask["mixamorig:RightForeArm"] = 1.0f;
+    blendMask["mixamorig:RightHand"] = 1.0f;
+
+    animation17->setBlendMask(blendMask, 0.f);
+
     // turn-left pose
     AnimPose animPose;
     animPose.index = 2;
@@ -147,6 +161,10 @@ void Character::init()
     m_animator->m_state.poses.push_back(animPose);
     // ragdoll
     animPose.index = 16;
+    animPose.blendFactor = 0.0f;
+    m_animator->m_state.poses.push_back(animPose);
+    // firing
+    animPose.index = 17;
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
 
@@ -194,16 +212,20 @@ void Character::update(float deltaTime)
     // update animation
     m_animator->update(deltaTime);
 
-    // update ragdoll animator blend
+    // update ragdoll blend
     AnimPose &ragdolPose = getRagdolPose();
     ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
-    float clamped = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
-    ragdolPose.blendFactor = clamped;
+    ragdolPose.blendFactor = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
 
     // update pistol-aim blend
     m_aimBlend += deltaTime * m_aimStateChangeSpeed * (m_controller->m_aimLocked ? 1.f : -1.f);
     m_aimBlend = std::max(0.0f, std::min(m_aimBlend, 1.0f));
     updateAimPoseBlendMask(m_aimBlend);
+
+    // update firing blend
+    AnimPose &firingPose = getFiringPose();
+    firingPose.blendFactor += deltaTime * m_firingStateChangeSpeed * (m_firing ? 1.f : -1.f);
+    firingPose.blendFactor = std::max(0.0f, std::min(firingPose.blendFactor, 1.0f));
 
     // sync animator with controller
     if (m_rigidbody && m_rigidbody->getMotionState() && !m_ragdollActive)
@@ -397,6 +419,11 @@ AnimPose &Character::getRagdolPose()
 AnimPose &Character::getAimPose()
 {
     return m_animator->m_state.poses[2];
+}
+
+AnimPose &Character::getFiringPose()
+{
+    return m_animator->m_state.poses[4];
 }
 
 // TODO: single run in a thread

@@ -30,9 +30,12 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
-        // 1 hit per second
+        // TODO: change state
+        if (!m_controller->m_aimLocked)
+            return;
+
         float now = (float)glfwGetTime();
-        if (now - m_lastFire > 1.0f)
+        if (now - m_lastFire > m_fireLimit)
         {
             m_lastFire = now;
             fireWeapon();
@@ -58,8 +61,22 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
 
 void PCharacter::fireWeapon()
 {
-    // shoot ray
-    btVector3 from = BulletGLM::getBulletVec3(m_position + m_followOffset);
+    m_firing = true;
+    m_animator->setAnimTime(17, m_fireAnimStartTime);
+    auto fireCallback = [&]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_fireAnimTimeMilli / 2));
+        shootRay();
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_fireAnimTimeMilli / 2));
+        m_firing = false;
+    };
+    std::thread workerThread(fireCallback);
+    workerThread.detach();
+}
+
+void PCharacter::shootRay()
+{
+    btVector3 from = BulletGLM::getBulletVec3(m_followCamera->position);
     btVector3 to = BulletGLM::getBulletVec3(m_followCamera->front * 20000.f);
     btCollisionWorld::ClosestRayResultCallback callback(from, to);
     m_controller->m_dynamicsWorld->rayTest(from, to, callback);

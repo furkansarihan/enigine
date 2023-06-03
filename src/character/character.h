@@ -6,6 +6,9 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <future>
+#include <atomic>
+#include <chrono>
 
 #include <glm/gtx/rotate_vector.hpp>
 #include "btBulletDynamicsCommon.h"
@@ -47,7 +50,12 @@ public:
     float m_rightForward = 0.05f;
 
     float m_aimBlend = 0.0f;
-    float m_aimStateChangeSpeed = 4.f;
+    float m_aimStateChangeSpeed = 3.f;
+
+    float m_firingBlend = 0.0f;
+    float m_firingStateChangeSpeed = 3.f;
+
+    std::atomic_bool m_firing;
 
     // ragdoll
     bool m_ragdollActive = false;
@@ -63,6 +71,7 @@ public:
     void resetRagdoll();
     AnimPose &getRagdolPose();
     AnimPose &getAimPose();
+    AnimPose &getFiringPose();
     void updateAimPoseBlendMask(float blendFactor);
 };
 

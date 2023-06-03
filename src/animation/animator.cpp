@@ -125,3 +125,8 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     for (int i = 0; i < node->childrenCount; i++)
         calculateBoneTransform(&node->children[i], globalTransformation);
 }
+
+void Animator::setAnimTime(int animIndex, float time)
+{
+    m_timers[animIndex] = time;
+}

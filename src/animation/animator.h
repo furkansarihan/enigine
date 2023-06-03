@@ -44,6 +44,7 @@ public:
     ~Animator();
     void update(float deltaTime);
     void calculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
+    void setAnimTime(int animIndex, float time);
 };
 
 #endif /* animator_hpp */

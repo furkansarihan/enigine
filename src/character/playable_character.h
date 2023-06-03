@@ -30,9 +30,13 @@ public:
     float m_pistolScale = 100.f;
 
     float m_lastFire;
+    float m_fireLimit = 0.5f;
+    float m_fireAnimStartTime = 1.f;
+    int m_fireAnimTimeMilli = 250;
 
     void update(GLFWwindow *window, float deltaTime);
     void fireWeapon();
+    void shootRay();
 };
 
 #endif /* playable_character_hpp */

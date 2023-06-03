@@ -33,6 +33,9 @@ void CharacterUI::render()
         ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
     }
+    ImGui::DragFloat("m_fireLimit", &m_character->m_fireLimit, 0.05f);
+    ImGui::DragFloat("m_fireAnimStartTime", &m_character->m_fireAnimStartTime, 0.05f);
+    ImGui::DragInt("m_fireAnimTimeMilli", &m_character->m_fireAnimTimeMilli, 25);
     ImGui::DragFloat("m_aimStateChangeSpeed", &m_character->m_aimStateChangeSpeed, 0.1f);
     ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
     ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
