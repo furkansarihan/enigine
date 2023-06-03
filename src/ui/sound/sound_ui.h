@@ -3,21 +3,23 @@
 
 #include "../base_ui.h"
 #include "../../sound_engine/sound_engine.h"
+#include "../../character/playable_character.h"
 
 class SoundUI : public BaseUI
 {
 private:
     SoundEngine *m_soundEngine;
-    SoundSource *m_soundSource;
+    PCharacter *m_character;
 
 public:
-    SoundUI(SoundEngine *soundEngine, SoundSource *soundSource)
+    SoundUI(SoundEngine *soundEngine, PCharacter *character)
         : m_soundEngine(soundEngine),
-          m_soundSource(soundSource)
+          m_character(character)
     {
     }
 
     void render() override;
+    void renderSoundSource(SoundSource &soundSource);
 };
 
 #endif /* sound_ui_hpp */

@@ -6,6 +6,7 @@ imgui/1.89.4
 assimp/5.2.2
 openal/1.22.2
 bullet3/3.24
+libsndfile/1.2.0
 
 [generators]
 cmake

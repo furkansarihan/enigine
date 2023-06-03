@@ -1,15 +1,21 @@
 #ifndef playable_character_hpp
 #define playable_character_hpp
 
+#include <random>
+
 #include "character.h"
+#include "../sound_engine/sound_engine.h"
 
 class PCharacter : public Character
 {
 public:
-    PCharacter(ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(SoundEngine *soundEngine, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
+    SoundEngine *m_soundEngine;
     std::vector<Character *> m_npcList;
+    ALuint m_fireSoundBuffer;
+    std::vector<SoundSource> m_fireSounds;
 
     bool m_firstPerson = false;
     bool m_controlCharacter = true;
@@ -30,6 +36,7 @@ public:
     float m_pistolScale = 100.f;
 
     float m_lastFire;
+    int m_lastFireSound = -1;
     float m_fireLimit = 0.5f;
     float m_fireAnimStartTime = 1.f;
     int m_fireAnimTimeMilli = 250;
@@ -37,6 +44,10 @@ public:
     void update(GLFWwindow *window, float deltaTime);
     void fireWeapon();
     void shootRay();
+    void playFireSound();
+
+private:
+    const int m_concurrentSoundCount = 6;
 };
 
 #endif /* playable_character_hpp */

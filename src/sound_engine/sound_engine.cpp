@@ -1,8 +1,5 @@
 #include "sound_engine.h"
 
-#define DR_WAV_IMPLEMENTATION
-#include "../external/dr_wav/dr_wav.h"
-
 #define alCall(function, ...) alCallImpl(__FILE__, __LINE__, function, __VA_ARGS__)
 #define alcCall(function, device, ...) alcCallImpl(__FILE__, __LINE__, function, device, __VA_ARGS__)
 
@@ -155,60 +152,78 @@ auto SoundEngine::alcCallImpl(const char *filename,
     return check_alc_errors(filename, line, device);
 }
 
-SoundSource SoundEngine::loadSource(const char *path)
+ALuint SoundEngine::loadSound(const char *path)
 {
-    // Read audio file
-    drwav wav;
-    if (!drwav_init_file(&wav, path, NULL))
+    SF_INFO sfInfo;
+    SNDFILE *sndFile = sf_open(path, SFM_READ, &sfInfo);
+
+    std::cout << "Audio frames: " << sfInfo.frames << std::endl;
+    std::cout << "Audio samplerate: " << sfInfo.samplerate << std::endl;
+    std::cout << "Audio channels: " << sfInfo.channels << std::endl;
+    std::cout << "Audio format: " << sfInfo.format << std::endl;
+    std::cout << "Audio sections: " << sfInfo.sections << std::endl;
+    std::cout << "Audio seekable: " << sfInfo.seekable << std::endl;
+
+    int bufferSize = sfInfo.frames * sfInfo.channels;
+    float *audioData = new float[bufferSize];
+
+    sf_count_t framesRead = sf_readf_float(sndFile, audioData, sfInfo.frames);
+    sf_close(sndFile);
+
+    // Create audio buffer
+    ALuint bufferId;
+    alCall(alGenBuffers, 1, &bufferId);
+
+    int bitsPerSample = 0;
+    switch (sfInfo.format & SF_FORMAT_SUBMASK)
     {
-        throw "ERROR: dr_wav could not init audio file";
+    case SF_FORMAT_PCM_S8:
+        bitsPerSample = 8;
+        break;
+    case SF_FORMAT_PCM_16:
+        bitsPerSample = 16;
+        break;
+    case SF_FORMAT_MPEG_LAYER_III:
+        // TODO: how to find?
+        bitsPerSample = 32;
+        break;
+    default:
+        break;
     }
 
-    std::cout << "Audio channels: " << wav.channels << std::endl;
-    std::cout << "Audio sample rate: " << wav.sampleRate << std::endl;
-    std::cout << "Audio total PCM Frame count: " << wav.totalPCMFrameCount << std::endl;
-    std::cout << "Audio bits per sample: " << wav.bitsPerSample << std::endl;
-
     ALenum format;
-    if (wav.channels == 1 && wav.bitsPerSample == 8)
+    if (sfInfo.channels == 1 && bitsPerSample == 8)
         format = AL_FORMAT_MONO8;
-    else if (wav.channels == 1 && wav.bitsPerSample == 16)
+    else if (sfInfo.channels == 1 && bitsPerSample == 16)
         format = AL_FORMAT_MONO16;
-    else if (wav.channels == 2 && wav.bitsPerSample == 8)
+    else if (sfInfo.channels == 2 && bitsPerSample == 8)
         format = AL_FORMAT_STEREO8;
-    else if (wav.channels == 2 && wav.bitsPerSample == 16)
+    else if (sfInfo.channels == 2 && bitsPerSample == 16)
         format = AL_FORMAT_STEREO16;
+    else if (sfInfo.channels == 2 && bitsPerSample == 32)
+        format = AL_FORMAT_STEREO_FLOAT32;
     else
     {
         std::cerr
-            << "ERROR: unrecognised wave format: "
-            << wav.channels << " channels, "
-            << wav.bitsPerSample << " bitsPerSample" << std::endl;
-        throw "ERROR: unrecognised wave format";
+            << "ERROR: unrecognised audio format: "
+            << sfInfo.channels << " channels, "
+            << bitsPerSample << " bitsPerSample" << std::endl;
+        throw "ERROR: unrecognised audio format";
     }
 
-    // Create audio buffer
-    ALuint buffer;
-    alCall(alGenBuffers, 1, &buffer);
+    alCall(alBufferData, bufferId, format, audioData, bufferSize * sizeof(float), sfInfo.samplerate);
+    delete[] audioData;
 
-    if (format == AL_FORMAT_MONO8 || format == AL_FORMAT_STEREO8)
-    {
-        int32_t size = (size_t)wav.totalPCMFrameCount * wav.channels * sizeof(int8_t);
-        int8_t *pSampleData = (int8_t *)malloc(size);
-        drwav_read_pcm_frames(&wav, wav.totalPCMFrameCount, pSampleData);
-        alCall(alBufferData, buffer, format, pSampleData, size, wav.sampleRate);
-        drwav_uninit(&wav);
-    }
-    else if (format == AL_FORMAT_MONO16 || format == AL_FORMAT_STEREO16)
-    {
-        int32_t size = (size_t)wav.totalPCMFrameCount * wav.channels * sizeof(int16_t);
-        int16_t *pSampleData = (int16_t *)malloc(size);
-        drwav_read_pcm_frames_s16(&wav, wav.totalPCMFrameCount, pSampleData);
-        alCall(alBufferData, buffer, format, pSampleData, size, wav.sampleRate);
-        drwav_uninit(&wav);
-    }
+    return bufferId;
+}
 
-    // Init audio source
+void SoundEngine::deleteSound(ALuint bufferId)
+{
+    alCall(alDeleteBuffers, 1, &bufferId);
+}
+
+SoundSource SoundEngine::createSource(ALuint bufferId)
+{
     ALuint source;
     alCall(alGenSources, 1, &source);
     alCall(alSourcef, source, AL_PITCH, 1);
@@ -216,28 +231,34 @@ SoundSource SoundEngine::loadSource(const char *path)
     alCall(alSource3f, source, AL_POSITION, 0, 0, 0);
     alCall(alSource3f, source, AL_VELOCITY, 0, 0, 0);
     alCall(alSourcei, source, AL_LOOPING, AL_TRUE);
-    alCall(alSourcei, source, AL_BUFFER, buffer);
+    alCall(alSourcei, source, AL_BUFFER, bufferId);
 
     SoundSource soundSource;
     soundSource.sourceId = source;
-    soundSource.bufferId = buffer;
+    soundSource.bufferId = bufferId;
     return soundSource;
 }
 
 void SoundEngine::deleteSource(const SoundSource soundSource)
 {
     alCall(alDeleteSources, 1, &soundSource.sourceId);
-    alCall(alDeleteBuffers, 1, &soundSource.bufferId);
 }
 
 void SoundEngine::playSource(const SoundSource soundSource)
 {
+    std::unique_lock<std::mutex> lock(m_mutex);
     alCall(alSourcePlay, soundSource.sourceId);
 }
 
 void SoundEngine::pauseSource(const SoundSource soundSource)
 {
     alCall(alSourcePause, soundSource.sourceId);
+}
+
+void SoundEngine::stopSource(const SoundSource soundSource)
+{
+    std::unique_lock<std::mutex> lock(m_mutex);
+    alCall(alSourceStop, soundSource.sourceId);
 }
 
 ALint SoundEngine::getSourceState(const SoundSource soundSource)
@@ -266,6 +287,12 @@ float SoundEngine::getSourcePitch(const SoundSource soundSource)
     float pitch;
     alCall(alGetSourcef, soundSource.sourceId, AL_PITCH, &pitch);
     return pitch;
+}
+
+void SoundEngine::setPlaybackPosition(const SoundSource soundSource, const float positionInSeconds)
+{
+    std::unique_lock<std::mutex> lock(m_mutex);
+    alCall(alSourcef, soundSource.sourceId, AL_SEC_OFFSET, positionInSeconds);
 }
 
 void SoundEngine::setSourceGain(const SoundSource soundSource, const float gain)

@@ -6,9 +6,12 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <mutex>
 
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <AL/alext.h>
+#include <sndfile.h>
 
 struct SoundSource
 {
@@ -21,19 +24,25 @@ class SoundEngine
 public:
     SoundEngine();
     ~SoundEngine();
+    std::mutex m_mutex;
     bool init();
+    // Buffer
+    ALuint loadSound(const char *path);
+    void deleteSound(ALuint bufferId);
     // Source
-    SoundSource loadSource(const char *path);
+    SoundSource createSource(ALuint bufferId);
     void deleteSource(const SoundSource soundSource);
     // Source state
     void playSource(const SoundSource soundSource);
     void pauseSource(const SoundSource soundSource);
+    void stopSource(const SoundSource soundSource);
     // Source getters
     ALint getSourceState(const SoundSource soundSource);
     float getSourceGain(const SoundSource soundSource);
     float getSourcePitch(const SoundSource soundSource);
     ALint getSourceLooping(const SoundSource soundSource);
     // Source setters
+    void setPlaybackPosition(const SoundSource soundSource, const float positionInSeconds);
     void setSourceGain(const SoundSource soundSource, const float gain);
     void setSourcePitch(const SoundSource soundSource, const float pitch);
     void setSourceLooping(const SoundSource soundSource, const ALint looping);

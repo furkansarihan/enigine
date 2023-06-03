@@ -103,18 +103,6 @@ int main(int argc, char **argv)
     }
     soundEngine.setListenerPosition(4.0f, 4.0f, 4.0f);
 
-    SoundSource soundSource;
-    try
-    {
-        soundSource = soundEngine.loadSource("../src/assets/sounds/rain-loop-1648m.wav");
-    }
-    catch (const char *e)
-    {
-        std::cerr << e << std::endl;
-        return 0;
-    }
-    // soundEngine.playSource(soundSource);
-
     // Init Physics
     PhysicsWorld physicsWorld;
 
@@ -162,7 +150,7 @@ int main(int argc, char **argv)
 
     // Characters
     NPCharacter npc1(&shaderManager, &physicsWorld, &editorCamera);
-    PCharacter character(&shaderManager, &physicsWorld, &editorCamera);
+    PCharacter character(&soundEngine, &shaderManager, &physicsWorld, &editorCamera);
 
     std::vector<Character *> characters;
     characters.push_back(&character);
@@ -239,7 +227,7 @@ int main(int argc, char **argv)
     RagdollUI ragdollUI(&character, &editorCamera);
     AnimationUI animationUI(character.m_animator);
     ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager, &editorCamera);
-    SoundUI soundUI(&soundEngine, &soundSource);
+    SoundUI soundUI(&soundEngine, &character);
     VehicleUI vehicleUI(&vehicle);
     CameraUI cameraUI(&editorCamera);
     TerrainUI terrainUI(&terrain);
@@ -718,9 +706,6 @@ int main(int argc, char **argv)
         // Swap buffers
         glfwSwapBuffers(window);
     }
-
-    // Cleanup OpenAL
-    soundEngine.deleteSource(soundSource);
 
     // Cleanup imgui
     ImGui_ImplOpenGL3_Shutdown();

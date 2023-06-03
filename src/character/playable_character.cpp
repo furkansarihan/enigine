@@ -1,12 +1,31 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(m_shaderManager, physicsWorld, followCamera)
+PCharacter::PCharacter(SoundEngine *soundEngine, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(m_shaderManager, physicsWorld, followCamera),
+      m_soundEngine(soundEngine)
 {
+    try
+    {
+        m_fireSoundBuffer = m_soundEngine->loadSound("../src/assets/sounds/colt-fire.mp3");
+    }
+    catch (const char *e)
+    {
+        std::cerr << e << std::endl;
+        return;
+    }
+
+    for (int i = 0; i < m_concurrentSoundCount; i++)
+        m_fireSounds.push_back(m_soundEngine->createSource(m_fireSoundBuffer));
+
+    for (int i = 0; i < m_concurrentSoundCount; i++)
+        m_soundEngine->setSourceLooping(m_fireSounds[i], AL_FALSE);
 }
 
 PCharacter::~PCharacter()
 {
+    for (int i = 0; i < 6; i++)
+        m_soundEngine->deleteSource(m_fireSounds[i]);
+    m_soundEngine->deleteSound(m_fireSoundBuffer);
 }
 
 void PCharacter::update(GLFWwindow *window, float deltaTime)
@@ -67,6 +86,7 @@ void PCharacter::fireWeapon()
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(m_fireAnimTimeMilli / 2));
         shootRay();
+        playFireSound();
         std::this_thread::sleep_for(std::chrono::milliseconds(m_fireAnimTimeMilli / 2));
         m_firing = false;
     };
@@ -95,4 +115,28 @@ void PCharacter::shootRay()
     }
     // else
     //     std::cout << "PCharacter::fireWeapon: no hit" << std::endl;
+}
+
+void PCharacter::playFireSound()
+{
+    m_lastFireSound = (m_lastFireSound + 1) % m_concurrentSoundCount;
+    SoundSource &fireSound = m_fireSounds[m_lastFireSound];
+
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    int minVal = 0;
+    int maxVal = m_concurrentSoundCount - 1;
+    std::uniform_int_distribution<int> distribution(minVal, maxVal);
+    int index;
+
+    m_soundEngine->setPlaybackPosition(fireSound, index * 2);
+    m_soundEngine->playSource(fireSound);
+
+    auto soundCallback = [&]()
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        m_soundEngine->stopSource(fireSound);
+    };
+    std::thread workerThread(soundCallback);
+    workerThread.detach();
 }

@@ -98,8 +98,7 @@ add_executable( enigine
                 src/external/imgui/src/imgui_impl_opengl3.cpp
                 src/external/imgui/src/imgui_impl_opengl3.h
                 src/external/imgui/src/imgui_impl_opengl3_loader.h
-                src/external/stb_image/stb_image.h
-                src/external/dr_wav/dr_wav.h )
+                src/external/stb_image/stb_image.h )
 
 add_custom_command(TARGET enigine
     POST_BUILD
