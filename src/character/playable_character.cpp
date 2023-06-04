@@ -122,14 +122,10 @@ void PCharacter::playFireSound()
     m_lastFireSound = (m_lastFireSound + 1) % m_concurrentSoundCount;
     SoundSource &fireSound = m_fireSounds[m_lastFireSound];
 
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    int minVal = 0;
-    int maxVal = m_concurrentSoundCount - 1;
-    std::uniform_int_distribution<int> distribution(minVal, maxVal);
-    int index;
+    int index = rand() % m_concurrentSoundCount + 0;
 
-    m_soundEngine->setPlaybackPosition(fireSound, index * 2);
+    m_soundEngine->setSourcePosition(fireSound, m_position.x, m_position.y, m_position.z);
+    m_soundEngine->setPlayerPosition(fireSound, (float)index * 2.f);
     m_soundEngine->playSource(fireSound);
 
     auto soundCallback = [&]()

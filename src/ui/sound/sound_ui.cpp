@@ -59,4 +59,8 @@ void SoundUI::renderSoundSource(SoundSource &soundSource)
     {
         m_soundEngine->setSourceLooping(soundSource, looping ? AL_FALSE : AL_TRUE);
     }
+    ALfloat position = m_soundEngine->getPlayerPosition(soundSource);
+    ImGui::Text("player position: %.3f", position);
+    glm::vec3 sourcePosition = m_soundEngine->getSourcePosition(soundSource);
+    ImGui::Text("source position: (%.3f, %.3f, %.3f)", sourcePosition.x, sourcePosition.y, sourcePosition.z);
 }

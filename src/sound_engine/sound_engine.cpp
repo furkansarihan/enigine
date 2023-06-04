@@ -196,6 +196,8 @@ ALuint SoundEngine::loadSound(const char *path)
         format = AL_FORMAT_MONO8;
     else if (sfInfo.channels == 1 && bitsPerSample == 16)
         format = AL_FORMAT_MONO16;
+    else if (sfInfo.channels == 1 && bitsPerSample == 32)
+        format = AL_FORMAT_MONO_FLOAT32;
     else if (sfInfo.channels == 2 && bitsPerSample == 8)
         format = AL_FORMAT_STEREO8;
     else if (sfInfo.channels == 2 && bitsPerSample == 16)
@@ -289,7 +291,22 @@ float SoundEngine::getSourcePitch(const SoundSource soundSource)
     return pitch;
 }
 
-void SoundEngine::setPlaybackPosition(const SoundSource soundSource, const float positionInSeconds)
+glm::vec3 SoundEngine::getSourcePosition(const SoundSource soundSource)
+{
+    ALfloat sourcePosition[3];
+    alCall(alGetSource3f, soundSource.sourceId, AL_POSITION, &sourcePosition[0], &sourcePosition[1], &sourcePosition[2]);
+    glm::vec3 position(sourcePosition[0], sourcePosition[1], sourcePosition[2]);
+    return position;
+}
+
+float SoundEngine::getPlayerPosition(const SoundSource soundSource)
+{
+    float position;
+    alCall(alGetSourcef, soundSource.sourceId, AL_SEC_OFFSET, &position);
+    return position;
+}
+
+void SoundEngine::setPlayerPosition(const SoundSource soundSource, const float positionInSeconds)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
     alCall(alSourcef, soundSource.sourceId, AL_SEC_OFFSET, positionInSeconds);
@@ -312,6 +329,7 @@ void SoundEngine::setSourceLooping(const SoundSource soundSource, const ALint lo
 
 void SoundEngine::setSourcePosition(const SoundSource soundSource, const float x, const float y, const float z)
 {
+    std::unique_lock<std::mutex> lock(m_mutex);
     alCall(alSource3f, soundSource.sourceId, AL_POSITION, x, y, z);
 }
 
