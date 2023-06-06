@@ -67,6 +67,8 @@ add_executable( enigine
                 src/character/np_character.cpp
                 src/character_controller/speed_limiter.h
                 src/character_controller/speed_limiter.cpp
+                src/particle_engine/particle_engine.h
+                src/particle_engine/particle_engine.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp
@@ -91,6 +93,8 @@ add_executable( enigine
                 src/ui/terrain/terrain_ui.cpp
                 src/ui/vehicle/vehicle_ui.h
                 src/ui/vehicle/vehicle_ui.cpp
+                src/ui/particle/particle_ui.h
+                src/ui/particle/particle_ui.cpp
                 # external
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
