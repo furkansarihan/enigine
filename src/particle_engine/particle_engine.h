@@ -34,6 +34,8 @@ public:
     void update(float deltaTime);
     void drawParticles(Shader &shader, Model &quad, glm::mat4 viewProjection);
 
+    // TODO: getAABB
+
     Camera *m_viewCamera;
     std::vector<Particle> m_particles;
     glm::vec3 m_position = glm::vec3(0.f, 0.f, 0.f);
@@ -42,7 +44,8 @@ public:
     float m_randomness = 0.25f;
     float m_minVelocity = 0.1f;
     float m_maxVelocity = 1.0f;
-
+    float m_minDuration = 1.0f;
+    float m_maxDuration = 3.0f;
     float m_particleScale = 0.1f;
 
 private:

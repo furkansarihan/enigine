@@ -84,6 +84,15 @@ public:
         return glm::vec2(x, y);
     }
 
+    static glm::vec3 positionFromModel(glm::mat4 model)
+    {
+        glm::vec3 position;
+        position.x = model[3][0];
+        position.y = model[3][1];
+        position.z = model[3][2];
+        return position;
+    }
+
     // TODO: primitive creation
     static inline void createQuad(unsigned int &vbo, unsigned int &vao, unsigned int &ebo)
     {

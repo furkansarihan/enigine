@@ -62,7 +62,7 @@ void ParticleEngine::emitParticles(float deltaTime)
 
     for (int i = 0; i < newParticle; i++)
     {
-        float duration = randomFloat(1.f, 3.f);
+        float duration = randomFloat(m_minDuration, m_maxDuration);
         float velocityForce = randomFloat(m_minVelocity, m_maxVelocity);
 
         glm::vec3 randomVector = glm::sphericalRand(1.0f);
@@ -75,7 +75,11 @@ void ParticleEngine::emitParticles(float deltaTime)
 // TODO: instancing - compute shaders
 void ParticleEngine::drawParticles(Shader &shader, Model &quad, glm::mat4 viewProjection)
 {
+    if (m_particles.empty())
+        return;
+
     shader.use();
+    shader.setFloat("particleScale", m_particleScale);
     for (int i = 0; i < m_particles.size(); i++)
     {
         glm::mat4 model(1.0f);

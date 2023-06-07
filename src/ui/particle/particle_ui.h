@@ -8,16 +8,13 @@
 
 class ParticleUI : public BaseUI
 {
-private:
-    ParticleEngine *m_particleEngine;
-
 public:
-    ParticleUI(ParticleEngine *particleEngine) : m_particleEngine(particleEngine) {}
-
-    float m_followDist = 3.f;
-    float m_followOffsetY = 3.f;
+    ParticleUI() {}
+    
+    std::vector<ParticleEngine *> m_particleEngines;
 
     void render() override;
+    void renderParticleEngine(ParticleEngine *pe, int index);
 };
 
 #endif /* particle_ui_hpp */

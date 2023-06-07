@@ -19,6 +19,24 @@ PCharacter::PCharacter(SoundEngine *soundEngine, ShaderManager *m_shaderManager,
 
     for (int i = 0; i < m_concurrentSoundCount; i++)
         m_soundEngine->setSourceLooping(m_fireSounds[i], AL_FALSE);
+
+    m_smokeParticle = new ParticleEngine(followCamera);
+    m_smokeParticle->m_particlesPerSecond = 100.f;
+    m_smokeParticle->m_randomness = 0.5f;
+    m_smokeParticle->m_minVelocity = 0.1f;
+    m_smokeParticle->m_maxVelocity = 5.0f;
+    m_smokeParticle->m_minDuration = 1.0f;
+    m_smokeParticle->m_maxDuration = 3.0f;
+    m_smokeParticle->m_particleScale = 4.0f;
+
+    m_muzzleFlash = new ParticleEngine(followCamera);
+    m_muzzleFlash->m_particlesPerSecond = 250.f;
+    m_muzzleFlash->m_randomness = 1.0f;
+    m_muzzleFlash->m_minVelocity = 0.1f;
+    m_muzzleFlash->m_maxVelocity = 0.4f;
+    m_muzzleFlash->m_minDuration = 0.2f;
+    m_muzzleFlash->m_maxDuration = 0.6f;
+    m_muzzleFlash->m_particleScale = 0.15f;
 }
 
 PCharacter::~PCharacter()
@@ -26,11 +44,25 @@ PCharacter::~PCharacter()
     for (int i = 0; i < 6; i++)
         m_soundEngine->deleteSource(m_fireSounds[i]);
     m_soundEngine->deleteSound(m_fireSoundBuffer);
+
+    delete m_smokeParticle;
+    delete m_muzzleFlash;
 }
 
 void PCharacter::update(GLFWwindow *window, float deltaTime)
 {
     Character::update(deltaTime);
+
+    // particle
+    m_smokeParticle->update(deltaTime);
+    m_smokeParticle->m_position = m_lastFireHit;
+
+    m_muzzleFlash->m_particlesPerSecond = m_firing ? 250.f : 0.f;
+    m_muzzleFlash->update(deltaTime);
+    m_muzzleFlash->m_position = m_muzzlePosition;
+    m_muzzleFlash->m_direction = m_muzzleDirection;
+
+    updatePistolModelMatrix();
 
     if (m_controlCharacter)
         m_controller->recieveInput(window, deltaTime);
@@ -51,6 +83,9 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     {
         // TODO: change state
         if (!m_controller->m_aimLocked)
+            return;
+
+        if (!m_controlCharacter)
             return;
 
         float now = (float)glfwGetTime();
@@ -76,6 +111,34 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     {
         m_controller->m_aimLocked = true;
     }
+}
+
+void PCharacter::updatePistolModelMatrix()
+{
+    int index = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:RightHand"].id;
+    glm::mat4 model = m_animator->m_globalMatrices[index];
+
+    glm::mat4 model2(1.0f);
+    model2 = glm::translate(model2, m_position);
+    model2 = glm::rotate(model2, m_rotation.y * (1.0f - getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+    model2 = glm::scale(model2, glm::vec3(m_scale));
+
+    model2 = model2 * model;
+    glm::mat4 model3 = model2;
+
+    model2 = glm::translate(model2, m_pistolOffset);
+    model2 = model2 * glm::mat4_cast(m_pistolOrientation);
+    model2 = glm::scale(model2, glm::vec3(m_pistolScale));
+
+    m_pistolModel = model2;
+
+    // muzzle
+    model3 = glm::translate(model3, m_pistolOffset + m_muzzleOffset);
+    model3 = model3 * glm::mat4_cast(m_pistolOrientation);
+    model3 = glm::scale(model3, glm::vec3(m_pistolScale));
+
+    m_muzzlePosition = CommonUtil::positionFromModel(model3);
+    m_muzzleDirection = glm::normalize(glm::mat3(m_pistolModel) * glm::vec3(0.f, 0.f, 1.f));
 }
 
 void PCharacter::fireWeapon()
@@ -104,6 +167,9 @@ void PCharacter::shootRay()
     // check if it's collide any NPC
     if (callback.hasHit())
     {
+        // TODO: modifying in a thread?
+        m_lastFireHit = BulletGLM::getGLMVec3(callback.m_hitPointWorld);
+
         // std::cout << "PCharacter::fireWeapon: hit" << std::endl;
         const btRigidBody *rb = btRigidBody::upcast(callback.m_collisionObject);
         // TODO: O(1) lookup

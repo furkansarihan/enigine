@@ -33,6 +33,12 @@ void CharacterUI::render()
         ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
     }
+    if (ImGui::CollapsingHeader("Muzzle", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_muzzleOffsetX", &m_character->m_muzzleOffset.x, 0.1f);
+        ImGui::DragFloat("m_muzzleOffsetY", &m_character->m_muzzleOffset.y, 0.1f);
+        ImGui::DragFloat("m_muzzleOffsetZ", &m_character->m_muzzleOffset.z, 0.1f);
+    }
     ImGui::DragFloat("m_fireLimit", &m_character->m_fireLimit, 0.05f);
     ImGui::DragFloat("m_fireAnimStartTime", &m_character->m_fireAnimStartTime, 0.05f);
     ImGui::DragInt("m_fireAnimTimeMilli", &m_character->m_fireAnimTimeMilli, 25);
