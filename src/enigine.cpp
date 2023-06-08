@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
@@ -136,6 +136,7 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
     shaderManager.addShader(ShaderDynamic(&muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
     shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
+    shaderManager.addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
 
     // Create geometries
     Model cube("../src/assets/models/cube.obj");
@@ -386,6 +387,31 @@ int main(int argc, char **argv)
                 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
                 depthShader.setMat4("MVP", depthVP * objectModel);
                 sphere.draw(depthShader);
+            }
+
+            // characters
+            animDepthShader.use();
+            animDepthShader.setMat4("projection", depthP);
+            animDepthShader.setMat4("view", depthViewMatrix);
+
+            for (int i = 0; i < characters.size(); i++)
+            {
+                Character *character = characters[i];
+
+                auto transforms = character->m_animator->m_FinalBoneMatrices;
+                for (int i = 0; i < transforms.size(); ++i)
+                {
+                    animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+                }
+
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, character->m_position);
+                model = glm::rotate(model, character->m_rotation.x, glm::vec3(1, 0, 0));
+                model = glm::rotate(model, character->m_rotation.y * (1.0f - character->getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+                model = glm::rotate(model, character->m_rotation.z, glm::vec3(0, 0, 1));
+                model = glm::scale(model, glm::vec3(character->m_scale));
+                animDepthShader.setMat4("model", model);
+                character->m_model->draw(animDepthShader);
             }
         }
 

@@ -2,7 +2,7 @@
 out vec4 FragColor;
 
 in vec2 TexCoords;
-in vec3 Pos;
+in vec3 WorldPos;
 in vec3 Normal;
 in vec3 Tangent;
 in vec3 Bitangent;

@@ -402,6 +402,8 @@ void main()
         outColor = vec4(sampleTexture(hs), 1);
     }
 
+    outColor.xyz *= visibility;
+
     if (ShowCascade) {
         outColor[index] = 0.9;
     }
