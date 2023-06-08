@@ -21,6 +21,8 @@ public:
     {
     }
 
+    glm::vec3 m_sunColor = glm::vec3(3.5f, 4.1f, 4.5f);
+    float m_sunIntensity = 1.5f;
     float m_lightColor[3] = {0.1f, 0.1f, 0.1f};
     float m_ambientColor[3] = {0.4f, 0.4f, 0.4f};
     float m_specularColor[3] = {0.15f, 0.15f, 0.15f};

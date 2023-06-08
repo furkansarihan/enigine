@@ -3,22 +3,14 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz)
+Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
+    : m_pbrManager(pbrManager),
+      m_minHeight(minHeight),
+      m_maxHeight(maxHeight),
+      m_scaleHoriz(scaleHoriz),
+      m_PBR(PBR)
 {
     // TODO: keep track initialization state
-    resolution = 128;
-    m_minHeight = minHeight;
-    m_maxHeight = maxHeight;
-    m_scaleHoriz = scaleHoriz;
-    terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
-    level = 9;
-    fogMaxDist = 10000.0f;
-    fogMinDist = 6000.0f;
-    fogColor = glm::vec4(0.46f, 0.704f, 0.966f, 1.0f);
-    uvOffset = glm::vec2(0.0f, 0.0f);
-    shadowBias = glm::vec3(0.020, 0.023, 0.005);
-    showCascade = false;
-    wireframe = false;
 
     // int n = 255;
     int m = resolution; // m = (n+1)/4
@@ -88,16 +80,71 @@ Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float 
 
     updateHorizontalScale();
 
-    glGenTextures(1, &ttextureID);
-    int twidth, theight, tnrComponents;
+    // texture arrays
+    if (m_PBR)
+    {
+        // TODO: same order with fragment shader - samplerNames
+        std::string textureTypes[] = {
+            "albedo",
+            "ao",
+            "metallic",
+            "normal",
+            "rough",
+        };
+        std::string fileTextenstions[] = {
+            ".jpg",
+            ".jpg",
+            ".jpg",
+            ".png",
+            ".jpg",
+        };
+        for (int i = 0; i < 5; i++)
+        {
+            PBRTextureArrayIds[i] = 0;
+            std::string texturePaths[6] = {
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i],
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i],
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i],
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i],
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i],
+                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i],
+            };
+            initTextureArray(PBRTextureArrayIds[i], texturePaths);
+        }
+    }
+    else
+    {
+        std::string texturePaths[6] = {
+            "../src/assets/images/water-1.jpg",
+            "../src/assets/images/sand-1.jpg",
+            "../src/assets/images/stone-1.jpg",
+            "../src/assets/images/grass-1.jpg",
+            "../src/assets/images/rock-1.jpg",
+            "../src/assets/images/snow-1.jpg",
+        };
+        initTextureArray(normalTextureArrayId, texturePaths);
+    }
+}
+
+Terrain::~Terrain()
+{
+    stbi_image_free(data);
+}
+
+void Terrain::initTextureArray(unsigned int &textureArrayId, std::string *texturePaths)
+{
+    glGenTextures(1, &textureArrayId);
+    int twidth[6];
+    int theight[6];
+    int tnrComponents[6];
     int nrTextures = 6;
 
-    unsigned char *tdata0 = stbi_load("assets/images/water-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata1 = stbi_load("assets/images/sand-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata2 = stbi_load("assets/images/stone-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata3 = stbi_load("assets/images/grass-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata4 = stbi_load("assets/images/rock-1.jpg", &twidth, &theight, &tnrComponents, 0);
-    unsigned char *tdata5 = stbi_load("assets/images/snow-1.jpg", &twidth, &theight, &tnrComponents, 0);
+    unsigned char *tdata0 = stbi_load(texturePaths[0].c_str(), &twidth[0], &theight[0], &tnrComponents[0], 0);
+    unsigned char *tdata1 = stbi_load(texturePaths[1].c_str(), &twidth[1], &theight[1], &tnrComponents[1], 0);
+    unsigned char *tdata2 = stbi_load(texturePaths[2].c_str(), &twidth[2], &theight[2], &tnrComponents[2], 0);
+    unsigned char *tdata3 = stbi_load(texturePaths[3].c_str(), &twidth[3], &theight[3], &tnrComponents[3], 0);
+    unsigned char *tdata4 = stbi_load(texturePaths[4].c_str(), &twidth[4], &theight[4], &tnrComponents[4], 0);
+    unsigned char *tdata5 = stbi_load(texturePaths[5].c_str(), &twidth[5], &theight[5], &tnrComponents[5], 0);
 
     if (tdata0 == nullptr || tdata1 == nullptr || tdata2 == nullptr || tdata3 == nullptr || tdata4 == nullptr || tdata5 == nullptr)
     {
@@ -105,34 +152,46 @@ Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float 
         return;
     }
 
-    std::cout << "twidth: " << twidth << std::endl;
-    std::cout << "theight: " << theight << std::endl;
-    std::cout << "tnrComponents: " << tnrComponents << std::endl;
+    for (int i = 0; i < 6; i++)
+        std::cout << "path: " << texturePaths[0] << ", w: " << twidth[i] << ", h: " << theight[i] << ", comp: " << tnrComponents[i] << std::endl;
 
+    float tWidth = twidth[0];
+    float tHeight = theight[0];
+
+    GLenum iformat;
     GLenum tformat;
-    if (tnrComponents == 1)
+    if (tnrComponents[0] == 1)
+    {
+        iformat = GL_R8;
         tformat = GL_RED;
-    else if (tnrComponents == 3)
+    }
+    else if (tnrComponents[0] == 3)
+    {
+        iformat = GL_RGB8;
         tformat = GL_RGB;
-    else if (tnrComponents == 4)
+    }
+    else if (tnrComponents[0] == 4)
+    {
+        iformat = GL_RGBA16F;
         tformat = GL_RGBA;
+    }
 
-    glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId);
 
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_SRGB8, twidth, theight, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata0);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 1, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata1);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 2, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata2);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 3, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata3);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 4, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata4);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 5, twidth, theight, 1, tformat, GL_UNSIGNED_BYTE, tdata5);
-
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, iformat, tWidth, tHeight, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata0);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 1, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata1);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 2, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata2);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 3, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata3);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 4, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata4);
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 5, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata5);
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
     setupAnisotropicFiltering();
 
@@ -142,11 +201,6 @@ Terrain::Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float 
     stbi_image_free(tdata3);
     stbi_image_free(tdata4);
     stbi_image_free(tdata5);
-}
-
-Terrain::~Terrain()
-{
-    stbi_image_free(data);
 }
 
 void Terrain::setupAnisotropicFiltering()
@@ -386,12 +440,43 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     glActiveTexture(GL_TEXTURE0 + 1);
-    glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 1);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, ttextureID);
-
-    glActiveTexture(GL_TEXTURE0 + 2);
-    glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 2);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 1);
     glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapId);
+
+    if (m_PBR)
+    {
+        std::string samplerNames[] = {
+            "texture_diffuse1",
+            "texture_ao1",
+            "texture_metal1",
+            "texture_normal1",
+            "texture_rough1",
+        };
+        for (int i = 0; i < 5; i++)
+        {
+            glActiveTexture(GL_TEXTURE0 + 2 + i);
+            glUniform1i(glGetUniformLocation(terrainShader.id, samplerNames[i].c_str()), 2 + i);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, PBRTextureArrayIds[i]);
+        }
+
+        glActiveTexture(GL_TEXTURE0 + 7);
+        glUniform1i(glGetUniformLocation(terrainShader.id, "irradianceMap"), 7);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->irradianceMap);
+
+        glActiveTexture(GL_TEXTURE0 + 8);
+        glUniform1i(glGetUniformLocation(terrainShader.id, "prefilterMap"), 8);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->prefilterMap);
+
+        glActiveTexture(GL_TEXTURE0 + 9);
+        glUniform1i(glGetUniformLocation(terrainShader.id, "brdfLUT"), 9);
+        glBindTexture(GL_TEXTURE_2D, m_pbrManager->brdfLUTTexture);
+    }
+    else
+    {
+        glActiveTexture(GL_TEXTURE0 + 2);
+        glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 2);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, normalTextureArrayId);
+    }
 
     this->draw(terrainShader, viewPos, ortho);
 }

@@ -50,18 +50,10 @@ void main()
 {
     float yScaleFactor = maxHeight - minHeight;
 
-    // convert from grid xy to world xy coordinates
-    //  scaleFactor.xy: grid spacing of current level // scale
-    //  scaleFactor.zw: origin of current block within world // translate
-    vec2 pos = (M * vec4(gridPos.x, 1, gridPos.y, 1)).xz;
+    vec2 pos = (M * vec4(gridPos.x, 0, gridPos.y, 1)).xz;
     vec2 worldPos = pos * scaleFactor.xy + scaleFactor.zw;
 
-    // compute coordinates for vertex texture
-    //  FineBlockOrig.xy: 1/(w, h) of texture // normalized size
-    //  FineBlockOrig.zw: origin of block in texture // translate       
-    // vec2 uv = vec2(gridPos * fineTextureBlockOrigin.xy + fineTextureBlockOrigin.zw) + uvOffset;
-    // vec2 uv = gridPos * fineTextureBlockOrigin.xy + fineTextureBlockOrigin.zw;
-    vec2 uv = worldPos * fineTextureBlockOrigin.xy + uvOffset;
+    vec2 uv = worldPos * fineTextureBlockOrigin.xy;
 
     uv /= scaleHoriz;
 
@@ -78,7 +70,7 @@ void main()
     float y = uv.y * terrainSize.y;
 
     _height = height;
-    _tuv = vec2(x, y);
+    _tuv = vec2(x, y) * vec2(0.5, 0.5);
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
     Position_worldspace = position_worldspace;
@@ -94,5 +86,5 @@ void main()
     float scale = scaleFactor.x;
     float texelAspect = yScaleFactor;
 
-    _normal = computeNormal(uv, texelSize, yScaleFactor, scale);
+    _normal = computeNormal(uv, texelSize, texelAspect, scale);
 }

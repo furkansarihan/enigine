@@ -20,6 +20,13 @@ void TempUI::render()
     }
     int lines = m_debugDrawer->getLines().size();
     ImGui::DragInt("lines", &lines);
+    if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_m_sunColorX", &m_sunColor.x, 0.1f);
+        ImGui::DragFloat("m_m_sunColorY", &m_sunColor.y, 0.1f);
+        ImGui::DragFloat("m_m_sunColorZ", &m_sunColor.z, 0.1f);
+        ImGui::DragFloat("m_sunIntensity", &m_sunIntensity, 0.1f);
+    }
     ImGui::Text("Light");
     ImGui::DragFloat("power", &m_lightPower, 0.1);
     ImGui::DragFloat("radius", &m_radius, 0.1);

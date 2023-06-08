@@ -42,7 +42,7 @@ public:
     ParticleEngine *m_smokeParticle;
     ParticleEngine *m_muzzleFlash;
 
-    float m_lastFire;
+    float m_lastFire = 0.f;
     glm::vec3 m_lastFireHit = glm::vec3(0.f);
     int m_lastFireSound = -1;
     float m_fireLimit = 0.5f;

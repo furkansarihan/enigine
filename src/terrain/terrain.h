@@ -19,29 +19,32 @@
 #include "../physics_world/physics_world.h"
 #include "../camera/camera.h"
 #include "../model/model.h"
+#include "../pbr_manager/pbr_manager.h"
 
+// TODO: naming variables
 class Terrain
 {
 public:
-    Terrain(PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz);
+    Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
     ~Terrain();
 
-    // TODO: naming
+    PbrManager *m_pbrManager;
     int heightmapWidth, heightmapHeight;
     float width, height;
     float w, h;
 
-    int resolution;
+    int resolution = 128;
     float m_minHeight, m_maxHeight, m_scaleHoriz;
-    glm::vec3 terrainCenter;
-    int level;
-    float fogMaxDist;
-    float fogMinDist;
-    glm::vec4 fogColor;
-    glm::vec2 uvOffset;
-    glm::vec3 shadowBias;
-    bool showCascade;
-    bool wireframe;
+    bool m_PBR;
+    glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+    int level = 9;
+    float fogMaxDist = 10000.0f;
+    float fogMinDist = 4500.0f;
+    glm::vec4 fogColor = glm::vec4(1.f, 1.f, 1.f, 0.75f);
+    glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
+    glm::vec3 shadowBias = glm::vec3(0.020, 0.023, 0.005);
+    bool showCascade = false;
+    bool wireframe = false;
     btRigidBody *terrainBody;
 
     int m_grassTileSize = 12;
@@ -64,9 +67,12 @@ public:
 
 private:
     unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
-    unsigned textureID, ttextureID;
+    unsigned int textureID;
+    unsigned int normalTextureArrayId;
+    unsigned int PBRTextureArrayIds[5];
     float *data;
 
+    void initTextureArray(unsigned int &textureArrayId, std::string *texturePaths);
     void setupAnisotropicFiltering();
     int roundUp(int numToRound, int multiple);
     float roundUpf(float numToRound, float multiple);

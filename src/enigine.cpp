@@ -107,12 +107,12 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_NoDebug);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
@@ -135,6 +135,7 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&texture2Shader, "../src/assets/shaders/texture-2.vs", "../src/assets/shaders/anim.fs"));
     shaderManager.addShader(ShaderDynamic(&smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
     shaderManager.addShader(ShaderDynamic(&muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
+    shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
 
     // Create geometries
     Model cube("../src/assets/models/cube.obj");
@@ -190,14 +191,6 @@ int main(int argc, char **argv)
     shadowManager.m_camera = &editorCamera;
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
-    // Terrain
-    // Terrain terrain(&physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f);
-    // Terrain terrain(&physicsWorld, "../src/assets/images/height-1.png", -1.0f, 517.0f, 6.0f);
-    // Terrain terrain(&physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f);
-    // Terrain terrain(&physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f);
-    // Terrain terrain(&physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f);
-    Terrain terrain(&physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f);
-
     // Shadowmap display quad
     unsigned int q_vbo, q_vao, q_ebo;
     CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
@@ -214,14 +207,22 @@ int main(int argc, char **argv)
     // PBR
     PbrManager pbrManager;
     pbrManager.setupCubemap(cube, hdrToCubemapShader);
-    // pbrManager.setupIrradianceMap(cube, irradianceShader);
-    // pbrManager.setupPrefilterMap(cube, prefilterShader);
-    // pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
+    pbrManager.setupIrradianceMap(cube, irradianceShader);
+    pbrManager.setupPrefilterMap(cube, prefilterShader);
+    pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
 
     float albedo[3] = {0.5f, 0.0f, 0.0f};
     float ao = 1.0;
     glm::vec3 lightPositions[] = {glm::vec3(0.0f, 0.0f, 10.0f)};
     glm::vec3 lightColors[] = {glm::vec3(350.0f, 410.0f, 458.0f)};
+
+    // Terrain
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-1.png", -2.0f, 517.0f, 6.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f, true);
+    Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
 
     // UI
     RootUI rootUI;
@@ -350,29 +351,21 @@ int main(int argc, char **argv)
             glm::vec3 scale = glm::vec3(4, 4, 4);
             glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
-            depthShader.setBool("DrawDepth", false);
             depthShader.setMat4("MVP", depthVP * objectModel);
-            depthShader.setVec4("DiffuseColor", objectColor);
             suzanne.draw(depthShader);
 
             // wall
             position = glm::vec3(0, 1.25, -9);
             scale = glm::vec3(10.0f, 4.0f, 1.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            depthShader.use();
-            depthShader.setBool("DrawDepth", false);
             depthShader.setMat4("MVP", depthVP * objectModel);
-            depthShader.setVec4("DiffuseColor", objectColor);
             cube.draw(depthShader);
 
             // ground
             position = glm::vec3(0, 0, 0.75);
             scale = glm::vec3(20.0f, 2.0f, 100.0f);
             objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            depthShader.use();
-            depthShader.setBool("DrawDepth", false);
             depthShader.setMat4("MVP", depthVP * objectModel);
-            depthShader.setVec4("DiffuseColor", objectColor);
             cube.draw(depthShader);
 
             // ball
@@ -381,10 +374,7 @@ int main(int argc, char **argv)
                 position = glm::vec3(0, 2, 3 * i);
                 scale = glm::vec3(2.0f, 2.0f, 2.0f);
                 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                depthShader.use();
-                depthShader.setBool("DrawDepth", false);
                 depthShader.setMat4("MVP", depthVP * objectModel);
-                depthShader.setVec4("DiffuseColor", objectColor);
                 sphere.draw(depthShader);
             }
 
@@ -394,10 +384,7 @@ int main(int argc, char **argv)
                 position = glm::vec3(-20, 2, 3 * i);
                 scale = glm::vec3(2.0f, 2.0f, 2.0f);
                 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                depthShader.use();
-                depthShader.setBool("DrawDepth", false);
                 depthShader.setMat4("MVP", depthVP * objectModel);
-                depthShader.setVec4("DiffuseColor", objectColor);
                 sphere.draw(depthShader);
             }
         }
@@ -476,7 +463,7 @@ int main(int argc, char **argv)
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
-        terrain.drawColor(terrainShader, shadowManager.m_lightPos, glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]),
+        terrain.drawColor(terrainPBRShader, shadowManager.m_lightPos, tempUI.m_sunColor * tempUI.m_sunIntensity,
                           tempUI.m_lightPower,
                           editorCamera.getViewMatrix(), projection,
                           shadowmapManager.m_textureArray,
