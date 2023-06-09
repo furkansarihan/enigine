@@ -54,7 +54,7 @@ struct Mixer
     float mixer;
 } heightMixer, slopeMixer1, slopeMixer2;
 
-vec4 heightSteps = vec4(-1, 0.004, 0.7, 1);
+vec4 heightSteps = vec4(-1, 0.006, 0.7, 1);
 vec4 hTransitions = vec4(0, 0.002, 0.2, 0);
 mat4 slopeStepsList = mat4(
     vec4(0, 0.1, 0.999, 1),

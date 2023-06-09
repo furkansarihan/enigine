@@ -16,7 +16,7 @@ void PbrManager::setupCubemap(Model cube, Shader hdrToCubemapShader)
     stbi_set_flip_vertically_on_load(true);
     int faceSize = 512;
     int width, height, nrComponents;
-    float *data = stbi_loadf("../src/assets/hdr_skybox/skybox-5.hdr", &width, &height, &nrComponents, 0);
+    float *data = stbi_loadf("../src/assets/hdr_skybox/skybox-7.hdr", &width, &height, &nrComponents, 0);
 
     if (data)
     {
@@ -95,10 +95,11 @@ void PbrManager::setupIrradianceMap(Model cube, Shader irradianceShader)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    // TODO: generating mipmaps caused black fragments - validate
+    // glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);

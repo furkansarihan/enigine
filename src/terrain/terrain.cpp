@@ -153,7 +153,7 @@ void Terrain::initTextureArray(unsigned int &textureArrayId, std::string *textur
     }
 
     for (int i = 0; i < 6; i++)
-        std::cout << "path: " << texturePaths[0] << ", w: " << twidth[i] << ", h: " << theight[i] << ", comp: " << tnrComponents[i] << std::endl;
+        std::cout << "path: " << texturePaths[i] << ", w: " << twidth[i] << ", h: " << theight[i] << ", comp: " << tnrComponents[i] << std::endl;
 
     float tWidth = twidth[0];
     float tHeight = theight[0];

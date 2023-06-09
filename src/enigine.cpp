@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     // Model spherePBR("../src/assets/spaceship/sphere.obj");
     Model grass("../src/assets/terrain/grass.obj");
     Model stone("../src/assets/terrain/stone.obj");
-    Model pistol("../src/assets/gltf/colt.glb");
+    Model pistol("../src/assets/gltf/colt3.glb");
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
@@ -473,19 +473,6 @@ int main(int argc, char **argv)
             character->m_model->draw(animShader);
         }
 
-        // TODO: pbr
-        // draw pistol
-        {
-            texture2Shader.use();
-            texture2Shader.setMat4("projection", projection);
-            texture2Shader.setMat4("view", editorCamera.getViewMatrix());
-            texture2Shader.setVec3("lightDir", shadowManager.m_lightPos);
-            texture2Shader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
-            texture2Shader.setFloat("lightPower", tempUI.m_lightPower);
-            texture2Shader.setMat4("model", character.m_pistolModel);
-            pistol.draw(texture2Shader);
-        }
-
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
@@ -593,6 +580,8 @@ int main(int argc, char **argv)
             pbrShader.setVec3("camPos", editorCamera.position);
             pbrShader.setVec3("albedo", albedo[0], albedo[1], albedo[2]);
             pbrShader.setFloat("ao", ao);
+            pbrShader.setVec3("lightDirection", shadowManager.m_lightPos);
+            pbrShader.setVec3("lightColor", tempUI.m_sunColor * tempUI.m_sunIntensity);
 
             for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
             {
@@ -638,6 +627,12 @@ int main(int argc, char **argv)
                     // spherePBR.draw(pbrShader);
                 }
             }
+
+            // draw pistol
+            pbrShader.setMat4("model", character.m_pistolModel);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(character.m_pistolModel))));
+            pbrShader.setBool("mergedPBRTextures", true);
+            pistol.draw(pbrShader);
 
             // light sources
             for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)

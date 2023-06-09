@@ -11,12 +11,11 @@ uniform sampler2D texture_diffuse1;
 void main()
 {
     vec4 MaterialDiffuseColor = texture(texture_diffuse1, TexCoords);
+    // gamma correction
+    MaterialDiffuseColor.rgb = pow(MaterialDiffuseColor.rgb, vec3(2.2));
     FragColor = MaterialDiffuseColor;
 
     // TODO: better way?
-    if(FragColor.a < 0.5)
+    if(FragColor.a < 0.55)
         discard;
-
-    // TODO: adaptive tone
-    FragColor.xyz = FragColor.xyz *= 1 - TexCoords.y * 0.6;
 }

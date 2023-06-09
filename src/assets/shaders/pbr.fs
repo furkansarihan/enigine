@@ -10,6 +10,7 @@ uniform vec3 albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
+uniform bool mergedPBRTextures;
 
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_metal1;
@@ -17,6 +18,7 @@ uniform sampler2D texture_normal1;
 uniform sampler2D texture_height1;
 uniform sampler2D texture_rough1;
 uniform sampler2D texture_ao1;
+uniform sampler2D texture_unknown1;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
@@ -26,10 +28,15 @@ uniform sampler2D brdfLUT;
 uniform vec3 lightPositions[4];
 uniform vec3 lightColors[4];
 
+// sun
+uniform vec3 lightDirection;
+uniform vec3 lightColor;
+
 uniform vec3 camPos;
 
 const float PI = 3.14159265359;
 
+// TODO: any other way?
 vec3 getNormalFromMap()
 {
     vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
@@ -94,11 +101,22 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 void main()
 {
     vec3 albedo     = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
-    float metallic  = texture(texture_metal1, TexCoords).r;
-    // float metallic = 0.0;
-    float roughness = texture(texture_rough1, TexCoords).r;
-    float ao        = texture(texture_ao1, TexCoords).r;
-    // float ao = 1.0;
+    float metallic, roughness, ao;
+
+    // TODO: merge detection
+    // ao-rough-metal
+    if (mergedPBRTextures) {
+        vec3 merged = texture(texture_unknown1, TexCoords).rgb;
+        ao = merged.r;
+        roughness = merged.g;
+        metallic = merged.b;
+    } else {
+        metallic = texture(texture_metal1, TexCoords).r;
+        roughness = texture(texture_rough1, TexCoords).r;
+        ao = texture(texture_ao1, TexCoords).r;
+    }
+
+    // TODO: variable ao-rough-metal
 
     // vec3 N = normalize(Normal);
     vec3 N = getNormalFromMap();
@@ -111,14 +129,19 @@ void main()
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 1; ++i) 
     {
+        // TODO: light sources
         // calculate per-light radiance
-        vec3 L = normalize(lightPositions[i] - WorldPos);
+        // vec3 L = normalize(lightPositions[i] - WorldPos);
+        // vec3 H = normalize(V + L);
+        // float distance = length(lightPositions[i] - WorldPos);
+        // float attenuation = 1.0 / (distance * distance);
+        // vec3 radiance = lightColors[i] * attenuation;
+
+        // sun
+        vec3 L = normalize(lightDirection);
         vec3 H = normalize(V + L);
-        float distance = length(lightPositions[i] - WorldPos);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lightColors[i] * attenuation;
+        vec3 radiance = lightColor;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);   
@@ -159,6 +182,7 @@ void main()
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
     
+    // NOTE: texture filtering - mipmapping affects this lookup
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse    = irradiance * albedo;
     
@@ -187,12 +211,11 @@ void main()
     FragColor = vec4(color, 1.0);
 
     // FragColor = vec4(WorldPos, 1.0);
-    // FragColor = vec4(vec3(roughness), 1.0);
-    // FragColor = texture(texture_rough1, TexCoords);
+    // FragColor = vec4(vec3(albedo), 1.0);
     // FragColor = vec4(vec3(metallic), 1.0);
+    // FragColor = vec4(vec3(roughness), 1.0);
     // FragColor = vec4(vec3(ao), 1.0);
-    // FragColor = vec4(normal, 1.0);
-    // FragColor = vec4(albedo, 1.0);
+    // FragColor = vec4(N, 1.0);
     // FragColor = vec4(irradiance, 1.0);
     // FragColor = vec4(texture(texture_diffuse1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_normal1, TexCoords).rgb, 1.0);
@@ -201,8 +224,8 @@ void main()
     // FragColor = vec4(texture(texture_height1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_rough1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_ao1, TexCoords).rgb, 1.0);
+    // FragColor = vec4(texture(texture_unknown1, TexCoords).ggg, 1.0);
     // FragColor = vec4(texture(irradianceMap, N).rgb, 1.0);
     // FragColor = vec4(textureLod(prefilterMap, N, 0).rgb, 1.0);
     // FragColor = vec4(texture(brdfLUT, N.xy).rgb, 1.0);
-    // FragColor = vec4(N, 1.0);
 }

@@ -14,7 +14,7 @@ uniform mat3 normalMatrix;
 
 void main()
 {
-    TexCoords = aTexCoords * vec2(8.0, 4.0);
+    TexCoords = aTexCoords * vec2(1.0, 1.0);
     WorldPos = vec3(model * vec4(aPos, 1.0));
     Normal = mat3(normalMatrix) * aNormal;
 

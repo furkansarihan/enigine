@@ -49,6 +49,12 @@ void Model::loadModel(std::string const &path)
     // retrieve the directory path of the filepath
     directory = path.substr(0, path.find_last_of('/'));
 
+    for (unsigned int i = 0; i < m_scene->mNumTextures; i++)
+    {
+        aiTexture *texture = m_scene->mTextures[i];
+        std::cout << "path: " << texture->mFilename.C_Str() << ", format: " << texture->achFormatHint << std::endl;
+    }
+
     // process ASSIMP's root node recursively
     processNode(m_scene->mRootNode);
 }
@@ -134,6 +140,8 @@ Mesh Model::processMesh(aiMesh *mesh)
     // specular: texture_specularN
     // normal: texture_normalN
 
+    // TODO: merge detection for metal-rough-ao
+
     // 1. diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
@@ -155,6 +163,9 @@ Mesh Model::processMesh(aiMesh *mesh)
     // 7. metalness maps
     std::vector<Texture> metalMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metal");
     textures.insert(textures.end(), metalMaps.begin(), metalMaps.end());
+    // 8. unknown maps
+    std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
+    textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
     // animation
     extractBoneWeightForVertices(vertices, mesh);

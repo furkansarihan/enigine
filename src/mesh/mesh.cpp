@@ -49,6 +49,7 @@ void Mesh::bindTextures(Shader shader)
     unsigned int roughNr = 1;
     unsigned int aoNr = 1;
     unsigned int metalNr = 1;
+    unsigned int unknownNr = 1;
     for (unsigned int i = 0; i < textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
@@ -69,6 +70,8 @@ void Mesh::bindTextures(Shader shader)
             number = std::to_string(aoNr++); // transfer unsigned int to stream
         else if (name == "texture_metal")
             number = std::to_string(metalNr++); // transfer unsigned int to stream
+        else if (name == "texture_unknown")
+            number = std::to_string(unknownNr++); // transfer unsigned int to stream
 
         // now set the sampler to the correct texture unit
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);

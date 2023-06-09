@@ -12,7 +12,7 @@ Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, C
 void Character::init()
 {
     // Animation
-    m_model = new Model("../src/assets/gltf/char5.glb");
+    m_model = new Model("../src/assets/gltf/char6.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model);
