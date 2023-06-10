@@ -401,11 +401,12 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
 }
 
 void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
-                        glm::mat4 view, glm::mat4 projection,
+                        glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos,
+                        glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
                         GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
-                        glm::vec3 viewPos, bool ortho)
+                        bool ortho)
 {
-    calculatePlanes(projection, view);
+    calculatePlanes(cullProjection, cullView);
 
     terrainShader.use();
     terrainShader.setFloat("scaleHoriz", m_scaleHoriz);
@@ -478,7 +479,7 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
         glBindTexture(GL_TEXTURE_2D_ARRAY, normalTextureArrayId);
     }
 
-    this->draw(terrainShader, viewPos, ortho);
+    this->draw(terrainShader, cullViewPos, ortho);
 }
 
 void Terrain::updateHorizontalScale()
@@ -491,6 +492,8 @@ void Terrain::updateHorizontalScale()
     float scaleFactor = m_maxHeight - m_minHeight;
     terrainBody->getWorldTransform().setOrigin(btVector3(width / 2.0, scaleFactor / 2.0 + m_minHeight, height / 2.0));
     terrainBody->getCollisionShape()->setLocalScaling(btVector3(m_scaleHoriz, scaleFactor, m_scaleHoriz));
+
+    updateHeightMatrix();
 }
 
 void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos)
@@ -815,6 +818,7 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     // frustum culling
     if (!inFrustum(topLeft, topRight, bottomLeft, bottomRight, viewPos, ortho))
     {
+        markHeightRange(topLeft, bottomRight, true);
         return;
     }
 
@@ -834,23 +838,28 @@ void Terrain::drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 si
     {
         glBindVertexArray(vao);
     }
+
+    markHeightRange(topLeft, bottomRight, outside);
 }
 
 bool Terrain::inFrustum(glm::vec2 topLeft, glm::vec2 topRight, glm::vec2 bottomLeft, glm::vec2 bottomRight, glm::vec3 viewPos, bool ortho)
 {
-    // TODO: min, max height from low res pre calculated chunks array
+    HeightCell range = getHeightRange(topLeft, bottomRight);
+    float scale = m_maxHeight - m_minHeight;
+    float minHeight = range.min * scale * m_cellScaleMult;
+    float maxHeight = range.max * scale * m_cellScaleMult;
     glm::vec3 corners[] = {
-        glm::vec3(topLeft.x, m_minHeight, topLeft.y),
-        glm::vec3(topRight.x, m_minHeight, topRight.y),
-        glm::vec3(bottomLeft.x, m_minHeight, bottomLeft.y),
-        glm::vec3(bottomRight.x, m_minHeight, bottomRight.y),
-        glm::vec3(topLeft.x, m_maxHeight, topLeft.y),
-        glm::vec3(topRight.x, m_maxHeight, topRight.y),
-        glm::vec3(bottomLeft.x, m_maxHeight, bottomLeft.y),
-        glm::vec3(bottomRight.x, m_maxHeight, bottomRight.y),
+        glm::vec3(topLeft.x, minHeight, topLeft.y),
+        glm::vec3(topRight.x, minHeight, topRight.y),
+        glm::vec3(bottomLeft.x, minHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, minHeight, bottomRight.y),
+        glm::vec3(topLeft.x, maxHeight, topLeft.y),
+        glm::vec3(topRight.x, maxHeight, topRight.y),
+        glm::vec3(bottomLeft.x, maxHeight, bottomLeft.y),
+        glm::vec3(bottomRight.x, maxHeight, bottomRight.y),
     };
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
         if (!inFrontOf(m_planes[i], corners, viewPos, ortho))
         {
@@ -880,6 +889,111 @@ bool Terrain::inFrontOf(glm::vec4 plane, glm::vec3 corners[8], glm::vec3 viewPos
     return false;
 }
 
+HeightCell Terrain::getHeightRange(glm::vec2 topLeft, glm::vec2 bottomRight)
+{
+    glm::vec2 topLeftIndex = getCellIndex(topLeft);
+    glm::vec2 bottomRightIndex = getCellIndex(bottomRight);
+
+    float minHeight = 1.f;
+    float maxHeight = 0.f;
+
+    for (int x = topLeftIndex.x; x <= bottomRightIndex.x; x++)
+    {
+        if (x < 0 || x > m_horizontalCellCount - 1)
+            continue;
+
+        for (int y = topLeftIndex.y; y <= bottomRightIndex.y; y++)
+        {
+            if (y < 0 || y > m_verticalCellCount - 1)
+                continue;
+
+            float min = m_heightMatrix[x][y].min;
+            float max = m_heightMatrix[x][y].max;
+
+            if (min < minHeight)
+                minHeight = min;
+            if (max > maxHeight)
+                maxHeight = max;
+        }
+    }
+
+    return HeightCell(minHeight, maxHeight);
+}
+
+// debug
+void Terrain::markHeightRange(glm::vec2 topLeft, glm::vec2 bottomRight, bool culled)
+{
+    if (!m_drawHeightCells)
+        return;
+
+    glm::vec2 topLeftIndex = getCellIndex(topLeft);
+    glm::vec2 bottomRightIndex = getCellIndex(bottomRight);
+
+    for (int x = topLeftIndex.x; x <= bottomRightIndex.x; x++)
+    {
+        if (x < 0 || x > m_horizontalCellCount - 1)
+            continue;
+
+        for (int y = topLeftIndex.y; y <= bottomRightIndex.y; y++)
+        {
+            if (y < 0 || y > m_verticalCellCount - 1)
+                continue;
+
+            m_heightMatrixCulled[x][y] = culled;
+        }
+    }
+}
+
+glm::vec2 Terrain::getCellIndex(glm::vec2 point)
+{
+    glm::vec2 index;
+    index.x = static_cast<int>(point.x / m_heightCellSize);
+    index.y = static_cast<int>(point.y / m_heightCellSize);
+    return index * (1 / m_scaleHoriz);
+}
+
+// TODO: precalculated data support
+void Terrain::updateHeightMatrix()
+{
+    m_horizontalCellCount = ceil(heightmapWidth / m_heightCellSize);
+    m_verticalCellCount = ceil(heightmapHeight / m_heightCellSize);
+
+    std::cout << "horizontalCellCount: " << m_horizontalCellCount << ", verticalCellCount: " << m_verticalCellCount << std::endl;
+
+    m_heightMatrix.clear();
+    m_heightMatrix.resize(m_horizontalCellCount, std::vector<HeightCell>(m_verticalCellCount, HeightCell(0.0f, 0.0f)));
+
+    // TODO: move as debug
+    m_heightMatrixCulled.clear();
+    m_heightMatrixCulled.resize(m_horizontalCellCount, std::vector<bool>(m_verticalCellCount, false));
+
+    for (int i = 0; i < heightmapWidth; i++)
+    {
+        for (int j = 0; j < heightmapHeight; j++)
+        {
+            int horizontalCellIndex = (float)j / m_heightCellSize;
+            int verticalCellIndex = (float)i / m_heightCellSize;
+
+            float height = data[j * (int)heightmapWidth + i];
+            HeightCell &cell = m_heightMatrix[verticalCellIndex][horizontalCellIndex];
+
+            // check if first
+            bool firstHorizontal = fmod(i, m_heightCellSize) == 0.f;
+            bool firstVertical = fmod(j, m_heightCellSize) == 0.f;
+
+            if (firstHorizontal && firstVertical)
+            {
+                cell.min = height;
+                cell.max = height;
+            }
+            else if (height < cell.min)
+                cell.min = height;
+            else if (height > cell.max)
+                cell.max = height;
+        }
+    }
+}
+
 void Terrain::calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix)
 {
     glm::mat4 mat = projMatrix * viewMatrix;
@@ -892,8 +1006,10 @@ void Terrain::calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix)
         m_planes[2][i] = mat[i][3] + mat[i][1]; // bottom
     for (int i = 4; i--;)
         m_planes[3][i] = mat[i][3] - mat[i][1]; // top
-    // for (int i = 4; i--;)
-    //     m_planes[4][i] = mat[i][3] + mat[i][2]; // near
+    for (int i = 4; i--;)
+        m_planes[4][i] = mat[i][3] + mat[i][2]; // near
     // for (int i = 4; i--;)
     //     m_planes[5][i] = mat[i][3] - mat[i][2]; // far
+    for (int i = 5; i--;)
+        m_planes[i] = glm::normalize(m_planes[i]);
 }

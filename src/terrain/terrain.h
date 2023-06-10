@@ -21,6 +21,13 @@
 #include "../model/model.h"
 #include "../pbr_manager/pbr_manager.h"
 
+struct HeightCell
+{
+    float min;
+    float max;
+    HeightCell(float min, float max) : min(min), max(max){};
+};
+
 // TODO: naming variables
 class Terrain
 {
@@ -57,11 +64,21 @@ public:
     float diffuseMult = 0.7f;
     float specularMult = 0.15f;
 
+    // frustum culling
+    std::vector<std::vector<HeightCell>> m_heightMatrix;
+    std::vector<std::vector<bool>> m_heightMatrixCulled;
+    float m_heightCellSize = 64.f;
+    int m_horizontalCellCount;
+    int m_verticalCellCount;
+    float m_cellScaleMult = 1.0f;
+    bool m_drawHeightCells = false;
+
     void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
     void drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
-                   glm::mat4 view, glm::mat4 projection,
+                   glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos,
+                   glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
-                   glm::vec3 viewPos, bool ortho);
+                   bool ortho);
     void drawInstance(Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();
 
@@ -83,7 +100,11 @@ private:
     void drawBlock(Shader shader, unsigned int vao, int scale, glm::vec2 size, glm::vec2 pos, int indiceCount, glm::vec3 viewPos, bool ortho);
 
     // frustum culling
-    glm::vec4 m_planes[4];
+    glm::vec4 m_planes[5];
+    void updateHeightMatrix();
+    HeightCell getHeightRange(glm::vec2 topLeft, glm::vec2 bottomRight);
+    void markHeightRange(glm::vec2 topLeft, glm::vec2 bottomRight, bool culled);
+    glm::vec2 getCellIndex(glm::vec2 point);
     void calculatePlanes(glm::mat4 projMatrix, glm::mat4 viewMatrix);
     bool inFrustum(glm::vec2 topLeft, glm::vec2 topRight, glm::vec2 bottomLeft, glm::vec2 bottomRight, glm::vec3 viewPos, bool ortho);
     bool inFrontOf(glm::vec4 plane, glm::vec3 corners[8], glm::vec3 viewPos, bool ortho);

@@ -12,18 +12,16 @@ class ShadowmapUI : public BaseUI
 private:
     ShadowManager *m_shadowManager;
     ShadowmapManager *m_shadowmapManager;
-    Camera *m_editorCamera;
 
 public:
-    ShadowmapUI(ShadowManager *shadowManager, ShadowmapManager *shadowmapManager, Camera *editorCamera)
+    ShadowmapUI(ShadowManager *shadowManager, ShadowmapManager *shadowmapManager)
         : m_shadowManager(shadowManager),
-          m_shadowmapManager(shadowmapManager),
-          m_editorCamera(editorCamera)
+          m_shadowmapManager(shadowmapManager)
     {
     }
 
     float m_quadScale = 0.2f;
-    bool m_drawFrustum = false;
+    bool m_drawFrustum = true;
     bool m_drawAABB = false;
     bool m_drawShadowmap = false;
 

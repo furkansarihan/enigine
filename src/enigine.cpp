@@ -152,6 +152,7 @@ int main(int argc, char **argv)
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
+    Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
 
     // Characters
     NPCharacter npc1(&shaderManager, &physicsWorld, &editorCamera);
@@ -218,12 +219,12 @@ int main(int argc, char **argv)
     glm::vec3 lightColors[] = {glm::vec3(350.0f, 410.0f, 458.0f)};
 
     // Terrain
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
+    Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-1.png", -2.0f, 517.0f, 6.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f, true);
-    Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 2.0f, true);
 
     // UI
     RootUI rootUI;
@@ -231,7 +232,7 @@ int main(int argc, char **argv)
     CharacterUI characterUI(&character, character.m_controller, character.m_rigidbody);
     RagdollUI ragdollUI(&character, &editorCamera);
     AnimationUI animationUI(character.m_animator);
-    ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager, &editorCamera);
+    ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager);
     SoundUI soundUI(&soundEngine, &character);
     VehicleUI vehicleUI(&vehicle);
     CameraUI cameraUI(&editorCamera);
@@ -476,13 +477,32 @@ int main(int argc, char **argv)
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
+        glm::mat4 cullProjection = projection;
+        glm::mat4 cullView = editorCamera.getViewMatrix();
+        glm::vec3 cullViewPos = editorCamera.position;
+
+        // TODO: move where?
+        if (terrainUI.m_debugCulling)
+        {
+            cullProjection = debugCamera.getProjectionMatrix(screenWidth, screenHeight);
+            cullView = debugCamera.getViewMatrix();
+            cullViewPos = debugCamera.position;
+        }
+        else
+        {
+            debugCamera.position = editorCamera.position;
+            debugCamera.front = editorCamera.front;
+            debugCamera.right = editorCamera.right;
+            debugCamera.up = editorCamera.up;
+        }
+
         terrain.drawColor(terrainPBRShader, shadowManager.m_lightPos, tempUI.m_sunColor * tempUI.m_sunIntensity,
                           tempUI.m_lightPower,
-                          editorCamera.getViewMatrix(), projection,
+                          editorCamera.getViewMatrix(), projection, editorCamera.position,
+                          cullView, cullProjection, cullViewPos,
                           shadowmapManager.m_textureArray,
                           editorCamera.position, editorCamera.front,
                           frustumDistances,
-                          editorCamera.position,
                           editorCamera.projectionMode == ProjectionMode::Ortho);
 
         terrain.drawInstance(grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
@@ -665,6 +685,9 @@ int main(int argc, char **argv)
 
         // character debug
         characterUI.drawArmatureBones(character, simpleShader, cube, projection * editorCamera.getViewMatrix());
+
+        // terrain debug
+        terrainUI.drawHeightCells(simpleShader, cube, projection * editorCamera.getViewMatrix());
 
         // Draw skybox
         glDepthMask(GL_FALSE);
