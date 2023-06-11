@@ -30,6 +30,7 @@ class Animation
 public:
     std::string m_name;
     float m_Duration;
+    float m_playbackSpeed = 1.f;
     int m_TicksPerSecond;
     std::unordered_map<std::string, Bone*> m_bones;
     AssimpNodeData m_RootNode;

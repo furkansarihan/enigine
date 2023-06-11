@@ -39,6 +39,7 @@ public:
     std::vector<Animation *> m_animations;
     std::vector<float> m_timers;
     AnimatorState m_state;
+    float m_startOffset = 0.f;
 
     Animator(std::vector<Animation *> animations);
     ~Animator();

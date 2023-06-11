@@ -27,8 +27,8 @@ public:
     glm::vec3 m_trunkOffset = glm::vec3(0.f, 2.15f, -3.89f);
     glm::vec3 m_doorOffsets[4];
 
-    bool m_controlVehicle = true;
-    bool m_followVehicle = true;
+    bool m_controlVehicle = false;
+    bool m_followVehicle = false;
     float m_followDistance = 12.0f;
     glm::vec3 m_followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
 

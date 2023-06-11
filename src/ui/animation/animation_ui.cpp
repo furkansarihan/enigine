@@ -23,6 +23,8 @@ void AnimationUI::render()
         ImGui::Text("%.3f", m_animator->m_state.animations[i].blendFactor);
     }
     ImGui::EndTable();
+    for (int i = 0; i < m_animator->m_animations.size(); i++)
+        ImGui::DragFloat((m_animator->m_animations[i]->m_name + ":m_playbackSpeed").c_str(), &m_animator->m_animations[i]->m_playbackSpeed, 0.01f, 0.0f);
     ImGui::DragInt("m_selectedAnimPose", &m_selectedAnimPose, 1, 0, m_animator->m_state.poses.size() - 1);
     renderBoneList();
 }
@@ -41,7 +43,7 @@ void AnimationUI::renderBoneList()
         for (auto it = bonesMap->begin(); it != bonesMap->end(); ++it)
         {
             Bone *bone = it->second;
-            ImGui::DragFloat(bone->m_Name.c_str(), &bone->m_blendFactor, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat(bone->m_name.c_str(), &bone->m_blendFactor, 0.01f, 0.0f, 1.0f);
         }
     }
 }

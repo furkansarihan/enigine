@@ -30,8 +30,13 @@ void Animator::update(float deltaTime)
 {
     for (int i = 0; i < m_animations.size(); i++)
     {
-        m_timers[i] += m_animations[i]->m_TicksPerSecond * deltaTime;
-        m_timers[i] = fmod(m_timers[i], m_animations[i]->m_Duration);
+        m_timers[i] += m_animations[i]->m_TicksPerSecond * m_animations[i]->m_playbackSpeed * deltaTime;
+
+        float clampedTime = fmod(m_timers[i], m_animations[i]->m_Duration);
+        if (clampedTime < m_timers[i])
+            clampedTime += m_startOffset;
+
+        m_timers[i] = clampedTime;
     }
 
     calculateBoneTransform(&m_animations[0]->m_RootNode, glm::mat4(1.0f));

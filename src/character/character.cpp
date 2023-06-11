@@ -57,6 +57,7 @@ void Character::init()
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
+    m_animator->m_startOffset = 33.333f;
 
     // state
     // TODO: increase accessibility - name or pointer to Animation

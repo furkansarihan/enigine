@@ -1,6 +1,6 @@
 #include "character_ui.h"
 
-void renderQuaternion(const char* label, glm::quat& quaternion);
+void renderQuaternion(const char *label, glm::quat &quaternion);
 
 void CharacterUI::render()
 {
@@ -161,7 +161,7 @@ void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string nam
     }
 }
 
-void renderQuaternion(const char* label, glm::quat& quaternion)
+void renderQuaternion(const char *label, glm::quat &quaternion)
 {
     float eulerX = glm::degrees(glm::pitch(quaternion));
     float eulerY = glm::degrees(glm::yaw(quaternion));

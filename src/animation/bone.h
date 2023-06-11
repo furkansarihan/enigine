@@ -1,6 +1,7 @@
 #ifndef bone_hpp
 #define bone_hpp
 
+#include <iostream>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -9,22 +10,16 @@
 
 #include "../utils/assimp_to_glm.h"
 
-struct KeyPosition
+struct KeyVec3
 {
     float timestamp;
-    glm::vec3 position;
+    glm::vec3 value;
 };
 
-struct KeyRotation
+struct KeyQuat
 {
     float timestamp;
-    glm::quat orientation;
-};
-
-struct KeyScale
-{
-    float timestamp;
-    glm::vec3 scale;
+    glm::quat value;
 };
 
 enum AnimationType
@@ -36,17 +31,17 @@ enum AnimationType
 class Bone
 {
 public:
-    std::vector<KeyPosition> m_Positions;
-    std::vector<KeyRotation> m_Rotations;
-    std::vector<KeyScale> m_Scales;
-    int m_NumPositions;
-    int m_NumRotations;
-    int m_NumScalings;
+    std::vector<KeyVec3> m_positions;
+    std::vector<KeyQuat> m_rotations;
+    std::vector<KeyVec3> m_scales;
+    int m_numPositions;
+    int m_numRotations;
+    int m_numScalings;
 
     glm::vec3 m_translation;
     glm::quat m_rotation;
     glm::vec3 m_scale;
-    std::string m_Name;
+    std::string m_name;
     int m_ID;
 
     AnimationType m_animType;
@@ -56,6 +51,7 @@ public:
     ~Bone();
     void update(float animationTime);
     void updateInternal(float animationTime);
+    // TODO: single function without polimorphism?
     int getPositionIndex(float animationTime);
     int getRotationIndex(float animationTime);
     int getScaleIndex(float animationTime);
