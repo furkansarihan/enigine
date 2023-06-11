@@ -81,51 +81,30 @@ void Bone::updateInternal(float animationTime)
 
 int Bone::getPositionIndex(float animationTime)
 {
-    int low = 0;
-    int high = m_numPositions - 1;
-    while (low <= high)
+    for (int index = 0; index < m_numPositions - 1; ++index)
     {
-        int mid = (low + high) / 2;
-        if (animationTime >= m_positions[mid].timestamp && animationTime < m_positions[mid + 1].timestamp)
-            return mid;
-        if (animationTime < m_positions[mid].timestamp)
-            high = mid - 1;
-        else
-            low = mid + 1;
+        if (animationTime < m_positions[index + 1].timestamp)
+            return index;
     }
     assert(0);
 }
 
 int Bone::getRotationIndex(float animationTime)
 {
-    int low = 0;
-    int high = m_numRotations - 1;
-    while (low <= high)
+    for (int index = 0; index < m_numRotations - 1; ++index)
     {
-        int mid = (low + high) / 2;
-        if (animationTime >= m_rotations[mid].timestamp && animationTime < m_rotations[mid + 1].timestamp)
-            return mid;
-        if (animationTime < m_rotations[mid].timestamp)
-            high = mid - 1;
-        else
-            low = mid + 1;
+        if (animationTime < m_rotations[index + 1].timestamp)
+            return index;
     }
     assert(0);
 }
 
 int Bone::getScaleIndex(float animationTime)
 {
-    int low = 0;
-    int high = m_numScalings - 1;
-    while (low <= high)
+    for (int index = 0; index < m_numScalings - 1; ++index)
     {
-        int mid = (low + high) / 2;
-        if (animationTime >= m_scales[mid].timestamp && animationTime < m_scales[mid + 1].timestamp)
-            return mid;
-        if (animationTime < m_scales[mid].timestamp)
-            high = mid - 1;
-        else
-            low = mid + 1;
+        if (animationTime < m_scales[index + 1].timestamp)
+            return index;
     }
     assert(0);
 }
