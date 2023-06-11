@@ -67,12 +67,6 @@ public:
     float lastX;
     float lastY;
 
-    // TODO: PlayerCamera
-    bool firstPerson = false;
-    bool followVehicle = false;
-    float followDistance = 8.0f;
-    glm::vec3 followOffset = glm::vec3(0.0f, 2.5f, 0.0f);
-
     // Functions
     glm::mat4 getViewMatrix();
     glm::mat4 getProjectionMatrix(float width, float height);

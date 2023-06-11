@@ -1,7 +1,8 @@
 #include "character.h"
 
-Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : m_shaderManager(shaderManager),
+Character::Character(ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : m_resourceManager(resourceManager),
+      m_shaderManager(shaderManager),
       m_physicsWorld(physicsWorld),
       m_followCamera(followCamera),
       m_firing(false)
@@ -12,7 +13,7 @@ Character::Character(ShaderManager *shaderManager, PhysicsWorld *physicsWorld, C
 void Character::init()
 {
     // Animation
-    m_model = new Model("../src/assets/gltf/char6.glb");
+    m_model = m_resourceManager->getModel("../src/assets/gltf/char6.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model);
@@ -196,7 +197,6 @@ Character::~Character()
     m_animator->m_animations.clear();
     delete m_animator;
     delete m_ragdoll;
-    delete m_model;
 }
 
 void Character::update(float deltaTime)

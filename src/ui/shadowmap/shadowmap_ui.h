@@ -21,7 +21,7 @@ public:
     }
 
     float m_quadScale = 0.2f;
-    bool m_drawFrustum = true;
+    bool m_drawFrustum = false;
     bool m_drawAABB = false;
     bool m_drawShadowmap = false;
 

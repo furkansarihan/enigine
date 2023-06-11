@@ -21,10 +21,12 @@
 #include "../utils/common.h"
 #include "../utils/bullet_glm.h"
 #include "../shader_manager/shader_manager.h"
+#include "../resource_manager/resource_manager.h"
 
 class Character
 {
 public:
+    ResourceManager *m_resourceManager;
     ShaderManager *m_shaderManager;
     PhysicsWorld *m_physicsWorld;
     Camera *m_followCamera;
@@ -62,7 +64,7 @@ public:
     float m_impulseStrength = 600.f;
     float m_stateChangeSpeed = 10.f;
 
-    Character(ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    Character(ResourceManager *resourceManager, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);

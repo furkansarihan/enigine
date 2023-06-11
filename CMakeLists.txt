@@ -69,6 +69,8 @@ add_executable( enigine
                 src/character_controller/speed_limiter.cpp
                 src/particle_engine/particle_engine.h
                 src/particle_engine/particle_engine.cpp
+                src/resource_manager/resource_manager.h
+                src/resource_manager/resource_manager.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

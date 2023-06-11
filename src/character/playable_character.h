@@ -11,7 +11,7 @@
 class PCharacter : public Character
 {
 public:
-    PCharacter(SoundEngine *soundEngine, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
     SoundEngine *m_soundEngine;
@@ -20,8 +20,8 @@ public:
     std::vector<SoundSource> m_fireSounds;
 
     bool m_firstPerson = false;
-    bool m_controlCharacter = true;
-    bool m_followCharacter = true;
+    bool m_controlCharacter = false;
+    bool m_followCharacter = false;
 
     glm::vec3 m_followOffsetAim = glm::vec3(-1.2f, 3.4f, -2.3f);
     glm::vec3 m_followOffsetNormal = glm::vec3(0.0f, 3.f, -8.f);

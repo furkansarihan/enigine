@@ -14,7 +14,6 @@ void CameraUI::render()
     ImGui::DragFloat("movementSpeed", &m_camera->movementSpeed, 10.0f);
     ImGui::DragFloat("scaleOrtho", &m_camera->scaleOrtho, 0.1f);
     // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
-    ImGui::Checkbox("followVehicle", &m_camera->followVehicle);
     if (ImGui::RadioButton("perspective", m_camera->projectionMode == ProjectionMode::Perspective))
     {
         m_camera->projectionMode = ProjectionMode::Perspective;

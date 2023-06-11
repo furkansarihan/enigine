@@ -35,6 +35,7 @@
 #include "character/character.h"
 #include "character/playable_character.h"
 #include "character/np_character.h"
+#include "resource_manager/resource_manager.h"
 
 int main(int argc, char **argv)
 {
@@ -107,7 +108,7 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_NoDebug);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
     physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     // Shaders
@@ -139,24 +140,41 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
 
     // Create geometries
-    Model cube("../src/assets/models/cube.obj");
-    Model sphere("../src/assets/models/sphere.obj");
-    Model quad("../src/assets/models/quad.obj");
-    Model wheel("../src/assets/models/wheel.obj");
-    Model cylinder("../src/assets/models/cylinder.obj");
-    Model suzanne("../src/assets/models/suzanne.obj");
-    // Model spherePBR("../src/assets/spaceship/sphere.obj");
-    Model grass("../src/assets/terrain/grass.obj");
-    Model stone("../src/assets/terrain/stone.obj");
-    Model pistol("../src/assets/gltf/colt3.glb");
+    ResourceManager resourceManager;
+
+    Model &cube = *resourceManager.getModel("../src/assets/models/cube.obj");
+    Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
+    Model &quad = *resourceManager.getModel("../src/assets/models/quad.obj");
+    Model &wheel = *resourceManager.getModel("../src/assets/models/wheel.obj");
+    Model &cylinder = *resourceManager.getModel("../src/assets/models/cylinder.obj");
+    Model &suzanne = *resourceManager.getModel("../src/assets/models/suzanne.obj");
+    // Model &spherePBR = *resourceManager.getModel("../src/assets/spaceship/sphere.obj");
+    Model &grass = *resourceManager.getModel("../src/assets/terrain/grass.obj");
+    Model &stone = *resourceManager.getModel("../src/assets/terrain/stone.obj");
+    Model &pistol = *resourceManager.getModel("../src/assets/gltf/colt3.glb");
+
+    // car
+    Model &carBody = *resourceManager.getModel("../src/assets/car/body.gltf");
+    Model &carHood = *resourceManager.getModel("../src/assets/car/hood.gltf");
+    Model &carTrunk = *resourceManager.getModel("../src/assets/car/trunk.gltf");
+    Model &carWheelFL = *resourceManager.getModel("../src/assets/car/wheel-fl.gltf");
+    Model &carWheelFR = *resourceManager.getModel("../src/assets/car/wheel-fr.gltf");
+    Model &carWheelRL = *resourceManager.getModel("../src/assets/car/wheel-rl.gltf");
+    Model &carWheelRR = *resourceManager.getModel("../src/assets/car/wheel-rr.gltf");
+    Model *wheels[4] = {&carWheelFL, &carWheelFR, &carWheelRL, &carWheelRR};
+    Model &carDoorFL = *resourceManager.getModel("../src/assets/car/door-fl.gltf");
+    Model &carDoorFR = *resourceManager.getModel("../src/assets/car/door-fr.gltf");
+    Model &carDoorRL = *resourceManager.getModel("../src/assets/car/door-rl.gltf");
+    Model &carDoorRR = *resourceManager.getModel("../src/assets/car/door-rr.gltf");
+    Model *doors[4] = {&carDoorFL, &carDoorFR, &carDoorRL, &carDoorRR};
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
 
     // Characters
-    NPCharacter npc1(&shaderManager, &physicsWorld, &editorCamera);
-    PCharacter character(&soundEngine, &shaderManager, &physicsWorld, &editorCamera);
+    NPCharacter npc1(&resourceManager, &shaderManager, &physicsWorld, &editorCamera);
+    PCharacter character(&soundEngine, &resourceManager, &shaderManager, &physicsWorld, &editorCamera);
 
     std::vector<Character *> characters;
     characters.push_back(&character);
@@ -219,12 +237,12 @@ int main(int argc, char **argv)
     glm::vec3 lightColors[] = {glm::vec3(350.0f, 410.0f, 458.0f)};
 
     // Terrain
-    Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
+    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-1.png", -2.0f, 517.0f, 6.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f, true);
     // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f, true);
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 2.0f, true);
+    Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
 
     // UI
     RootUI rootUI;
@@ -274,7 +292,7 @@ int main(int argc, char **argv)
         npc1.update(window, deltaTime);
 
         // Update Physics
-        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, 1);
+        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, tempUI.m_maxSubSteps);
         if (physicsWorld.dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
         {
             btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.dynamicsWorld->getConstraintSolver();
@@ -293,14 +311,29 @@ int main(int argc, char **argv)
         physicsWorld.dynamicsWorld->debugDrawWorld();
 
         // Vehicle
-        if (editorCamera.followVehicle && vehicle.m_carChassis && vehicle.m_carChassis->getMotionState())
-        {
+        if (vehicleUI.m_controlVehicle)
             vehicle.update(window, deltaTime);
+
+        if (vehicleUI.m_followVehicle)
+        {
             btTransform trans;
             vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
-            glm::vec3 vehiclePosition = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-            editorCamera.position = vehiclePosition - editorCamera.front * glm::vec3(editorCamera.followDistance) + editorCamera.followOffset;
+            vehicleUI.m_posTarget = BulletGLM::getGLMVec3(trans.getOrigin());
+            vehicleUI.m_pos = glm::mix(vehicleUI.m_pos, vehicleUI.m_posTarget, vehicleUI.m_posFactor);
+            editorCamera.position = vehicleUI.m_pos - editorCamera.front * glm::vec3(vehicleUI.m_followDistance) + vehicleUI.m_followOffset;
         }
+
+        // car common transforms
+        glm::mat4 carChassisModel;
+        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&carChassisModel);
+        glm::mat4 carRotScale(1.0f);
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.x, glm::vec3(1, 0, 0));
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.y, glm::vec3(0, 1, 0));
+        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.z, glm::vec3(0, 0, 1));
+        carRotScale = glm::scale(carRotScale, glm::vec3(vehicleUI.m_scale));
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -390,6 +423,27 @@ int main(int argc, char **argv)
                 sphere.draw(depthShader);
             }
 
+            // vehicle
+            glm::mat4 model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_bodyOffset);
+            model = model * carRotScale;
+            depthShader.setMat4("MVP", depthVP * model);
+            carBody.draw(depthShader);
+
+            for (int i = 0; i < 4; i++)
+            {
+                btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
+                glm::mat4 model;
+                body.getWorldTransform().getOpenGLMatrix((btScalar *)&model);
+                model = glm::translate(model, vehicleUI.m_wheelOffset);
+                model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
+                model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
+                model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
+                model = glm::scale(model, glm::vec3(vehicleUI.m_scale));
+                depthShader.setMat4("MVP", depthVP * model);
+                wheels[i]->draw(depthShader);
+            }
+
             // characters
             animDepthShader.use();
             animDepthShader.setMat4("projection", depthP);
@@ -422,29 +476,6 @@ int main(int argc, char **argv)
         glViewport(0, 0, screenWidth, screenHeight);
         glClearColor(0.46f, 0.71f, 0.98f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Render vehicle
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        simpleShader.use();
-        glm::mat4 transform;
-        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
-        transform = glm::translate(transform, glm::vec3(0, 1, 0));
-        transform = glm::scale(transform, glm::vec3(0.8f, 0.3f, 2.8f));
-        simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
-        simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
-        cube.draw(simpleShader);
-
-        for (int i = 0; i < 4; i++)
-        {
-            btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
-            glm::mat4 transform;
-            body.getWorldTransform().getOpenGLMatrix((btScalar *)&transform);
-            transform = glm::scale(transform, glm::vec3(1.0f, 1.0f, 1.0f));
-            simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * transform);
-            simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
-            wheel.draw(simpleShader);
-        }
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // TODO: pbr
         // animation
@@ -653,6 +684,58 @@ int main(int argc, char **argv)
             pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(character.m_pistolModel))));
             pbrShader.setBool("mergedPBRTextures", true);
             pistol.draw(pbrShader);
+
+            // draw vehicle
+            // body
+            model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_bodyOffset);
+            model = model * carRotScale;
+            pbrShader.setMat4("model", model);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            carBody.draw(pbrShader);
+
+            // hood
+            model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_hoodOffset);
+            model = model * carRotScale;
+            pbrShader.setMat4("model", model);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            carHood.draw(pbrShader);
+
+            // trunk
+            model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_trunkOffset);
+            model = model * carRotScale;
+            pbrShader.setMat4("model", model);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            carTrunk.draw(pbrShader);
+
+            // doors
+            for (int i = 0; i < 4; i++)
+            {
+                glm::mat4 model = carChassisModel;
+                model = glm::translate(model, vehicleUI.m_doorOffsets[i]);
+                model = model * carRotScale;
+                pbrShader.setMat4("model", model);
+                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+                doors[i]->draw(pbrShader);
+            }
+
+            // wheels
+            for (int i = 0; i < 4; i++)
+            {
+                btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
+                glm::mat4 model;
+                body.getWorldTransform().getOpenGLMatrix((btScalar *)&model);
+                model = glm::translate(model, vehicleUI.m_wheelOffset);
+                model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
+                model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
+                model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
+                model = glm::scale(model, glm::vec3(vehicleUI.m_scale));
+                pbrShader.setMat4("model", model);
+                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+                wheels[i]->draw(pbrShader);
+            }
 
             // light sources
             for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)

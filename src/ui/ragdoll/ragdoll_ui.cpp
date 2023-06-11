@@ -6,6 +6,7 @@ void RagdollUI::render()
         return;
 
     ImGui::Checkbox("floatObject", &m_floatObject);
+    ImGui::DragFloat("m_floatHeight", &m_floatHeight, 0.1f);
     ImGui::Checkbox("activateObject", &m_activateObject);
     ImGui::DragInt("floatIndex", &m_floatIndex, 1, 0, BODYPART_COUNT - 1);
     ImGui::DragFloat("stateChangeSpeed", &m_character->m_stateChangeSpeed, 0.1f);
@@ -33,7 +34,7 @@ void RagdollUI::render()
     {
         if (m_activateObject)
             rb->setActivationState(1);
-        rb->getWorldTransform().setOrigin(btVector3(cX, m_camera->followDistance, cZ));
+        rb->getWorldTransform().setOrigin(btVector3(cX, m_floatHeight, cZ));
         rb->setLinearVelocity(btVector3(0, 0, 0));
     }
 }

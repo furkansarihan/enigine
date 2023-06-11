@@ -30,6 +30,8 @@ public:
     float m_radius = 12.0;
     float m_speed = 2.0;
 
+    int m_maxSubSteps = 1;
+
     void render() override;
 };
 

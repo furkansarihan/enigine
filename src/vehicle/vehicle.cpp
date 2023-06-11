@@ -15,19 +15,19 @@ Vehicle::~Vehicle()
 void Vehicle::initDefaultValues()
 {
     this->gEngineForce = 0.f;
-    this->accelerationVelocity = 25.f;
-    this->decreaseVelocity = 15.f;
-    this->breakingVelocity = 40.f;
+    this->accelerationVelocity = 50.f;
+    this->decreaseVelocity = 30.f;
+    this->breakingVelocity = 80.f;
 
-    this->maxEngineForce = 90.f;  // this should be engine/velocity dependent
-    this->minEngineForce = -30.f; // this should be engine/velocity dependent
+    this->maxEngineForce = 180.f;  // this should be engine/velocity dependent
+    this->minEngineForce = -50.f; // this should be engine/velocity dependent
 
     this->gVehicleSteering = 0.f;
     this->steeringIncrement = 7.f;
     this->steeringVelocity = 1000.f;
     this->steeringClamp = 0.8f;
 
-    this->wheelRadius = 0.5f;
+    this->wheelRadius = 0.6f;
     this->wheelWidth = 0.4f;
 
     this->lowerLimit = -1;
@@ -60,8 +60,8 @@ void Vehicle::initVehicle()
     tr.setIdentity();
     tr.setOrigin(position);
 
-    const btScalar chassisMass = 380.f;
-    const btScalar wheelMass = 10.f;
+    const btScalar chassisMass = 1200.f;
+    const btScalar wheelMass = 80.f;
     m_carChassis = physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
     // m_carChassis->setDamping(0.8, 0.8);
 
