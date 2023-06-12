@@ -248,7 +248,7 @@ int main(int argc, char **argv)
     RootUI rootUI;
     SystemMonitorUI systemMonitorUI(&t_info);
     CharacterUI characterUI(&character, character.m_controller, character.m_rigidbody);
-    RagdollUI ragdollUI(&character, &editorCamera);
+    RagdollUI ragdollUI(&npc1, &editorCamera);
     AnimationUI animationUI(character.m_animator);
     ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager);
     SoundUI soundUI(&soundEngine, &character);

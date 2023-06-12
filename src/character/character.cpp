@@ -16,8 +16,8 @@ void Character::init()
     m_model = m_resourceManager->getModel("../src/assets/gltf/char6.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
-    Animation *animation2 = new Animation("left", m_model);
-    Animation *animation3 = new Animation("right", m_model);
+    Animation *animation2 = new Animation("left", m_model, AnimationType::Pose);
+    Animation *animation3 = new Animation("right", m_model, AnimationType::Pose);
     Animation *animation4 = new Animation("running-forward", m_model);
     Animation *animation5 = new Animation("walking-left", m_model);
     Animation *animation6 = new Animation("walking-right", m_model);
@@ -29,10 +29,10 @@ void Character::init()
     Animation *animation12 = new Animation("walking-back-right", m_model);
     Animation *animation13 = new Animation("running-back-left", m_model);
     Animation *animation14 = new Animation("running-back-right", m_model);
-    Animation *animation15 = new Animation("pistol-aim-1", m_model);
+    Animation *animation15 = new Animation("pistol-aim-1", m_model, AnimationType::Pose);
     // TODO: create empty at runtime?
-    Animation *animationRagdoll = new Animation("pose", m_model);
-    Animation *animation17 = new Animation("firing", m_model);
+    Animation *animationRagdoll = new Animation("pose", m_model, AnimationType::Pose);
+    Animation *animation17 = new Animation("firing", m_model, AnimationType::Pose);
 
     // TODO: inside Model
     std::vector<Animation *> animations;

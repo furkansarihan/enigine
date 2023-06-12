@@ -6,9 +6,10 @@
 
 #include "bone.h"
 
-Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
+Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel, AnimationType animType)
     : m_name(name),
       m_ID(ID),
+      m_animType(animType),
       m_translation(1.0f),
       m_rotation(glm::vec3(1.0f)),
       m_scale(1.0f)
@@ -42,20 +43,6 @@ Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
         key.value = AssimpToGLM::getGLMVec3(scale);
         m_scales.push_back(key);
     }
-
-    if (m_numPositions == 1 && m_numRotations == 1 && m_numScalings == 1)
-    {
-        m_animType = AnimationType::Pose;
-
-        m_translation = m_positions[0].value;
-        m_rotation = m_rotations[0].value;
-        m_scale = m_scales[0].value;
-    }
-    else
-    {
-        // TODO: validation
-        m_animType = AnimationType::Cycle;
-    }
 }
 
 Bone::~Bone()
@@ -67,12 +54,19 @@ Bone::~Bone()
 void Bone::update(float animationTime)
 {
     if (m_animType == AnimationType::Pose)
-        return;
-
-    updateInternal(animationTime);
+        updatePose();
+    else
+        updateCycle(animationTime);
 }
 
-void Bone::updateInternal(float animationTime)
+void Bone::updatePose()
+{
+    m_translation = m_positions[0].value;
+    m_rotation = m_rotations[0].value;
+    m_scale = m_scales[0].value;
+}
+
+void Bone::updateCycle(float animationTime)
 {
     m_translation = interpolatePosition(animationTime);
     m_rotation = interpolateRotation(animationTime);

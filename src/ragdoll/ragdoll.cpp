@@ -443,7 +443,7 @@ void Ragdoll::syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrie
     // TODO: bone is nullptr?
     Bone *bone = m_animation->getBone(node.name);
     bone->m_rotations[0].value = BulletGLM::getGLMQuat(boneOrientation);
-    bone->updateInternal(0.0f);
+    bone->updatePose();
 
     bones[node.index] = bone;
 

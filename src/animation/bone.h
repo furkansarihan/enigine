@@ -47,10 +47,11 @@ public:
     AnimationType m_animType;
     float m_blendFactor = 1.0f;
 
-    Bone(const std::string &name, int ID, const aiNodeAnim *channel);
+    Bone(const std::string &name, int ID, const aiNodeAnim *channel, AnimationType m_animType);
     ~Bone();
     void update(float animationTime);
-    void updateInternal(float animationTime);
+    void updatePose();
+    void updateCycle(float animationTime);
     // TODO: single function without polimorphism?
     int getPositionIndex(float animationTime);
     int getRotationIndex(float animationTime);
