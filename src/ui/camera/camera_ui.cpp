@@ -10,7 +10,9 @@ void CameraUI::render()
     ImGui::Text("yaw: %.1f", m_camera->yaw);
     ImGui::DragFloat("near", &m_camera->near, 0.001f);
     ImGui::DragFloat("far", &m_camera->far, 10.0f);
-    ImGui::DragFloat("fov", &m_camera->fov, 0.01f);
+    float fovDegrees = glm::degrees(m_camera->fov);
+    if(ImGui::DragFloat("fov", &fovDegrees, 0.1f))
+        m_camera->fov = glm::radians(fovDegrees);
     ImGui::DragFloat("movementSpeed", &m_camera->movementSpeed, 10.0f);
     ImGui::DragFloat("scaleOrtho", &m_camera->scaleOrtho, 0.1f);
     // ImGui::DragFloat("blurOffset", &blurOffset, 0.001f);
