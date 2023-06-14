@@ -1,48 +1,48 @@
 #include "vehicle.h"
 
 Vehicle::Vehicle(PhysicsWorld *physicsWorld, btVector3 position)
+    : m_physicsWorld(physicsWorld),
+      position(position)
 {
-    this->physicsWorld = physicsWorld;
-    this->position = position;
     this->initDefaultValues();
     this->initVehicle();
 }
 
 Vehicle::~Vehicle()
 {
+    delete m_vehicleRayCaster;
+    delete m_vehicle;
 }
 
 void Vehicle::initDefaultValues()
 {
     this->gEngineForce = 0.f;
-    this->accelerationVelocity = 50.f;
-    this->decreaseVelocity = 30.f;
-    this->breakingVelocity = 80.f;
+    this->accelerationVelocity = 5000.f;
+    this->decreaseVelocity = 3000.f;
+    this->breakingVelocity = 100.f;
 
-    this->maxEngineForce = 180.f;  // this should be engine/velocity dependent
-    this->minEngineForce = -50.f; // this should be engine/velocity dependent
+    this->maxEngineForce = 6000.f;  // this should be engine/velocity dependent
+    this->minEngineForce = -3000.f; // this should be engine/velocity dependent
 
     this->gVehicleSteering = 0.f;
-    this->steeringIncrement = 7.f;
-    this->steeringVelocity = 1000.f;
-    this->steeringClamp = 0.8f;
+    this->steeringSpeed = 0.15f;
+    this->steeringIncrement = 2.f;
+    this->steeringClamp = 0.5f;
 
     this->wheelRadius = 0.6f;
-    this->wheelWidth = 0.4f;
 
-    this->lowerLimit = -1;
-    this->upperLimit = 1;
-    this->damping = 0.2f;
-    this->friction = 2.5f;
-    this->stifness = 40.0f;
-    this->wheelDamping = 2.0f;
-    this->bounce = 0.0f;
+    // WheelInfo
+    m_wheelFriction = 4000;
+    m_suspensionStiffness = 20.f;
+    m_suspensionDamping = 2.3f;
+    m_suspensionCompression = 4.4f;
+    m_rollInfluence = 0.1f;
 }
 
 void Vehicle::initVehicle()
 {
     // TODO: get from physicsWorld
-    btCollisionShape *chassisShape = new btBoxShape(btVector3(0.8f, 0.3f, 2.8f));
+    btCollisionShape *chassisShape = new btBoxShape(btVector3(1.f, 0.5f, 2.4f));
     // m_collisionShapes.push_back(chassisShape);
 
     // TODO: get from physicsWorld
@@ -60,67 +60,49 @@ void Vehicle::initVehicle()
     tr.setIdentity();
     tr.setOrigin(position);
 
-    const btScalar chassisMass = 1200.f;
+    const btScalar chassisMass = 1000.f;
     const btScalar wheelMass = 80.f;
-    m_carChassis = physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
-    // m_carChassis->setDamping(0.8, 0.8);
+    m_carChassis = m_physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
+    m_carChassis->setDamping(0.2, 0.2);
 
-    // TODO: get from physicsWorld
-    // btCollisionShape *m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
-
-    float wheelGap = -0.25f;
+    float wheelGap = 1.4f;
     btVector3 wheelPos[4] = {
-        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(2.5)),
-        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(2.5)),
-        tr.getOrigin() + btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(-2.5)),
-        tr.getOrigin() + btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(-2.5))};
+        btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(2.5)),
+        btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(2.5)),
+        btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(-2.5)),
+        btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(-2.5))};
 
-    for (int i = 0; i < 4; i++)
+    m_vehicleRayCaster = new btDefaultVehicleRaycaster(m_physicsWorld->m_dynamicsWorld);
+    m_vehicle = new btRaycastVehicle(m_tuning, m_carChassis, m_vehicleRayCaster);
+
+    m_carChassis->setActivationState(DISABLE_DEACTIVATION);
+
+    m_physicsWorld->m_dynamicsWorld->addVehicle(m_vehicle);
+
+    int rightIndex = 0;
+    int upIndex = 1;
+    int forwardIndex = 2;
+    m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
+
+    bool isFrontWheel = true;
+    float suspensionRestLength = 0.6f;
+
+    btVector3 wheelDirectionCS0(0, -1, 0);
+    btVector3 wheelAxleCS(-1, 0, 0);
+
+    m_vehicle->addWheel(wheelPos[0], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, true);
+    m_vehicle->addWheel(wheelPos[1], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, true);
+    m_vehicle->addWheel(wheelPos[2], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, false);
+    m_vehicle->addWheel(wheelPos[3], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, false);
+
+    for (int i = 0; i < m_vehicle->getNumWheels(); i++)
     {
-        // create a Hinge2 joint
-        // create two rigid bodies
-        // static bodyA (parent) on top:
-
-        btRigidBody *pBodyA = this->m_carChassis;
-        pBodyA->setActivationState(DISABLE_DEACTIVATION);
-        // dynamic bodyB (child) below it :
-        btTransform tr;
-        tr.setIdentity();
-        tr.setOrigin(wheelPos[i]);
-
-        btRigidBody *pBodyB;
-        pBodyB = physicsWorld->createSphere(wheelMass, wheelRadius, tr.getOrigin());
-        // pBodyB = physicsWorld->createRigidBody(m_wheelShape, wheelMass, tr.getOrigin());
-        wheelBodies[i] = pBodyB;
-        pBodyB->setDamping(damping, damping);
-        pBodyB->setFriction(friction);
-        pBodyB->setActivationState(DISABLE_DEACTIVATION);
-        // add some data to build constraint frames
-        btVector3 parentAxis(0.f, 1.f, 0.f);
-        btVector3 childAxis(1.f, 0.f, 0.f);
-        btVector3 anchor = tr.getOrigin();
-        wheels[i] = new btHinge2Constraint(*pBodyA, *pBodyB, anchor, parentAxis, childAxis);
-
-        // add constraint to world
-        physicsWorld->dynamicsWorld->addConstraint(wheels[i], true);
-
-        // Drive engine
-        wheels[i]->enableMotor(3, true);
-        wheels[i]->setMaxMotorForce(3, 1000);
-        wheels[i]->setTargetVelocity(3, 0);
-
-        // Steering engine
-        wheels[i]->enableMotor(5, true);
-        wheels[i]->setMaxMotorForce(5, 1000);
-        wheels[i]->setTargetVelocity(5, 0);
-
-        wheels[i]->setParam(BT_CONSTRAINT_CFM, 0.15f, 2);
-        wheels[i]->setParam(BT_CONSTRAINT_ERP, 0.35f, 2);
-
-        wheels[i]->setLimit(2, lowerLimit, upperLimit);
-        wheels[i]->setBounce(2, bounce);
-        wheels[i]->setDamping(2, wheelDamping);
-        wheels[i]->setStiffness(2, stifness);
+        btWheelInfo &wheel = m_vehicle->getWheelInfo(i);
+        wheel.m_suspensionStiffness = m_suspensionStiffness;
+        wheel.m_wheelsDampingRelaxation = m_suspensionDamping;
+        wheel.m_wheelsDampingCompression = m_suspensionCompression;
+        wheel.m_frictionSlip = m_wheelFriction;
+        wheel.m_rollInfluence = m_rollInfluence;
     }
 }
 
@@ -129,7 +111,7 @@ void Vehicle::resetVehicle(btTransform tr)
     m_carChassis->setCenterOfMassTransform(tr);
     m_carChassis->setLinearVelocity(btVector3(0, 0, 0));
     m_carChassis->setAngularVelocity(btVector3(0, 0, 0));
-    physicsWorld->dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis->getBroadphaseHandle(), physicsWorld->dynamicsWorld->getDispatcher());
+    m_physicsWorld->m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis->getBroadphaseHandle(), m_physicsWorld->m_dynamicsWorld->getDispatcher());
 }
 
 void Vehicle::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -158,6 +140,7 @@ void Vehicle::staticKeyCallback(GLFWwindow *window, int key, int scancode, int a
 
 void Vehicle::update(GLFWwindow *window, float deltaTime)
 {
+    m_speed = m_carChassis->getLinearVelocity().length();
     updateSteering(window, deltaTime);
     updateAcceleration(window, deltaTime);
 }
@@ -195,25 +178,10 @@ void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
         }
     }
 
-    for (int i = 0; i < 4; i++)
-    {
-        float angle = wheels[i]->getAngle(2);
-        float distance = (i < 2 ? gVehicleSteering : 0) - angle;
+    float steer = CommonUtil::lerp(m_vehicle->getSteeringValue(0), -gVehicleSteering, steeringSpeed);
 
-        if (abs(distance) < 0.0001)
-        {
-            wheels[i]->setTargetVelocity(5, 0);
-        }
-        else
-        {
-            glm::vec2 p0(0, 0);
-            glm::vec2 p1(0.18, 1);
-            glm::vec2 p2(0.57, 1);
-            glm::vec2 p3(1, 1);
-
-            wheels[i]->setTargetVelocity(5, deltaTime * CommonUtil::cubicBezier(p0, p1, p2, p3, distance).y * steeringVelocity);
-        }
-    }
+    m_vehicle->setSteeringValue(steer, 0);
+    m_vehicle->setSteeringValue(steer, 1);
 }
 
 // TODO: cubic curve acceleration, transmission
@@ -260,26 +228,18 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
         gEngineForce = minEngineForce;
     }
 
-    float force = -gEngineForce;
+    m_vehicle->applyEngineForce(gEngineForce, 0);
+    m_vehicle->applyEngineForce(gEngineForce, 1);
 
-    wheels[0]->setTargetVelocity(3, force);
-    wheels[1]->setTargetVelocity(3, force);
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
+    if ((gEngineForce > 0.f && glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_RELEASE) ||
+        (gEngineForce < 0.f && glfwGetKey(window, GLFW_KEY_UP) != GLFW_RELEASE))
     {
-        wheels[2]->setTargetVelocity(3, force);
-        wheels[3]->setTargetVelocity(3, force);
-        return;
+        m_vehicle->setBrake(breakingVelocity, 2);
+        m_vehicle->setBrake(breakingVelocity, 3);
     }
-
-    // Handbrake
-    glm::vec2 p0(0, 0);
-    glm::vec2 p1(0.18, 1);
-    glm::vec2 p2(0.57, 1);
-    glm::vec2 p3(1, 1);
-
-    float normalized = (gEngineForce - minEngineForce) / (maxEngineForce - minEngineForce);
-
-    wheels[2]->setTargetVelocity(3, deltaTime * -CommonUtil::cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
-    wheels[3]->setTargetVelocity(3, deltaTime * -CommonUtil::cubicBezier(p0, p1, p2, p3, normalized).y * breakingVelocity);
+    else
+    {
+        m_vehicle->setBrake(0, 2);
+        m_vehicle->setBrake(0, 3);
+    }
 }

@@ -38,9 +38,19 @@ void TerrainUI::render()
     ImGui::DragFloat("stoneDensity", &m_terrain->m_stoneDensity, 0.01, 0, 10);
     ImGui::DragFloat("windIntensity", &m_terrain->m_windIntensity, 0.2, 0, 50);
     float trestitution = m_terrain->terrainBody->getRestitution();
-    if (ImGui::DragFloat("terrain restitution", &trestitution, 0.1f))
+    if (ImGui::DragFloat("terrain restitution", &trestitution, 0.05f))
     {
         m_terrain->terrainBody->setRestitution(trestitution);
+    }
+    float contactStiffness = m_terrain->terrainBody->getContactStiffness();
+    float contactDamping = m_terrain->terrainBody->getContactDamping();
+    if (ImGui::DragFloat("terrain contactStiffness", &contactStiffness, 0.05f))
+    {
+        m_terrain->terrainBody->setContactStiffnessAndDamping(contactStiffness, contactDamping);
+    }
+    if (ImGui::DragFloat("terrain contactDamping", &contactDamping, 0.05f))
+    {
+        m_terrain->terrainBody->setContactStiffnessAndDamping(contactStiffness, contactDamping);
     }
     ImGui::Checkbox("showCascade", &m_terrain->showCascade);
     ImGui::DragFloat("terrainBias0", &m_terrain->shadowBias.x, 0.001f);

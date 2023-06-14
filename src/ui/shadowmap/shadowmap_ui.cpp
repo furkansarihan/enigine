@@ -28,7 +28,7 @@ void ShadowmapUI::render()
     ImGui::DragFloat("camViewX", &m_shadowManager->m_camera->front.x, 0.01f);
     ImGui::DragFloat("camViewY", &m_shadowManager->m_camera->front.y, 0.01f);
     ImGui::DragFloat("camViewZ", &m_shadowManager->m_camera->front.z, 0.01f);
-    m_shadowManager->m_camera->front = glm::normalize(m_shadowManager->m_camera->front);
+    // m_shadowManager->m_camera->front = glm::normalize(m_shadowManager->m_camera->front);
     ImGui::DragFloat("camNear", &m_shadowManager->m_near, 1);
     ImGui::DragFloat("camFar", &m_shadowManager->m_far, 1, 26, 10000);
 }

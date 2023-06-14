@@ -37,7 +37,7 @@ public:
     Model *m_model;
 
     // TODO: transformation struct
-    glm::vec3 m_position = glm::vec3(200.0f, 10.5f, 250.0f);
+    glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     float m_scale = 2.0;
 

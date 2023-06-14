@@ -9,6 +9,9 @@
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
 
+#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+#include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
+
 #include "BulletDynamics/MLCPSolvers/btDantzigSolver.h"
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
 #include "BulletDynamics/MLCPSolvers/btMLCPSolver.h"
@@ -19,7 +22,7 @@ public:
     PhysicsWorld();
     ~PhysicsWorld();
 
-    btDiscreteDynamicsWorld *dynamicsWorld;
+    btDiscreteDynamicsWorld *m_dynamicsWorld;
 
     btRigidBody *createBox(const btScalar mass, const btVector3 &size, const btVector3 &position);
     btRigidBody *createSphere(const btScalar mass, const btScalar radius, const btVector3 &position);
@@ -29,16 +32,19 @@ public:
                                btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform);
-    
+
+    btSoftRigidDynamicsWorld *softDynamicsWorld();
+
     // TODO: freeze rigidbody
 
 private:
-    bool useMCLPSolver;
-    btDefaultCollisionConfiguration *collisionConfiguration;
-    btCollisionDispatcher *dispatcher;
-    btBroadphaseInterface *overlappingPairCache;
-    btSequentialImpulseConstraintSolver *solver;
-    btAlignedObjectArray<btCollisionShape *> collisionShapes;
+    bool m_useMCLPSolver;
+    bool m_useSoftBodyWorld;
+    btDefaultCollisionConfiguration *m_collisionConfiguration;
+    btCollisionDispatcher *m_dispatcher;
+    btBroadphaseInterface *m_overlappingPairCache;
+    btSequentialImpulseConstraintSolver *m_solver;
+    btAlignedObjectArray<btCollisionShape *> m_collisionShapes;
 
     void init();
 };

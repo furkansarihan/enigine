@@ -181,7 +181,7 @@ void Character::init()
     m_rigidbody->setFriction(0.0f);
     m_rigidbody->setGravity(btVector3(0, -20.0f, 0));
 
-    m_controller = new CharacterController(m_physicsWorld->dynamicsWorld, m_rigidbody, m_followCamera);
+    m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
 
     // TODO: make independent or manageable - fix
     // init shaders after model read && before ragdoll ???? :D

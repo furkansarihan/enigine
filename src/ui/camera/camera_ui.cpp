@@ -6,12 +6,12 @@ void CameraUI::render()
         return;
 
     ImGui::Text("position: (%.1f, %.1f, %.1f)", m_camera->position.x, m_camera->position.y, m_camera->position.z);
-    ImGui::Text("pitch: %.1f", m_camera->pitch);
-    ImGui::Text("yaw: %.1f", m_camera->yaw);
+    ImGui::Text("front: (%.3f, %.3f, %.3f)", m_camera->front.x, m_camera->front.y, m_camera->front.z);
+    ImGui::DragFloat("mouseSensitivity", &m_camera->mouseSensitivity, 0.001f);
     ImGui::DragFloat("near", &m_camera->near, 0.001f);
     ImGui::DragFloat("far", &m_camera->far, 10.0f);
     float fovDegrees = glm::degrees(m_camera->fov);
-    if(ImGui::DragFloat("fov", &fovDegrees, 0.1f))
+    if (ImGui::DragFloat("fov", &fovDegrees, 0.1f))
         m_camera->fov = glm::radians(fovDegrees);
     ImGui::DragFloat("movementSpeed", &m_camera->movementSpeed, 10.0f);
     ImGui::DragFloat("scaleOrtho", &m_camera->scaleOrtho, 0.1f);

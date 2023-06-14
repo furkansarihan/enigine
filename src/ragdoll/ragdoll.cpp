@@ -98,7 +98,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_SPINE], localA, localB);
     hingeC->setLimit(btScalar(-M_PI_4), btScalar(M_PI_2));
     m_joints[JOINT_PELVIS_SPINE] = hingeC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_PELVIS_SPINE], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_PELVIS_SPINE], true);
     nodeSpine.index = JOINT_PELVIS_SPINE;
 
     // JOINT_SPINE_HEAD
@@ -111,7 +111,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_HEAD], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, M_PI_2);
     m_joints[JOINT_SPINE_HEAD] = coneC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
     nodeHead.index = JOINT_SPINE_HEAD;
 
     // JOINT_LEFT_HIP
@@ -125,7 +125,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_LEFT_UPPER_LEG], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, 0);
     m_joints[JOINT_LEFT_HIP] = coneC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
     nodeLeftUpLeg.index = JOINT_LEFT_HIP;
 
     // JOINT_LEFT_KNEE
@@ -138,7 +138,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_LEG], *m_bodies[BODYPART_LEFT_LOWER_LEG], localA, localB);
     hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
     m_joints[JOINT_LEFT_KNEE] = hingeC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
     nodeLeftLeg.index = JOINT_LEFT_KNEE;
 
     // JOINT_RIGHT_HIP
@@ -151,7 +151,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_RIGHT_UPPER_LEG], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, 0);
     m_joints[JOINT_RIGHT_HIP] = coneC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
     nodeRightUpLeg.index = JOINT_RIGHT_HIP;
 
     // JOINT_RIGHT_KNEE
@@ -164,7 +164,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
     hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
     m_joints[JOINT_RIGHT_KNEE] = hingeC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
     nodeRightLeg.index = JOINT_RIGHT_KNEE;
 
     // JOINT_LEFT_SHOULDER
@@ -178,7 +178,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
     coneC->setLimit(M_PI_2, M_PI_2, 0);
     m_joints[JOINT_LEFT_SHOULDER] = coneC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
     nodeLeftArm.index = JOINT_LEFT_SHOULDER;
 
     // JOINT_LEFT_ELBOW
@@ -191,7 +191,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_ARM], *m_bodies[BODYPART_LEFT_LOWER_ARM], localA, localB);
     hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
     m_joints[JOINT_LEFT_ELBOW] = hingeC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_ELBOW], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_ELBOW], true);
     nodeLeftForeArm.index = JOINT_LEFT_ELBOW;
 
     // JOINT_RIGHT_SHOULDER
@@ -204,7 +204,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
     coneC->setLimit(M_PI_2, M_PI_2, 0);
     m_joints[JOINT_RIGHT_SHOULDER] = coneC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
     nodeRightArm.index = JOINT_RIGHT_SHOULDER;
 
     // JOINT_RIGHT_ELBOW
@@ -217,7 +217,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_ARM], *m_bodies[BODYPART_RIGHT_LOWER_ARM], localA, localB);
     hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
     m_joints[JOINT_RIGHT_ELBOW] = hingeC;
-    m_physicsWorld->dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
+    m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
     nodeRightForeArm.index = JOINT_RIGHT_ELBOW;
 }
 
@@ -228,7 +228,7 @@ Ragdoll::~Ragdoll()
     // Remove all constraints
     for (i = 0; i < JOINT_COUNT; ++i)
     {
-        m_physicsWorld->dynamicsWorld->removeConstraint(m_joints[i]);
+        m_physicsWorld->m_dynamicsWorld->removeConstraint(m_joints[i]);
         delete m_joints[i];
         m_joints[i] = 0;
     }
@@ -236,7 +236,7 @@ Ragdoll::~Ragdoll()
     // Remove all bodies and shapes
     for (i = 0; i < BODYPART_COUNT; ++i)
     {
-        m_physicsWorld->dynamicsWorld->removeRigidBody(m_bodies[i]);
+        m_physicsWorld->m_dynamicsWorld->removeRigidBody(m_bodies[i]);
 
         delete m_bodies[i]->getMotionState();
 

@@ -2,21 +2,21 @@
 
 PhysicsWorld::PhysicsWorld()
 {
-    this->init();
+    init();
 }
 
 PhysicsWorld::~PhysicsWorld()
 {
     // remove the rigidbodies from the dynamics world and delete them
-    for (int i = this->dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+    for (int i = m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
     {
-        btCollisionObject *obj = this->dynamicsWorld->getCollisionObjectArray()[i];
+        btCollisionObject *obj = m_dynamicsWorld->getCollisionObjectArray()[i];
         btRigidBody *body = btRigidBody::upcast(obj);
         if (body && body->getMotionState())
         {
             delete body->getMotionState();
         }
-        this->dynamicsWorld->removeCollisionObject(obj);
+        m_dynamicsWorld->removeCollisionObject(obj);
         delete obj;
         // TODO: refactor when shape reuse impl
         if (body && body->getCollisionShape())
@@ -25,65 +25,82 @@ PhysicsWorld::~PhysicsWorld()
         }
     }
 
-    delete dynamicsWorld;
-    delete solver;
-    delete overlappingPairCache;
-    delete dispatcher;
-    delete collisionConfiguration;
+    delete m_dynamicsWorld;
+    delete m_solver;
+    delete m_overlappingPairCache;
+    delete m_dispatcher;
+    delete m_collisionConfiguration;
 }
 
 void PhysicsWorld::init()
 {
-    this->useMCLPSolver = false;
+    m_useMCLPSolver = false;
+    m_useSoftBodyWorld = false;
 
     // collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
-    this->collisionConfiguration = new btDefaultCollisionConfiguration();
+    m_collisionConfiguration = new btSoftBodyRigidBodyCollisionConfiguration();
 
     // use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
-    this->dispatcher = new btCollisionDispatcher(collisionConfiguration);
+    m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
 
     // btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
-    this->overlappingPairCache = new btDbvtBroadphase();
+    m_overlappingPairCache = new btDbvtBroadphase();
 
-    if (useMCLPSolver)
+    if (m_useMCLPSolver)
     {
         btDantzigSolver *mlcp = new btDantzigSolver();
         // btSolveProjectedGaussSeidel* mlcp = new btSolveProjectedGaussSeidel();
-        this->solver = new btMLCPSolver(mlcp);
+        m_solver = new btMLCPSolver(mlcp);
     }
     else
     {
         // the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-        this->solver = new btSequentialImpulseConstraintSolver();
+        m_solver = new btSequentialImpulseConstraintSolver();
     }
 
-    this->dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-
-    if (useMCLPSolver)
+    if (m_useSoftBodyWorld)
     {
-        this->dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 1; // for direct solver it is better to have a small A matrix
+        btSoftBodySolver *softBodySolver = 0;
+        m_dynamicsWorld = new btSoftRigidDynamicsWorld(m_dispatcher, m_overlappingPairCache, m_solver, m_collisionConfiguration, softBodySolver);
+
+        m_dynamicsWorld->getDispatchInfo().m_enableSPU = true;
     }
     else
     {
-        this->dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 128; // for direct solver, it is better to solve multiple objects together, small batches have high overhead
+        m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher, m_overlappingPairCache, m_solver, m_collisionConfiguration);
+    }
+
+    if (m_useMCLPSolver)
+    {
+        m_dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 1; // for direct solver it is better to have a small A matrix
+    }
+    else
+    {
+        m_dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 128; // for direct solver, it is better to solve multiple objects together, small batches have high overhead
     }
 
     // default gravity
-    dynamicsWorld->setGravity(btVector3(0, -10, 0));
+    m_dynamicsWorld->setGravity(btVector3(0, -10, 0));
+}
+
+btSoftRigidDynamicsWorld *PhysicsWorld::softDynamicsWorld()
+{
+    btSoftRigidDynamicsWorld *sdw = dynamic_cast<btSoftRigidDynamicsWorld *>(m_dynamicsWorld);
+    return sdw;
 }
 
 // TODO: reuse shapes
 btRigidBody *PhysicsWorld::createBox(const btScalar mass, const btVector3 &size, const btVector3 &position)
 {
     btCollisionShape *shape = new btBoxShape(size);
-    return this->createRigidBody(shape, mass, position);
+    return createRigidBody(shape, mass, position);
 }
 
 // TODO: reuse shapes
 btRigidBody *PhysicsWorld::createSphere(const btScalar mass, const btScalar radius, const btVector3 &position)
 {
     btCollisionShape *shape = new btSphereShape(radius);
-    return this->createRigidBody(shape, mass, position);
+    return createRigidBody(shape, mass, position);
 }
 
 // TODO: reuse shapes
@@ -104,7 +121,7 @@ btRigidBody *PhysicsWorld::createCapsule(const btScalar mass, const btScalar axi
         shape = new btCapsuleShape(radius, height);
     }
 
-    return this->createRigidBody(shape, mass, position);
+    return createRigidBody(shape, mass, position);
 }
 
 // TODO: reuse shapes
@@ -125,7 +142,7 @@ btRigidBody *PhysicsWorld::createCylinder(const btScalar mass, const btScalar ax
         shape = new btCylinderShape(halfExtend);
     }
 
-    return this->createRigidBody(shape, mass, position);
+    return createRigidBody(shape, mass, position);
 }
 
 btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float *heightfieldData,
@@ -140,10 +157,13 @@ btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, cons
         upAxis,
         flipQuadEdges);
 
+    shape->setUseDiamondSubdivision(true);
+    // shape->setUseZigzagSubdivision(true);
+
     // TODO: scale the shape
     // TODO: position
 
-    return this->createRigidBody(shape, 0, btVector3(0, 0, 0));
+    return createRigidBody(shape, 0, btVector3(0, 0, 0));
 }
 
 btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position)
@@ -152,7 +172,7 @@ btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScal
     transform.setIdentity();
     transform.setOrigin(position);
 
-    return this->createRigidBody(shape, mass, transform);
+    return createRigidBody(shape, mass, transform);
 }
 
 btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform)
@@ -165,6 +185,6 @@ btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScal
     btDefaultMotionState *myMotionState = new btDefaultMotionState(transform);
     btRigidBody::btRigidBodyConstructionInfo RigidBodyCI(mass, myMotionState, shape, localInertia);
     btRigidBody *rigidBody = new btRigidBody(RigidBodyCI);
-    this->dynamicsWorld->addRigidBody(rigidBody);
+    m_dynamicsWorld->addRigidBody(rigidBody);
     return rigidBody;
 }

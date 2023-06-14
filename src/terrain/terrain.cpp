@@ -78,6 +78,8 @@ Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::
         1,
         false);
 
+    terrainBody->setCollisionFlags(btRigidBody::CF_DISABLE_VISUALIZE_OBJECT);
+
     updateHorizontalScale();
 
     // texture arrays

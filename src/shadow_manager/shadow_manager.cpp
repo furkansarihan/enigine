@@ -1,11 +1,9 @@
 #include "shadow_manager.h"
 
-ShadowManager::ShadowManager(std::vector<unsigned int> shaderIds)
+ShadowManager::ShadowManager(Camera *camera, std::vector<unsigned int> shaderIds)
+    : m_camera(camera),
+      m_shaderIds(shaderIds)
 {
-    m_camera = new Camera(glm::vec3(0, 0, -16), glm::vec3(0, 1, 0), 90, 0, 1, 200);
-
-    m_shaderIds = shaderIds;
-
     setupUBO();
 }
 
@@ -64,7 +62,6 @@ void ShadowManager::updateFrustumPoints(frustum &f, glm::vec3 &center, glm::vec3
     glm::vec3 fc = center + view_dir * f.far;
     glm::vec3 nc = center + view_dir * f.near;
 
-    // TODO: why tan(fov/2) is not represents width?
     float near_height = tan(f.fov / 2.0f) * f.near;
     float near_width = near_height * f.ratio;
     float far_height = tan(f.fov / 2.0f) * f.far;

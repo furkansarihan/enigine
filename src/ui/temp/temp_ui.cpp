@@ -13,6 +13,7 @@ void TempUI::render()
     ImGui::DragFloat("exposure", &m_postProcess->m_exposure, 0.001);
     ImGui::Separator();
     ImGui::Text("Physics");
+    ImGui::Text("m_deltaTime: %.6f", m_deltaTime);
     ImGui::DragInt("m_maxSubSteps", &m_maxSubSteps);
     bool debugEnabled = m_debugDrawer->getDebugMode();
     if (ImGui::Checkbox("wireframe", &debugEnabled))

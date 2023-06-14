@@ -19,18 +19,26 @@
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
 #include "BulletDynamics/MLCPSolvers/btMLCPSolver.h"
 
-
 class Vehicle
 {
 public:
     Vehicle(PhysicsWorld *physicsWorld, btVector3 position);
     ~Vehicle();
 
-    PhysicsWorld *physicsWorld;
+    PhysicsWorld *m_physicsWorld;
     btRigidBody *m_carChassis;
-    btHinge2Constraint *wheels[4];
-    btRigidBody *wheelBodies[4];
 
+    btDefaultVehicleRaycaster *m_vehicleRayCaster;
+    btRaycastVehicle *m_vehicle;
+    btRaycastVehicle::btVehicleTuning m_tuning;
+
+    float m_wheelFriction;
+    float m_suspensionStiffness;
+    float m_suspensionDamping;
+    float m_suspensionCompression;
+    float m_rollInfluence;
+
+    float m_speed = 0.f;
     float gEngineForce;
     float accelerationVelocity;
     float decreaseVelocity;
@@ -39,18 +47,9 @@ public:
     float minEngineForce;
     float gVehicleSteering;
     float steeringIncrement;
-    float steeringVelocity;
+    float steeringSpeed;
     float steeringClamp;
     float wheelRadius;
-    float wheelWidth;
-
-    float lowerLimit;
-    float upperLimit;
-    float damping;
-    float friction;
-    float stifness;
-    float wheelDamping;
-    float bounce;
 
     void update(GLFWwindow *window, float deltaTime);
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);

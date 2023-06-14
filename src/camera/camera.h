@@ -30,11 +30,6 @@ enum ProjectionMode
 };
 
 // Default camera values
-const float YAW = -90.0f;
-const float PITCH = 0.0f;
-const float SPEED = 25.0f;
-const float SENSITIVITY = 0.1f;
-const float FOV = M_PI_4;
 const float NEAR = 0.1f;
 const float FAR = 20000.0f;
 
@@ -42,26 +37,23 @@ class Camera
 {
 public:
     // Contructors
-    Camera(glm::vec3 position, glm::vec3 up, float yaw = YAW, float pitch = PITCH, float near = NEAR, float far = FAR);
+    Camera(glm::vec3 position, glm::vec3 up, float near = NEAR, float far = FAR);
     ~Camera();
     // Camera Attributes
     glm::vec3 position;
-    glm::vec3 front;
+    glm::vec3 front = glm::vec3(0.f, 0.f, -1.f);
     glm::vec3 up;
     glm::vec3 right;
     glm::vec3 worldUp;
-    ProjectionMode projectionMode;
+    ProjectionMode projectionMode = ProjectionMode::Perspective;
     glm::vec3 frustumPoints[8];
     float near;
     float far;
-    float fov;
-    float scaleOrtho;
-    // Euler Angles
-    float yaw;
-    float pitch;
+    float fov = M_PI_4;
+    float scaleOrtho = 1.f;
     // Camera options
-    float movementSpeed;
-    float mouseSensitivity;
+    float movementSpeed = 25.0f;
+    float mouseSensitivity = 0.002f;
     // Move
     bool firstMove = true;
     float lastX;
@@ -74,9 +66,6 @@ public:
     void processKeyboard(Camera_Movement direction, float deltaTime);
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
     void updateFrustumPoints(float width, float height);
-
-private:
-    void updateCameraVectors();
 };
 
 #endif /* camera_hpp */

@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 
     DebugDrawer debugDrawer;
     debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
-    physicsWorld.dynamicsWorld->setDebugDrawer(&debugDrawer);
+    physicsWorld.m_dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     // Shaders
     ShaderManager shaderManager;
@@ -169,8 +169,8 @@ int main(int argc, char **argv)
     Model *doors[4] = {&carDoorFL, &carDoorFR, &carDoorRL, &carDoorRR};
 
     // Camera
-    Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
-    Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -124.0f, -10.0f);
+    Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Characters
     NPCharacter npc1(&resourceManager, &shaderManager, &physicsWorld, &editorCamera);
@@ -207,8 +207,7 @@ int main(int argc, char **argv)
     shaderIds.push_back(simpleShadow.id);
     shaderIds.push_back(terrainShadow.id);
 
-    ShadowManager shadowManager(shaderIds);
-    shadowManager.m_camera = &editorCamera;
+    ShadowManager shadowManager(&editorCamera, shaderIds);
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
 
     // Shadowmap display quad
@@ -280,6 +279,7 @@ int main(int argc, char **argv)
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        tempUI.m_deltaTime = deltaTime;
 
         // Poll events
         glfwPollEvents();
@@ -292,10 +292,10 @@ int main(int argc, char **argv)
         npc1.update(window, deltaTime);
 
         // Update Physics
-        physicsWorld.dynamicsWorld->stepSimulation(deltaTime, tempUI.m_maxSubSteps);
-        if (physicsWorld.dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
+        physicsWorld.m_dynamicsWorld->stepSimulation(deltaTime, tempUI.m_maxSubSteps);
+        if (physicsWorld.m_dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
         {
-            btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.dynamicsWorld->getConstraintSolver();
+            btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.m_dynamicsWorld->getConstraintSolver();
             int numFallbacks = sol->getNumFallbacks();
             if (numFallbacks)
             {
@@ -308,24 +308,44 @@ int main(int argc, char **argv)
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();
-        physicsWorld.dynamicsWorld->debugDrawWorld();
+        physicsWorld.m_dynamicsWorld->debugDrawWorld();
 
         // Vehicle
+        btTransform chassisTransform;
+        vehicle.m_carChassis->getMotionState()->getWorldTransform(chassisTransform);
+
         if (vehicleUI.m_controlVehicle)
             vehicle.update(window, deltaTime);
 
+        for (int i = 0; i < 4; i++)
+            vehicle.m_vehicle->updateWheelTransform(i, true);
+
         if (vehicleUI.m_followVehicle)
         {
-            btTransform trans;
-            vehicle.m_carChassis->getMotionState()->getWorldTransform(trans);
-            vehicleUI.m_posTarget = BulletGLM::getGLMVec3(trans.getOrigin());
-            vehicleUI.m_pos = glm::mix(vehicleUI.m_pos, vehicleUI.m_posTarget, vehicleUI.m_posFactor);
-            editorCamera.position = vehicleUI.m_pos - editorCamera.front * glm::vec3(vehicleUI.m_followDistance) + vehicleUI.m_followOffset;
+            float speed = vehicle.m_speed;
+            float oneOverSpeed = 1.f / (speed + 1.f);
+            // udpate follow specs
+            Follow &follow = vehicleUI.m_follow;
+            follow.gapTarget = speed * follow.gapFactor + std::fabs(vehicle.gVehicleSteering) * follow.steeringFactor * oneOverSpeed;
+            follow.gap = CommonUtil::lerp(follow.gap, follow.gapTarget, follow.gapSpeed);
+            vehicleUI.m_pos = BulletGLM::getGLMVec3(chassisTransform.getOrigin());
+            editorCamera.position = vehicleUI.m_pos - editorCamera.front * glm::vec3(follow.distance + follow.gap) + follow.offset;
+
+            // TODO: stop angular follow when camera moving
+            // TODO: do not rotate if not moving or very slow
+            glm::vec3 frontTarget = BulletGLM::getGLMVec3(vehicle.m_vehicle->getForwardVector());
+            // TODO: lower vertical when too fast
+            frontTarget.y -= follow.angleFactor;
+            frontTarget = glm::normalize(frontTarget);
+            float frontFactor = std::max(0.01f, std::min(follow.angleSpeed * oneOverSpeed, 1.0f));
+            editorCamera.front = glm::mix(editorCamera.front, frontTarget, frontFactor);
+            editorCamera.up = editorCamera.worldUp;
+            editorCamera.right = glm::cross(editorCamera.front, editorCamera.up);
         }
 
         // car common transforms
         glm::mat4 carChassisModel;
-        vehicle.m_carChassis->getWorldTransform().getOpenGLMatrix((btScalar *)&carChassisModel);
+        chassisTransform.getOpenGLMatrix((btScalar *)&carChassisModel);
         glm::mat4 carRotScale(1.0f);
         carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
         carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
@@ -432,14 +452,13 @@ int main(int argc, char **argv)
 
             for (int i = 0; i < 4; i++)
             {
-                btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
                 glm::mat4 model;
-                body.getWorldTransform().getOpenGLMatrix((btScalar *)&model);
+                vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
                 model = glm::translate(model, vehicleUI.m_wheelOffset);
                 model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
                 model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
                 model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(vehicleUI.m_scale));
+                model = glm::scale(model, glm::vec3(vehicleUI.m_wheelScale));
                 depthShader.setMat4("MVP", depthVP * model);
                 wheels[i]->draw(depthShader);
             }
@@ -724,14 +743,13 @@ int main(int argc, char **argv)
             // wheels
             for (int i = 0; i < 4; i++)
             {
-                btRigidBody body = vehicle.wheels[i]->getRigidBodyB();
                 glm::mat4 model;
-                body.getWorldTransform().getOpenGLMatrix((btScalar *)&model);
+                vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
                 model = glm::translate(model, vehicleUI.m_wheelOffset);
                 model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
                 model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
                 model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(vehicleUI.m_scale));
+                model = glm::scale(model, glm::vec3(vehicleUI.m_wheelScale));
                 pbrShader.setMat4("model", model);
                 pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
                 wheels[i]->draw(pbrShader);

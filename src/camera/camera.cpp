@@ -1,15 +1,13 @@
 #include "camera.h"
 
 // Constructor with vectors
-Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, float near, float far) : front(glm::vec3(0.0f, 0.0f, -1.0f)), movementSpeed(SPEED), mouseSensitivity(SENSITIVITY), fov(FOV), scaleOrtho(1.0), projectionMode(ProjectionMode::Perspective)
+Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float near, float far)
+    : position(position),
+      worldUp(worldUp),
+      near(near),
+      far(far)
 {
-    this->position = position;
-    this->worldUp = worldUp;
-    this->yaw = yaw;
-    this->pitch = pitch;
-    this->near = near;
-    this->far = far;
-    updateCameraVectors();
+    processMouseMovement(0, 0, true);
 }
 
 Camera::~Camera()
@@ -93,39 +91,24 @@ void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
         position += right * velocity;
 }
 
-// Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
 void Camera::processMouseMovement(float xoffset, float yoffset, GLboolean constrainpitch)
 {
     xoffset *= mouseSensitivity;
     yoffset *= mouseSensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
-
     // Make sure that when pitch is out of bounds, screen doesn't get flipped
     if (constrainpitch)
     {
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
+        float dotUp = glm::dot(front, worldUp);
+        if (dotUp > 0.9f && yoffset > 0.f)
+            yoffset = 0.f;
+        if (dotUp < -0.9f && yoffset < 0.f)
+            yoffset = 0.f;
     }
 
-    // Update front, Right and Up Vectors using the updated Euler angles
-    updateCameraVectors();
-}
-
-// Calculates the front vector from the Camera's (updated) Euler Angles
-void Camera::updateCameraVectors()
-{
-    // Calculate the new front vector
-    glm::vec3 _front;
-    _front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    _front.y = sin(glm::radians(pitch));
-    _front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    glm::vec3 _front = front + (right * xoffset) + (up * yoffset);
     front = glm::normalize(_front);
-    // Also re-calculate the Right and Up vector
-    right = glm::normalize(glm::cross(front, worldUp)); // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+    right = glm::normalize(glm::cross(front, worldUp));
     up = glm::normalize(glm::cross(right, front));
 }
 

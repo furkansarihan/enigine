@@ -31,6 +31,7 @@ public:
     float m_speed = 2.0;
 
     int m_maxSubSteps = 1;
+    float m_deltaTime = 0.f;
 
     void render() override;
 };

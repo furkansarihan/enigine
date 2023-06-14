@@ -24,7 +24,7 @@ struct frustum
 class ShadowManager
 {
 public:
-    ShadowManager(std::vector<unsigned int> shaderIds);
+    ShadowManager(Camera *camera, std::vector<unsigned int> shaderIds);
     ~ShadowManager();
 
     Camera *m_camera;
