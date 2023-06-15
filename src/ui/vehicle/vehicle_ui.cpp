@@ -24,6 +24,11 @@ void VehicleUI::render()
     ImGui::DragFloat("m_follow.gapSpeed", &m_follow.gapSpeed, 0.001f);
     ImGui::DragFloat("m_follow.angleFactor", &m_follow.angleFactor, 0.01f);
     ImGui::DragFloat("m_follow.angleSpeed", &m_follow.angleSpeed, 0.001f);
+    ImGui::Text("m_follow.angleVelocity: %.3f", m_follow.angleVelocity);
+    ImGui::DragFloat("m_follow.angleVelocitySpeed", &m_follow.angleVelocitySpeed, 0.001f);
+    ImGui::DragFloat("m_follow.moveSpeed", &m_follow.moveSpeed, 0.001f);
+    ImGui::DragFloat("m_follow.moveSpeedRange", &m_follow.moveSpeedRange, 1.f);
+    ImGui::DragFloat("m_follow.angularSpeedRange", &m_follow.angularSpeedRange, 1.f);
     ImGui::DragFloat("m_scale", &m_scale, 0.001f);
     ImGui::DragFloat("m_wheelScale", &m_wheelScale, 0.001f);
     renderVec3("m_bodyOffset", m_bodyOffset, 0.01f);
@@ -34,8 +39,11 @@ void VehicleUI::render()
     renderVec3("m_trunkOffset", m_trunkOffset, 0.01f);
     for (int i = 0; i < 4; i++)
         renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_doorOffsets[i], 0.01f);
+    renderVec3("m_exhaustOffset", m_exhaustOffset, 0.01f);
+    renderVec3("m_exhaustRotation", m_exhaustRotation, 0.01f);
     ImGui::Text("gVehicleSteering = %f", m_vehicle->gVehicleSteering);
     ImGui::Text("m_speed = %f", m_vehicle->m_speed);
+    ImGui::Text("m_vehicle.speedKmHour = %f", m_vehicle->m_vehicle->getCurrentSpeedKmHour());
     ImGui::Text("gEngineForce = %f", m_vehicle->gEngineForce);
     if (ImGui::DragFloat("m_wheelFriction", &m_vehicle->m_wheelFriction, 0.1f))
         updateWheelInfo();
@@ -46,6 +54,8 @@ void VehicleUI::render()
     if (ImGui::DragFloat("m_suspensionCompression", &m_vehicle->m_suspensionCompression, 0.1f))
         updateWheelInfo();
     if (ImGui::DragFloat("m_rollInfluence", &m_vehicle->m_rollInfluence, 0.1f))
+        updateWheelInfo();
+    if (ImGui::DragFloat("m_suspensionRestLength", &m_vehicle->m_suspensionRestLength, 0.01f))
         updateWheelInfo();
     ImGui::Separator();
     ImGui::DragFloat("steeringClamp", &m_vehicle->steeringClamp, 0.1f);
@@ -84,5 +94,6 @@ void VehicleUI::updateWheelInfo()
         wheel.m_wheelsDampingCompression = m_vehicle->m_suspensionCompression;
         wheel.m_frictionSlip = m_vehicle->m_wheelFriction;
         wheel.m_rollInfluence = m_vehicle->m_rollInfluence;
+        wheel.m_suspensionRestLength1 = m_vehicle->m_suspensionRestLength;
     }
 }

@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader, exhaustShader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
@@ -138,6 +138,7 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
     shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
     shaderManager.addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager.addShader(ShaderDynamic(&exhaustShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/exhaust.fs"));
 
     // Create geometries
     ResourceManager resourceManager;
@@ -202,6 +203,15 @@ int main(int argc, char **argv)
     glfwSetWindowUserPointer(window, &vehicle);
     glfwSetKeyCallback(window, vehicle.staticKeyCallback);
 
+    ParticleEngine exhausParticle(&editorCamera);
+    exhausParticle.m_particlesPerSecond = 100.f;
+    exhausParticle.m_randomness = 0.5f;
+    exhausParticle.m_minVelocity = 0.1f;
+    exhausParticle.m_maxVelocity = 0.35f;
+    exhausParticle.m_minDuration = 1.0f;
+    exhausParticle.m_maxDuration = 2.0f;
+    exhausParticle.m_particleScale = 0.1f;
+
     // Shadowmap
     std::vector<unsigned int> shaderIds;
     shaderIds.push_back(simpleShadow.id);
@@ -257,6 +267,7 @@ int main(int argc, char **argv)
     ParticleUI particleUI;
     particleUI.m_particleEngines.push_back(character.m_smokeParticle);
     particleUI.m_particleEngines.push_back(character.m_muzzleFlash);
+    particleUI.m_particleEngines.push_back(&exhausParticle);
     TempUI tempUI(&postProcess, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
@@ -331,16 +342,34 @@ int main(int argc, char **argv)
             vehicleUI.m_pos = BulletGLM::getGLMVec3(chassisTransform.getOrigin());
             editorCamera.position = vehicleUI.m_pos - editorCamera.front * glm::vec3(follow.distance + follow.gap) + follow.offset;
 
-            // TODO: stop angular follow when camera moving
-            // TODO: do not rotate if not moving or very slow
-            glm::vec3 frontTarget = BulletGLM::getGLMVec3(vehicle.m_vehicle->getForwardVector());
-            // TODO: lower vertical when too fast
-            frontTarget.y -= follow.angleFactor;
-            frontTarget = glm::normalize(frontTarget);
-            float frontFactor = std::max(0.01f, std::min(follow.angleSpeed * oneOverSpeed, 1.0f));
-            editorCamera.front = glm::mix(editorCamera.front, frontTarget, frontFactor);
-            editorCamera.up = editorCamera.worldUp;
-            editorCamera.right = glm::cross(editorCamera.front, editorCamera.up);
+            if (!editorCamera.moving)
+            {
+                glm::vec3 frontTarget = BulletGLM::getGLMVec3(vehicle.m_vehicle->getForwardVector());
+                // TODO: lower vertical when too fast
+                frontTarget.y -= follow.angleFactor * (speed / follow.angularSpeedRange);
+                frontTarget = glm::normalize(frontTarget);
+                // TODO: slow angular follow while sudden change
+                if (vehicle.m_vehicle->getCurrentSpeedKmHour() < 0.f)
+                {
+                    frontTarget.x *= -1.f;
+                    frontTarget.z *= -1.f;
+                }
+                float dot = glm::abs(glm::dot(editorCamera.front, frontTarget));
+                if (dot < 0.999f)
+                {
+                    float frontFactor = std::max(0.f, std::min(follow.angleSpeed * follow.angleVelocity * follow.move, 1.0f));
+                    editorCamera.front = glm::normalize(glm::slerp(editorCamera.front, frontTarget, frontFactor));
+                    editorCamera.up = editorCamera.worldUp;
+                    editorCamera.right = glm::cross(editorCamera.front, editorCamera.up);
+                }
+            }
+
+            follow.angleVelocityTarget = editorCamera.moving ? 0.f : 1.f;
+            follow.angleVelocity = CommonUtil::lerp(follow.angleVelocity, follow.angleVelocityTarget, follow.angleVelocitySpeed);
+            follow.angleVelocity = std::max(0.f, std::min(follow.angleVelocity, 1.f));
+            follow.moveTarget = (vehicle.m_inAction ? 1.f : 0.f) * (speed / follow.moveSpeedRange);
+            follow.move = CommonUtil::lerp(follow.move, follow.moveTarget, follow.moveSpeed);
+            follow.move = std::max(0.f, std::min(follow.move, 1.f));
         }
 
         // car common transforms
@@ -354,6 +383,26 @@ int main(int argc, char **argv)
         carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.y, glm::vec3(0, 1, 0));
         carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.z, glm::vec3(0, 0, 1));
         carRotScale = glm::scale(carRotScale, glm::vec3(vehicleUI.m_scale));
+
+        // exhaust particle
+        exhausParticle.update(deltaTime);
+        glm::mat4 exhaustModel = carChassisModel;
+        exhaustModel = glm::translate(exhaustModel, vehicleUI.m_exhaustOffset);
+        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.x, glm::vec3(1, 0, 0));
+        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.y, glm::vec3(0, 1, 0));
+        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.z, glm::vec3(0, 0, 1));
+        exhaustModel = exhaustModel * carRotScale;
+        exhausParticle.m_position = CommonUtil::positionFromModel(exhaustModel);
+        exhausParticle.m_direction = glm::normalize(glm::mat3(exhaustModel) * glm::vec3(0.f, 0.f, 1.f));
+
+        float maxParticlesPerSecond = 250.0f;
+        float maxSpeed = 10.0f;
+
+        float particlesPerSecond = 0.0f;
+        if (vehicle.m_speed <= maxSpeed)
+            particlesPerSecond = (1.f - vehicle.m_speed / maxSpeed) * maxParticlesPerSecond;
+
+        exhausParticle.m_particlesPerSecond = particlesPerSecond;
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -461,6 +510,30 @@ int main(int argc, char **argv)
                 model = glm::scale(model, glm::vec3(vehicleUI.m_wheelScale));
                 depthShader.setMat4("MVP", depthVP * model);
                 wheels[i]->draw(depthShader);
+            }
+
+            // hood
+            model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_hoodOffset);
+            model = model * carRotScale;
+            depthShader.setMat4("MVP", depthVP * model);
+            carHood.draw(depthShader);
+
+            // trunk
+            model = carChassisModel;
+            model = glm::translate(model, vehicleUI.m_trunkOffset);
+            model = model * carRotScale;
+            depthShader.setMat4("MVP", depthVP * model);
+            carTrunk.draw(depthShader);
+
+            // doors
+            for (int i = 0; i < 4; i++)
+            {
+                glm::mat4 model = carChassisModel;
+                model = glm::translate(model, vehicleUI.m_doorOffsets[i]);
+                model = model * carRotScale;
+                depthShader.setMat4("MVP", depthVP * model);
+                doors[i]->draw(depthShader);
             }
 
             // characters
@@ -807,6 +880,7 @@ int main(int argc, char **argv)
         // TODO: ParticleManager
         character.m_smokeParticle->drawParticles(smokeShader, quad, projection * editorCamera.getViewMatrix());
         character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, projection * editorCamera.getViewMatrix());
+        exhausParticle.drawParticles(exhaustShader, quad, projection * editorCamera.getViewMatrix());
 
         // Post process
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

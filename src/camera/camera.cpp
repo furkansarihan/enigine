@@ -59,11 +59,11 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
 
-        if (firstMove)
+        if (!moving)
         {
             lastX = xpos;
             lastY = ypos;
-            firstMove = false;
+            moving = true;
         }
         float xoffset = xpos - lastX;
         float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
@@ -74,7 +74,7 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
-        firstMove = true;
+        moving = false;
 }
 
 // Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)

@@ -2,7 +2,7 @@
 
 Vehicle::Vehicle(PhysicsWorld *physicsWorld, btVector3 position)
     : m_physicsWorld(physicsWorld),
-      position(position)
+      m_position(position)
 {
     this->initDefaultValues();
     this->initVehicle();
@@ -37,6 +37,7 @@ void Vehicle::initDefaultValues()
     m_suspensionDamping = 2.3f;
     m_suspensionCompression = 4.4f;
     m_rollInfluence = 0.1f;
+    m_suspensionRestLength = 0.75f;
 }
 
 void Vehicle::initVehicle()
@@ -58,10 +59,9 @@ void Vehicle::initVehicle()
 
     btTransform tr;
     tr.setIdentity();
-    tr.setOrigin(position);
+    tr.setOrigin(m_position);
 
     const btScalar chassisMass = 1000.f;
-    const btScalar wheelMass = 80.f;
     m_carChassis = m_physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
     m_carChassis->setDamping(0.2, 0.2);
 
@@ -84,16 +84,13 @@ void Vehicle::initVehicle()
     int forwardIndex = 2;
     m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
 
-    bool isFrontWheel = true;
-    float suspensionRestLength = 0.6f;
-
     btVector3 wheelDirectionCS0(0, -1, 0);
     btVector3 wheelAxleCS(-1, 0, 0);
 
-    m_vehicle->addWheel(wheelPos[0], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, true);
-    m_vehicle->addWheel(wheelPos[1], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, true);
-    m_vehicle->addWheel(wheelPos[2], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, false);
-    m_vehicle->addWheel(wheelPos[3], wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, false);
+    m_vehicle->addWheel(wheelPos[0], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, true);
+    m_vehicle->addWheel(wheelPos[1], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, true);
+    m_vehicle->addWheel(wheelPos[2], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, false);
+    m_vehicle->addWheel(wheelPos[3], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, false);
 
     for (int i = 0; i < m_vehicle->getNumWheels(); i++)
     {
@@ -120,7 +117,7 @@ void Vehicle::keyCallback(GLFWwindow *window, int key, int scancode, int action,
     {
         btTransform tr;
         tr.setIdentity();
-        tr.setOrigin(position);
+        tr.setOrigin(m_position);
         resetVehicle(tr);
     }
     else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
@@ -150,19 +147,19 @@ void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
 {
     float steeringDelta = steeringIncrement * deltaTime;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_RELEASE)
+    if (glfwGetKey(window, m_keyLeft) != GLFW_RELEASE)
     {
         gVehicleSteering -= steeringDelta;
         if (gVehicleSteering < -steeringClamp)
             gVehicleSteering = -steeringClamp;
     }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_RELEASE)
+    if (glfwGetKey(window, m_keyRight) != GLFW_RELEASE)
     {
         gVehicleSteering += steeringDelta;
         if (gVehicleSteering > steeringClamp)
             gVehicleSteering = steeringClamp;
     }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE)
+    if (glfwGetKey(window, m_keyRight) == GLFW_RELEASE && glfwGetKey(window, m_keyLeft) == GLFW_RELEASE)
     {
         if (abs(gVehicleSteering) < steeringDelta)
         {
@@ -187,7 +184,7 @@ void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
 // TODO: cubic curve acceleration, transmission
 void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
 {
-    if (glfwGetKey(window, GLFW_KEY_UP) != GLFW_RELEASE)
+    if (glfwGetKey(window, m_keyForward) != GLFW_RELEASE)
     {
         if (gEngineForce >= 0)
         {
@@ -203,7 +200,7 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
         gEngineForce -= decreaseVelocity * deltaTime;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_RELEASE)
+    if (glfwGetKey(window, m_keyBack) != GLFW_RELEASE)
     {
         if (gEngineForce <= 0)
         {
@@ -219,6 +216,8 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
         gEngineForce += decreaseVelocity * deltaTime;
     }
 
+    m_inAction = glfwGetKey(window, m_keyForward) != GLFW_RELEASE || glfwGetKey(window, m_keyBack) != GLFW_RELEASE;
+
     if (gEngineForce >= maxEngineForce)
     {
         gEngineForce = maxEngineForce;
@@ -231,8 +230,8 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
     m_vehicle->applyEngineForce(gEngineForce, 0);
     m_vehicle->applyEngineForce(gEngineForce, 1);
 
-    if ((gEngineForce > 0.f && glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_RELEASE) ||
-        (gEngineForce < 0.f && glfwGetKey(window, GLFW_KEY_UP) != GLFW_RELEASE))
+    if ((gEngineForce > 0.f && glfwGetKey(window, m_keyBack) != GLFW_RELEASE) ||
+        (gEngineForce < 0.f && glfwGetKey(window, m_keyForward) != GLFW_RELEASE))
     {
         m_vehicle->setBrake(breakingVelocity, 2);
         m_vehicle->setBrake(breakingVelocity, 3);

@@ -18,8 +18,16 @@ struct Follow
     float gapFactor = 0.1f;
     float gapSpeed = 0.002f;
     float steeringFactor = 30.0f;
-    float angleFactor = 0.1f;
-    float angleSpeed = 0.001f;
+    float angleFactor = 0.16f;
+    float angleSpeed = 0.011f;
+    float angleVelocity = 0.f;
+    float angleVelocityTarget = 0.f;
+    float angleVelocitySpeed = 0.02f;
+    float move = 0.f;
+    float moveTarget = 0.f;
+    float moveSpeed = 0.005f;
+    float moveSpeedRange = 20.f;
+    float angularSpeedRange = 50.f;
 };
 
 class VehicleUI : public BaseUI
@@ -42,6 +50,9 @@ public:
     glm::vec3 m_trunkOffset = glm::vec3(0.f, 2.15f, -3.89f);
     glm::vec3 m_doorOffsets[4];
 
+    glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
+    glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
+    
     bool m_controlVehicle = true;
     bool m_followVehicle = true;
 

@@ -55,7 +55,7 @@ public:
     float movementSpeed = 25.0f;
     float mouseSensitivity = 0.002f;
     // Move
-    bool firstMove = true;
+    bool moving = true;
     float lastX;
     float lastY;
 

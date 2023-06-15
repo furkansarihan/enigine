@@ -37,8 +37,10 @@ public:
     float m_suspensionDamping;
     float m_suspensionCompression;
     float m_rollInfluence;
+    float m_suspensionRestLength;
 
     float m_speed = 0.f;
+    bool m_inAction = false;
     float gEngineForce;
     float accelerationVelocity;
     float decreaseVelocity;
@@ -56,7 +58,12 @@ public:
     static void staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 private:
-    btVector3 position;
+    btVector3 m_position;
+    int m_keyForward = GLFW_KEY_W;
+    int m_keyBack = GLFW_KEY_S;
+    int m_keyRight = GLFW_KEY_D;
+    int m_keyLeft = GLFW_KEY_A;
+
     void initDefaultValues();
     void initVehicle();
     void resetVehicle(btTransform tr);
