@@ -1,11 +1,9 @@
 #include "vehicle_ui.h"
 
-VehicleUI::VehicleUI(Vehicle *vehicle) : m_vehicle(vehicle)
+VehicleUI::VehicleUI(CarController *carController, Vehicle *vehicle)
+    : m_cController(carController),
+      m_vehicle(vehicle)
 {
-    m_doorOffsets[0] = glm::vec3(1.51f, 1.95f, 0.62);
-    m_doorOffsets[1] = glm::vec3(-1.46f, 1.95f, 0.62);
-    m_doorOffsets[2] = glm::vec3(1.46f, 2.01f, -1.33);
-    m_doorOffsets[3] = glm::vec3(-1.46f, 2.01f, -1.32);
 }
 
 void VehicleUI::render()
@@ -13,8 +11,9 @@ void VehicleUI::render()
     if (!ImGui::CollapsingHeader("Vehicle", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    ImGui::Checkbox("m_controlVehicle", &m_controlVehicle);
-    ImGui::Checkbox("m_followVehicle", &m_followVehicle);
+    Follow &m_follow = m_cController->m_follow;
+    ImGui::Checkbox("m_controlVehicle", &m_cController->m_controlVehicle);
+    ImGui::Checkbox("m_followVehicle", &m_cController->m_followVehicle);
     renderVec3("m_followOffset", m_follow.offset, 0.1f);
     ImGui::DragFloat("m_follow.distance", &m_follow.distance, 0.1f);
     ImGui::DragFloat("m_follow.gapFactor", &m_follow.gapFactor, 0.001f);
@@ -29,18 +28,18 @@ void VehicleUI::render()
     ImGui::DragFloat("m_follow.moveSpeed", &m_follow.moveSpeed, 0.001f);
     ImGui::DragFloat("m_follow.moveSpeedRange", &m_follow.moveSpeedRange, 1.f);
     ImGui::DragFloat("m_follow.angularSpeedRange", &m_follow.angularSpeedRange, 1.f);
-    ImGui::DragFloat("m_scale", &m_scale, 0.001f);
-    ImGui::DragFloat("m_wheelScale", &m_wheelScale, 0.001f);
-    renderVec3("m_bodyOffset", m_bodyOffset, 0.01f);
-    renderVec3("m_wheelOffset", m_wheelOffset, 0.01f);
-    renderVec3("m_rotation", m_rotation, 0.001f);
-    renderVec3("m_bodyRotation", m_bodyRotation, 0.001f);
-    renderVec3("m_hoodOffset", m_hoodOffset, 0.01f);
-    renderVec3("m_trunkOffset", m_trunkOffset, 0.01f);
+    ImGui::DragFloat("m_scale", &m_cController->m_scale, 0.001f);
+    ImGui::DragFloat("m_wheelScale", &m_cController->m_wheelScale, 0.001f);
+    renderVec3("m_bodyOffset", m_cController->m_bodyOffset, 0.01f);
+    renderVec3("m_wheelOffset", m_cController->m_wheelOffset, 0.01f);
+    renderVec3("m_rotation", m_cController->m_rotation, 0.001f);
+    renderVec3("m_bodyRotation", m_cController->m_bodyRotation, 0.001f);
+    renderVec3("m_hoodOffset", m_cController->m_hoodOffset, 0.01f);
+    renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
     for (int i = 0; i < 4; i++)
-        renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_doorOffsets[i], 0.01f);
-    renderVec3("m_exhaustOffset", m_exhaustOffset, 0.01f);
-    renderVec3("m_exhaustRotation", m_exhaustRotation, 0.01f);
+        renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_cController->m_doorOffsets[i], 0.01f);
+    renderVec3("m_exhaustOffset", m_cController->m_exhaustOffset, 0.01f);
+    renderVec3("m_exhaustRotation", m_cController->m_exhaustRotation, 0.01f);
     ImGui::Text("gVehicleSteering = %f", m_vehicle->gVehicleSteering);
     ImGui::Text("m_speed = %f", m_vehicle->m_speed);
     ImGui::Text("m_vehicle.speedKmHour = %f", m_vehicle->m_vehicle->getCurrentSpeedKmHour());

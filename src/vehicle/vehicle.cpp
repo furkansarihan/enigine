@@ -1,6 +1,6 @@
 #include "vehicle.h"
 
-Vehicle::Vehicle(PhysicsWorld *physicsWorld, btVector3 position)
+Vehicle::Vehicle(PhysicsWorld *physicsWorld, glm::vec3 position)
     : m_physicsWorld(physicsWorld),
       m_position(position)
 {
@@ -59,7 +59,7 @@ void Vehicle::initVehicle()
 
     btTransform tr;
     tr.setIdentity();
-    tr.setOrigin(m_position);
+    tr.setOrigin(BulletGLM::getBulletVec3(m_position));
 
     const btScalar chassisMass = 1000.f;
     m_carChassis = m_physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
@@ -111,55 +111,47 @@ void Vehicle::resetVehicle(btTransform tr)
     m_physicsWorld->m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis->getBroadphaseHandle(), m_physicsWorld->m_dynamicsWorld->getDispatcher());
 }
 
-void Vehicle::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+void Vehicle::recieveInput(GLFWwindow *window)
 {
-    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
-    {
-        btTransform tr;
-        tr.setIdentity();
-        tr.setOrigin(m_position);
-        resetVehicle(tr);
-    }
-    else if (key == GLFW_KEY_2 && action == GLFW_PRESS)
-    {
-        btTransform tr;
-        tr.setIdentity();
-        tr.setOrigin(m_carChassis->getWorldTransform().getOrigin() + btVector3(0, 5, 0));
-        resetVehicle(tr);
-    }
+    m_controlState.forward = glfwGetKey(window, m_keyForward) == GLFW_PRESS;
+    m_controlState.back = glfwGetKey(window, m_keyBack) == GLFW_PRESS;
+    m_controlState.left = glfwGetKey(window, m_keyLeft) == GLFW_PRESS;
+    m_controlState.right = glfwGetKey(window, m_keyRight) == GLFW_PRESS;
 }
 
-void Vehicle::staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    Vehicle *v = (Vehicle *)glfwGetWindowUserPointer(window);
-    v->keyCallback(window, key, scancode, action, mods);
-}
-
-void Vehicle::update(GLFWwindow *window, float deltaTime)
+void Vehicle::update(float deltaTime)
 {
     m_speed = m_carChassis->getLinearVelocity().length();
-    updateSteering(window, deltaTime);
-    updateAcceleration(window, deltaTime);
+
+    btTransform chassisTransform;
+    m_carChassis->getMotionState()->getWorldTransform(chassisTransform);
+    chassisTransform.getOpenGLMatrix((btScalar *)&m_chassisModel);
+
+    for (int i = 0; i < 4; i++)
+        m_vehicle->updateWheelTransform(i, true);
+
+    updateSteering(deltaTime);
+    updateAcceleration(deltaTime);
 }
 
 // TODO: steeringIncrement based on vehicle velocity
-void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
+void Vehicle::updateSteering(float deltaTime)
 {
     float steeringDelta = steeringIncrement * deltaTime;
 
-    if (glfwGetKey(window, m_keyLeft) != GLFW_RELEASE)
+    if (m_controlState.left)
     {
         gVehicleSteering -= steeringDelta;
         if (gVehicleSteering < -steeringClamp)
             gVehicleSteering = -steeringClamp;
     }
-    if (glfwGetKey(window, m_keyRight) != GLFW_RELEASE)
+    if (m_controlState.right)
     {
         gVehicleSteering += steeringDelta;
         if (gVehicleSteering > steeringClamp)
             gVehicleSteering = steeringClamp;
     }
-    if (glfwGetKey(window, m_keyRight) == GLFW_RELEASE && glfwGetKey(window, m_keyLeft) == GLFW_RELEASE)
+    if (!m_controlState.left && !m_controlState.right)
     {
         if (abs(gVehicleSteering) < steeringDelta)
         {
@@ -182,9 +174,9 @@ void Vehicle::updateSteering(GLFWwindow *window, float deltaTime)
 }
 
 // TODO: cubic curve acceleration, transmission
-void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
+void Vehicle::updateAcceleration(float deltaTime)
 {
-    if (glfwGetKey(window, m_keyForward) != GLFW_RELEASE)
+    if (m_controlState.forward)
     {
         if (gEngineForce >= 0)
         {
@@ -200,7 +192,7 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
         gEngineForce -= decreaseVelocity * deltaTime;
     }
 
-    if (glfwGetKey(window, m_keyBack) != GLFW_RELEASE)
+    if (m_controlState.back)
     {
         if (gEngineForce <= 0)
         {
@@ -216,7 +208,7 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
         gEngineForce += decreaseVelocity * deltaTime;
     }
 
-    m_inAction = glfwGetKey(window, m_keyForward) != GLFW_RELEASE || glfwGetKey(window, m_keyBack) != GLFW_RELEASE;
+    m_inAction = m_controlState.forward || m_controlState.back;
 
     if (gEngineForce >= maxEngineForce)
     {
@@ -230,8 +222,8 @@ void Vehicle::updateAcceleration(GLFWwindow *window, float deltaTime)
     m_vehicle->applyEngineForce(gEngineForce, 0);
     m_vehicle->applyEngineForce(gEngineForce, 1);
 
-    if ((gEngineForce > 0.f && glfwGetKey(window, m_keyBack) != GLFW_RELEASE) ||
-        (gEngineForce < 0.f && glfwGetKey(window, m_keyForward) != GLFW_RELEASE))
+    if ((gEngineForce > 0.f && m_controlState.back) ||
+        (gEngineForce < 0.f && m_controlState.forward))
     {
         m_vehicle->setBrake(breakingVelocity, 2);
         m_vehicle->setBrake(breakingVelocity, 3);

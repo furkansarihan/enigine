@@ -8,6 +8,7 @@
 
 #include "../physics_world/physics_world.h"
 #include "../utils/common.h"
+#include "../utils/bullet_glm.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -19,18 +20,26 @@
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
 #include "BulletDynamics/MLCPSolvers/btMLCPSolver.h"
 
+struct ControlState
+{
+    bool left, right, forward, back;
+};
+
 class Vehicle
 {
 public:
-    Vehicle(PhysicsWorld *physicsWorld, btVector3 position);
+    Vehicle(PhysicsWorld *physicsWorld, glm::vec3 position);
     ~Vehicle();
 
     PhysicsWorld *m_physicsWorld;
+    glm::vec3 m_position;
     btRigidBody *m_carChassis;
+    glm::mat4 m_chassisModel;
 
     btDefaultVehicleRaycaster *m_vehicleRayCaster;
     btRaycastVehicle *m_vehicle;
     btRaycastVehicle::btVehicleTuning m_tuning;
+    ControlState m_controlState;
 
     float m_wheelFriction;
     float m_suspensionStiffness;
@@ -53,12 +62,11 @@ public:
     float steeringClamp;
     float wheelRadius;
 
-    void update(GLFWwindow *window, float deltaTime);
-    void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
-    static void staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+    void update(float deltaTime);
+    void recieveInput(GLFWwindow *window);
+    void resetVehicle(btTransform tr);
 
 private:
-    btVector3 m_position;
     int m_keyForward = GLFW_KEY_W;
     int m_keyBack = GLFW_KEY_S;
     int m_keyRight = GLFW_KEY_D;
@@ -66,9 +74,8 @@ private:
 
     void initDefaultValues();
     void initVehicle();
-    void resetVehicle(btTransform tr);
-    void updateSteering(GLFWwindow *window, float deltaTime);
-    void updateAcceleration(GLFWwindow *window, float deltaTime);
+    void updateSteering(float deltaTime);
+    void updateAcceleration(float deltaTime);
 };
 
 #endif /* vehicle_hpp */

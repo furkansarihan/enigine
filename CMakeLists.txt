@@ -71,6 +71,8 @@ add_executable( enigine
                 src/particle_engine/particle_engine.cpp
                 src/resource_manager/resource_manager.h
                 src/resource_manager/resource_manager.cpp
+                src/car_controller/car_controller.h
+                src/car_controller/car_controller.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

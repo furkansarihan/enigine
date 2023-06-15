@@ -3,6 +3,7 @@
 
 #include "btBulletDynamicsCommon.h"
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 class BulletGLM
 {

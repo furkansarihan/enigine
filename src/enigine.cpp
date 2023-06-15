@@ -36,6 +36,7 @@
 #include "character/playable_character.h"
 #include "character/np_character.h"
 #include "resource_manager/resource_manager.h"
+#include "car_controller/car_controller.h"
 
 int main(int argc, char **argv)
 {
@@ -199,18 +200,10 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Vehicle
-    Vehicle vehicle(&physicsWorld, btVector3(character.m_position.x + 40, 5, character.m_position.z + 40));
-    glfwSetWindowUserPointer(window, &vehicle);
-    glfwSetKeyCallback(window, vehicle.staticKeyCallback);
-
-    ParticleEngine exhausParticle(&editorCamera);
-    exhausParticle.m_particlesPerSecond = 100.f;
-    exhausParticle.m_randomness = 0.5f;
-    exhausParticle.m_minVelocity = 0.1f;
-    exhausParticle.m_maxVelocity = 0.35f;
-    exhausParticle.m_minDuration = 1.0f;
-    exhausParticle.m_maxDuration = 2.0f;
-    exhausParticle.m_particleScale = 0.1f;
+    CarController car(&physicsWorld, &editorCamera, character.m_position + glm::vec3(40.f, 5.f, 40.f));
+    Vehicle &vehicle = *car.m_vehicle;
+    glfwSetWindowUserPointer(window, &car);
+    glfwSetKeyCallback(window, car.staticKeyCallback);
 
     // Shadowmap
     std::vector<unsigned int> shaderIds;
@@ -261,13 +254,13 @@ int main(int argc, char **argv)
     AnimationUI animationUI(character.m_animator);
     ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager);
     SoundUI soundUI(&soundEngine, &character);
-    VehicleUI vehicleUI(&vehicle);
+    VehicleUI vehicleUI(&car, &vehicle);
     CameraUI cameraUI(&editorCamera);
     TerrainUI terrainUI(&terrain);
     ParticleUI particleUI;
     particleUI.m_particleEngines.push_back(character.m_smokeParticle);
     particleUI.m_particleEngines.push_back(character.m_muzzleFlash);
-    particleUI.m_particleEngines.push_back(&exhausParticle);
+    particleUI.m_particleEngines.push_back(car.m_exhausParticle);
     TempUI tempUI(&postProcess, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
@@ -322,87 +315,7 @@ int main(int argc, char **argv)
         physicsWorld.m_dynamicsWorld->debugDrawWorld();
 
         // Vehicle
-        btTransform chassisTransform;
-        vehicle.m_carChassis->getMotionState()->getWorldTransform(chassisTransform);
-
-        if (vehicleUI.m_controlVehicle)
-            vehicle.update(window, deltaTime);
-
-        for (int i = 0; i < 4; i++)
-            vehicle.m_vehicle->updateWheelTransform(i, true);
-
-        if (vehicleUI.m_followVehicle)
-        {
-            float speed = vehicle.m_speed;
-            float oneOverSpeed = 1.f / (speed + 1.f);
-            // udpate follow specs
-            Follow &follow = vehicleUI.m_follow;
-            follow.gapTarget = speed * follow.gapFactor + std::fabs(vehicle.gVehicleSteering) * follow.steeringFactor * oneOverSpeed;
-            follow.gap = CommonUtil::lerp(follow.gap, follow.gapTarget, follow.gapSpeed);
-            vehicleUI.m_pos = BulletGLM::getGLMVec3(chassisTransform.getOrigin());
-            editorCamera.position = vehicleUI.m_pos - editorCamera.front * glm::vec3(follow.distance + follow.gap) + follow.offset;
-
-            if (!editorCamera.moving)
-            {
-                glm::vec3 frontTarget = BulletGLM::getGLMVec3(vehicle.m_vehicle->getForwardVector());
-                // TODO: lower vertical when too fast
-                frontTarget.y -= follow.angleFactor * (speed / follow.angularSpeedRange);
-                frontTarget = glm::normalize(frontTarget);
-                // TODO: slow angular follow while sudden change
-                if (vehicle.m_vehicle->getCurrentSpeedKmHour() < 0.f)
-                {
-                    frontTarget.x *= -1.f;
-                    frontTarget.z *= -1.f;
-                }
-                float dot = glm::abs(glm::dot(editorCamera.front, frontTarget));
-                if (dot < 0.999f)
-                {
-                    float frontFactor = std::max(0.f, std::min(follow.angleSpeed * follow.angleVelocity * follow.move, 1.0f));
-                    editorCamera.front = glm::normalize(glm::slerp(editorCamera.front, frontTarget, frontFactor));
-                    editorCamera.up = editorCamera.worldUp;
-                    editorCamera.right = glm::cross(editorCamera.front, editorCamera.up);
-                }
-            }
-
-            follow.angleVelocityTarget = editorCamera.moving ? 0.f : 1.f;
-            follow.angleVelocity = CommonUtil::lerp(follow.angleVelocity, follow.angleVelocityTarget, follow.angleVelocitySpeed);
-            follow.angleVelocity = std::max(0.f, std::min(follow.angleVelocity, 1.f));
-            follow.moveTarget = (vehicle.m_inAction ? 1.f : 0.f) * (speed / follow.moveSpeedRange);
-            follow.move = CommonUtil::lerp(follow.move, follow.moveTarget, follow.moveSpeed);
-            follow.move = std::max(0.f, std::min(follow.move, 1.f));
-        }
-
-        // car common transforms
-        glm::mat4 carChassisModel;
-        chassisTransform.getOpenGLMatrix((btScalar *)&carChassisModel);
-        glm::mat4 carRotScale(1.0f);
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.x, glm::vec3(1, 0, 0));
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.y, glm::vec3(0, 1, 0));
-        carRotScale = glm::rotate(carRotScale, vehicleUI.m_bodyRotation.z, glm::vec3(0, 0, 1));
-        carRotScale = glm::scale(carRotScale, glm::vec3(vehicleUI.m_scale));
-
-        // exhaust particle
-        exhausParticle.update(deltaTime);
-        glm::mat4 exhaustModel = carChassisModel;
-        exhaustModel = glm::translate(exhaustModel, vehicleUI.m_exhaustOffset);
-        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.x, glm::vec3(1, 0, 0));
-        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.y, glm::vec3(0, 1, 0));
-        exhaustModel = glm::rotate(exhaustModel, vehicleUI.m_exhaustRotation.z, glm::vec3(0, 0, 1));
-        exhaustModel = exhaustModel * carRotScale;
-        exhausParticle.m_position = CommonUtil::positionFromModel(exhaustModel);
-        exhausParticle.m_direction = glm::normalize(glm::mat3(exhaustModel) * glm::vec3(0.f, 0.f, 1.f));
-
-        float maxParticlesPerSecond = 250.0f;
-        float maxSpeed = 10.0f;
-
-        float particlesPerSecond = 0.0f;
-        if (vehicle.m_speed <= maxSpeed)
-            particlesPerSecond = (1.f - vehicle.m_speed / maxSpeed) * maxParticlesPerSecond;
-
-        exhausParticle.m_particlesPerSecond = particlesPerSecond;
+        car.update(window, deltaTime);
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -493,9 +406,9 @@ int main(int argc, char **argv)
             }
 
             // vehicle
-            glm::mat4 model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_bodyOffset);
-            model = model * carRotScale;
+            glm::mat4 model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_bodyOffset);
+            model = model * car.m_carModel;
             depthShader.setMat4("MVP", depthVP * model);
             carBody.draw(depthShader);
 
@@ -503,35 +416,35 @@ int main(int argc, char **argv)
             {
                 glm::mat4 model;
                 vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
-                model = glm::translate(model, vehicleUI.m_wheelOffset);
-                model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
-                model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
-                model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(vehicleUI.m_wheelScale));
+                model = glm::translate(model, car.m_wheelOffset);
+                model = glm::rotate(model, car.m_rotation.x, glm::vec3(1, 0, 0));
+                model = glm::rotate(model, car.m_rotation.y, glm::vec3(0, 1, 0));
+                model = glm::rotate(model, car.m_rotation.z, glm::vec3(0, 0, 1));
+                model = glm::scale(model, glm::vec3(car.m_wheelScale));
                 depthShader.setMat4("MVP", depthVP * model);
                 wheels[i]->draw(depthShader);
             }
 
             // hood
-            model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_hoodOffset);
-            model = model * carRotScale;
+            model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_hoodOffset);
+            model = model * car.m_carModel;
             depthShader.setMat4("MVP", depthVP * model);
             carHood.draw(depthShader);
 
             // trunk
-            model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_trunkOffset);
-            model = model * carRotScale;
+            model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_trunkOffset);
+            model = model * car.m_carModel;
             depthShader.setMat4("MVP", depthVP * model);
             carTrunk.draw(depthShader);
 
             // doors
             for (int i = 0; i < 4; i++)
             {
-                glm::mat4 model = carChassisModel;
-                model = glm::translate(model, vehicleUI.m_doorOffsets[i]);
-                model = model * carRotScale;
+                glm::mat4 model = vehicle.m_chassisModel;
+                model = glm::translate(model, car.m_doorOffsets[i]);
+                model = model * car.m_carModel;
                 depthShader.setMat4("MVP", depthVP * model);
                 doors[i]->draw(depthShader);
             }
@@ -779,25 +692,25 @@ int main(int argc, char **argv)
 
             // draw vehicle
             // body
-            model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_bodyOffset);
-            model = model * carRotScale;
+            model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_bodyOffset);
+            model = model * car.m_carModel;
             pbrShader.setMat4("model", model);
             pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             carBody.draw(pbrShader);
 
             // hood
-            model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_hoodOffset);
-            model = model * carRotScale;
+            model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_hoodOffset);
+            model = model * car.m_carModel;
             pbrShader.setMat4("model", model);
             pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             carHood.draw(pbrShader);
 
             // trunk
-            model = carChassisModel;
-            model = glm::translate(model, vehicleUI.m_trunkOffset);
-            model = model * carRotScale;
+            model = vehicle.m_chassisModel;
+            model = glm::translate(model, car.m_trunkOffset);
+            model = model * car.m_carModel;
             pbrShader.setMat4("model", model);
             pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             carTrunk.draw(pbrShader);
@@ -805,9 +718,9 @@ int main(int argc, char **argv)
             // doors
             for (int i = 0; i < 4; i++)
             {
-                glm::mat4 model = carChassisModel;
-                model = glm::translate(model, vehicleUI.m_doorOffsets[i]);
-                model = model * carRotScale;
+                glm::mat4 model = vehicle.m_chassisModel;
+                model = glm::translate(model, car.m_doorOffsets[i]);
+                model = model * car.m_carModel;
                 pbrShader.setMat4("model", model);
                 pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
                 doors[i]->draw(pbrShader);
@@ -818,11 +731,11 @@ int main(int argc, char **argv)
             {
                 glm::mat4 model;
                 vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
-                model = glm::translate(model, vehicleUI.m_wheelOffset);
-                model = glm::rotate(model, vehicleUI.m_rotation.x, glm::vec3(1, 0, 0));
-                model = glm::rotate(model, vehicleUI.m_rotation.y, glm::vec3(0, 1, 0));
-                model = glm::rotate(model, vehicleUI.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(vehicleUI.m_wheelScale));
+                model = glm::translate(model, car.m_wheelOffset);
+                model = glm::rotate(model, car.m_rotation.x, glm::vec3(1, 0, 0));
+                model = glm::rotate(model, car.m_rotation.y, glm::vec3(0, 1, 0));
+                model = glm::rotate(model, car.m_rotation.z, glm::vec3(0, 0, 1));
+                model = glm::scale(model, glm::vec3(car.m_wheelScale));
                 pbrShader.setMat4("model", model);
                 pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
                 wheels[i]->draw(pbrShader);
@@ -880,7 +793,7 @@ int main(int argc, char **argv)
         // TODO: ParticleManager
         character.m_smokeParticle->drawParticles(smokeShader, quad, projection * editorCamera.getViewMatrix());
         character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, projection * editorCamera.getViewMatrix());
-        exhausParticle.drawParticles(exhaustShader, quad, projection * editorCamera.getViewMatrix());
+        car.m_exhausParticle->drawParticles(exhaustShader, quad, projection * editorCamera.getViewMatrix());
 
         // Post process
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
