@@ -23,6 +23,7 @@ public:
     ~PhysicsWorld();
 
     btDiscreteDynamicsWorld *m_dynamicsWorld;
+    int m_maxSubSteps = 1;
 
     btRigidBody *createBox(const btScalar mass, const btVector3 &size, const btVector3 &position);
     btRigidBody *createSphere(const btScalar mass, const btScalar radius, const btVector3 &position);
@@ -33,6 +34,7 @@ public:
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform);
 
+    void update(float deltaTime);
     btSoftRigidDynamicsWorld *softDynamicsWorld();
 
     // TODO: freeze rigidbody

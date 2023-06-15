@@ -83,6 +83,23 @@ void PhysicsWorld::init()
     m_dynamicsWorld->setGravity(btVector3(0, -10, 0));
 }
 
+void PhysicsWorld::update(float deltaTime)
+{
+    m_dynamicsWorld->stepSimulation(deltaTime, m_maxSubSteps);
+    if (m_dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
+    {
+        btMLCPSolver *sol = (btMLCPSolver *)m_dynamicsWorld->getConstraintSolver();
+        int numFallbacks = sol->getNumFallbacks();
+        if (numFallbacks)
+        {
+            static int totalFailures = 0;
+            totalFailures += numFallbacks;
+            printf("MLCP solver failed %d times, falling back to btSequentialImpulseSolver (SI)\n", totalFailures);
+        }
+        sol->setNumFallbacks(0);
+    }
+}
+
 btSoftRigidDynamicsWorld *PhysicsWorld::softDynamicsWorld()
 {
     btSoftRigidDynamicsWorld *sdw = dynamic_cast<btSoftRigidDynamicsWorld *>(m_dynamicsWorld);

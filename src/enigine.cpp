@@ -261,7 +261,7 @@ int main(int argc, char **argv)
     particleUI.m_particleEngines.push_back(character.m_smokeParticle);
     particleUI.m_particleEngines.push_back(character.m_muzzleFlash);
     particleUI.m_particleEngines.push_back(car.m_exhausParticle);
-    TempUI tempUI(&postProcess, &debugDrawer, &shaderManager);
+    TempUI tempUI(&postProcess, &physicsWorld, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
     rootUI.m_uiList.push_back(&ragdollUI);
@@ -296,19 +296,7 @@ int main(int argc, char **argv)
         npc1.update(window, deltaTime);
 
         // Update Physics
-        physicsWorld.m_dynamicsWorld->stepSimulation(deltaTime, tempUI.m_maxSubSteps);
-        if (physicsWorld.m_dynamicsWorld->getConstraintSolver()->getSolverType() == BT_MLCP_SOLVER)
-        {
-            btMLCPSolver *sol = (btMLCPSolver *)physicsWorld.m_dynamicsWorld->getConstraintSolver();
-            int numFallbacks = sol->getNumFallbacks();
-            if (numFallbacks)
-            {
-                static int totalFailures = 0;
-                totalFailures += numFallbacks;
-                printf("MLCP solver failed %d times, falling back to btSequentialImpulseSolver (SI)\n", totalFailures);
-            }
-            sol->setNumFallbacks(0);
-        }
+        physicsWorld.update(deltaTime);
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();

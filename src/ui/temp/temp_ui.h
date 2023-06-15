@@ -3,6 +3,7 @@
 
 #include "../base_ui.h"
 #include "../../post_process/post_process.h"
+#include "../../physics_world/physics_world.h"
 #include "../../physics_world/debug_drawer/debug_drawer.h"
 #include "../../shader_manager/shader_manager.h"
 
@@ -10,12 +11,14 @@ class TempUI : public BaseUI
 {
 private:
     PostProcess *m_postProcess;
+    PhysicsWorld *m_physicsWorld;
     DebugDrawer *m_debugDrawer;
     ShaderManager *m_shaderManager;
 
 public:
-    TempUI(PostProcess *postProcess, DebugDrawer *debugDrawer, ShaderManager* shaderManager)
+    TempUI(PostProcess *postProcess, PhysicsWorld *physicsWorld, DebugDrawer *debugDrawer, ShaderManager *shaderManager)
         : m_postProcess(postProcess),
+          m_physicsWorld(physicsWorld),
           m_debugDrawer(debugDrawer),
           m_shaderManager(shaderManager)
     {
@@ -30,7 +33,6 @@ public:
     float m_radius = 12.0;
     float m_speed = 2.0;
 
-    int m_maxSubSteps = 1;
     float m_deltaTime = 0.f;
 
     void render() override;
