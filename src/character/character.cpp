@@ -207,6 +207,7 @@ void Character::update(float deltaTime)
         m_controller->update(deltaTime);
 
     // update ragdoll
+    checkPhysicsStateChange();
     if (m_ragdollActive)
         m_ragdoll->syncToAnimation(m_position);
 
@@ -384,7 +385,7 @@ void Character::interpolateBlendTargets()
         m_animator->m_state.poses[i].blendFactor = CommonUtil::lerp(m_animator->m_state.poses[i].blendFactor, m_blendTargetsPose[i], m_blendSpeed);
 }
 
-void Character::activateRagdoll(glm::vec3 impulseDirection, float impulseStrength)
+void Character::activateRagdoll(glm::vec3 impulse)
 {
     m_rigidbody->setLinearFactor(btVector3(0.0f, 0.0f, 0.0f));
     m_rigidbody->setActivationState(0);
@@ -397,8 +398,8 @@ void Character::activateRagdoll(glm::vec3 impulseDirection, float impulseStrengt
     btRigidBody *pelvis = m_ragdoll->m_bodies[BODYPART_PELVIS];
     btRigidBody *spine = m_ragdoll->m_bodies[BODYPART_SPINE];
 
-    pelvis->applyCentralImpulse(BulletGLM::getBulletVec3(impulseDirection * impulseStrength * 0.4f));
-    spine->applyCentralImpulse(BulletGLM::getBulletVec3(impulseDirection * impulseStrength * 0.6f));
+    pelvis->applyCentralImpulse(BulletGLM::getBulletVec3(impulse * 0.4f));
+    spine->applyCentralImpulse(BulletGLM::getBulletVec3(impulse * 0.6f));
 }
 
 void Character::resetRagdoll()
@@ -410,6 +411,16 @@ void Character::resetRagdoll()
     m_rigidbody->setActivationState(1);
     m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
     m_ragdollActive = false;
+}
+
+void Character::checkPhysicsStateChange()
+{
+    btVector3 totalForce = m_rigidbody->getTotalForce();
+    float force = totalForce.length();
+    if (force > m_ragdolActivateTreshold)
+    {
+        activateRagdoll(-BulletGLM::getGLMVec3(totalForce) * m_ragdolActivateFactor);
+    }
 }
 
 AnimPose &Character::getRagdolPose()

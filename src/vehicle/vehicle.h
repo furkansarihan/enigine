@@ -7,6 +7,8 @@
 #include <iostream>
 
 #include "../physics_world/physics_world.h"
+#include "../resource_manager/resource_manager.h"
+#include "../model/model.h"
 #include "../utils/common.h"
 #include "../utils/bullet_glm.h"
 
@@ -15,6 +17,8 @@
 
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
+#include "BulletCollision/Gimpact/btGImpactShape.h"
+#include "BulletCollision/Gimpact/btGImpactShape.h"
 
 #include "BulletDynamics/MLCPSolvers/btDantzigSolver.h"
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
@@ -28,13 +32,17 @@ struct ControlState
 class Vehicle
 {
 public:
-    Vehicle(PhysicsWorld *physicsWorld, glm::vec3 position);
+    Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, glm::vec3 position);
     ~Vehicle();
 
     PhysicsWorld *m_physicsWorld;
+    ResourceManager *m_resourceManager;
     glm::vec3 m_position;
     btRigidBody *m_carChassis;
     glm::mat4 m_chassisModel;
+
+    btCompoundShape *m_compoundShape;
+    Model *m_collider;
 
     btDefaultVehicleRaycaster *m_vehicleRayCaster;
     btRaycastVehicle *m_vehicle;
@@ -74,6 +82,8 @@ private:
 
     void initDefaultValues();
     void initVehicle();
+    void setupCollider();
+    btConvexHullShape *getBodyShape(Mesh &mesh);
     void updateSteering(float deltaTime);
     void updateAcceleration(float deltaTime);
 };

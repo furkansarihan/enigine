@@ -17,12 +17,24 @@ PhysicsWorld::~PhysicsWorld()
             delete body->getMotionState();
         }
         m_dynamicsWorld->removeCollisionObject(obj);
+
+        btCollisionShape *shape = body->getCollisionShape();
         delete obj;
-        // TODO: refactor when shape reuse impl
-        if (body && body->getCollisionShape())
+
+        // Check if the shape is a compound shape
+        if (btCompoundShape *compoundShape = dynamic_cast<btCompoundShape *>(shape))
         {
-            delete body->getCollisionShape();
+            // Iterate through each child shape of the compound shape and delete them
+            int numChildShapes = compoundShape->getNumChildShapes();
+            for (int j = 0; j < numChildShapes; ++j)
+            {
+                btCollisionShape *childShape = compoundShape->getChildShape(j);
+                delete childShape;
+            }
         }
+
+        // Delete the collision shape
+        delete shape;
     }
 
     delete m_dynamicsWorld;

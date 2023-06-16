@@ -62,6 +62,8 @@ public:
     // ragdoll
     bool m_ragdollActive = false;
     float m_impulseStrength = 600.f;
+    float m_ragdolActivateTreshold = 3000.f;
+    float m_ragdolActivateFactor = 0.1f;
     float m_stateChangeSpeed = 10.f;
 
     Character(ResourceManager *resourceManager, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
@@ -69,8 +71,9 @@ public:
     void init();
     void update(float deltaTime);
     void interpolateBlendTargets();
-    void activateRagdoll(glm::vec3 impulseDirection, float impulseStrength);
+    void activateRagdoll(glm::vec3 impulse);
     void resetRagdoll();
+    void checkPhysicsStateChange();
     AnimPose &getRagdolPose();
     AnimPose &getAimPose();
     AnimPose &getFiringPose();

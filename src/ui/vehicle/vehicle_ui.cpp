@@ -36,6 +36,7 @@ void VehicleUI::render()
     renderVec3("m_bodyRotation", m_cController->m_bodyRotation, 0.001f);
     renderVec3("m_hoodOffset", m_cController->m_hoodOffset, 0.01f);
     renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
+    renderCompoundShapeEditor("compound shapes", m_cController->m_vehicle->m_compoundShape);
     for (int i = 0; i < 4; i++)
         renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_cController->m_doorOffsets[i], 0.01f);
     renderVec3("m_exhaustOffset", m_cController->m_exhaustOffset, 0.01f);
@@ -80,6 +81,74 @@ void VehicleUI::renderVec3(const char *header, glm::vec3 &vec, float dragSpeed)
         ImGui::DragFloat((std::string(header) + "X").c_str(), &vec.x, dragSpeed);
         ImGui::DragFloat((std::string(header) + "Y").c_str(), &vec.y, dragSpeed);
         ImGui::DragFloat((std::string(header) + "Z").c_str(), &vec.z, dragSpeed);
+    }
+}
+
+void VehicleUI::renderVec3(const char *header, btVector3 &vec, float dragSpeed)
+{
+    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat((std::string(header) + "X").c_str(), (float *)&vec.m_floats[0], dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Y").c_str(), (float *)&vec.m_floats[1], dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Z").c_str(), (float *)&vec.m_floats[2], dragSpeed);
+    }
+}
+
+void VehicleUI::renderQuat(const char *header, glm::quat &quat, float dragSpeed)
+{
+    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat((std::string(header) + "W").c_str(), &quat[0], dragSpeed);
+        ImGui::DragFloat((std::string(header) + "X").c_str(), &quat[1], dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Y").c_str(), &quat[2], dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Z").c_str(), &quat[3], dragSpeed);
+    }
+}
+
+void VehicleUI::renderCompoundShapeEditor(const char *header, btCompoundShape *compoundShape)
+{
+    if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+        return;
+
+    int numChildShapes = compoundShape->getNumChildShapes();
+    for (int i = 0; i < numChildShapes; ++i)
+    {
+        btCollisionShape *childShape = compoundShape->getChildShape(i);
+        btTransform &childTransform = compoundShape->getChildTransform(i);
+
+        // Create a unique ID for ImGui widgets
+        std::string childHeader = std::string(header) + " Child Shape " + std::to_string(i);
+
+        if (!ImGui::CollapsingHeader(childHeader.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen))
+            continue;
+
+        std::string positionHeader = childHeader + ":position";
+        btVector3 &childOrigin = childTransform.getOrigin();
+        renderVec3(positionHeader.c_str(), childOrigin, 0.001f);
+
+        std::string rotationHeader = childHeader + ":rotation";
+        glm::quat childRotation = BulletGLM::getGLMQuat(childTransform.getRotation());
+        glm::quat copy = childRotation;
+        renderQuat(rotationHeader.c_str(), childRotation, 0.001f);
+        if (childRotation != copy)
+            childTransform.setRotation(BulletGLM::getBulletQuat(childRotation));
+
+        // TODO:
+        // Display and modify the local size of the child shape
+        // btVector3 childSize;
+        // if (btBoxShape *boxShape = dynamic_cast<btBoxShape *>(childShape))
+        // {
+        //     std::string sizeHeader = childHeader + ":size";
+        //     childSize = boxShape->getHalfExtentsWithMargin();
+        //     btVector3 copy = childSize;
+        //     renderVec3(sizeHeader.c_str(), childSize, 0.0001f);
+        //     if (childSize != copy)
+        //     {
+        //         m_vehicle->m_physicsWorld->m_dynamicsWorld->removeVehicle(m_vehicle->m_vehicle);
+        //         boxShape->setImplicitShapeDimensions(childSize);
+        //         m_vehicle->m_physicsWorld->m_dynamicsWorld->addVehicle(m_vehicle->m_vehicle);
+        //     }
+        // }
     }
 }
 

@@ -1,7 +1,8 @@
 #include "vehicle.h"
 
-Vehicle::Vehicle(PhysicsWorld *physicsWorld, glm::vec3 position)
+Vehicle::Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, glm::vec3 position)
     : m_physicsWorld(physicsWorld),
+      m_resourceManager(resourceManager),
       m_position(position)
 {
     this->initDefaultValues();
@@ -42,27 +43,14 @@ void Vehicle::initDefaultValues()
 
 void Vehicle::initVehicle()
 {
-    // TODO: get from physicsWorld
-    btCollisionShape *chassisShape = new btBoxShape(btVector3(1.f, 0.5f, 2.4f));
-    // m_collisionShapes.push_back(chassisShape);
-
-    // TODO: get from physicsWorld
-    btCompoundShape *compound = new btCompoundShape();
-    // m_collisionShapes.push_back(compound);
-
-    btTransform localTrans;
-    localTrans.setIdentity();
-    // localTrans effectively shifts the center of mass with respect to the chassis
-    localTrans.setOrigin(btVector3(0, 1.0f, 0));
-
-    compound->addChildShape(localTrans, chassisShape);
+    setupCollider();
 
     btTransform tr;
     tr.setIdentity();
     tr.setOrigin(BulletGLM::getBulletVec3(m_position));
 
     const btScalar chassisMass = 1000.f;
-    m_carChassis = m_physicsWorld->createRigidBody(compound, chassisMass, tr.getOrigin());
+    m_carChassis = m_physicsWorld->createRigidBody(m_compoundShape, chassisMass, tr.getOrigin());
     m_carChassis->setDamping(0.2, 0.2);
 
     float wheelGap = 1.4f;
@@ -101,6 +89,43 @@ void Vehicle::initVehicle()
         wheel.m_frictionSlip = m_wheelFriction;
         wheel.m_rollInfluence = m_rollInfluence;
     }
+}
+
+void Vehicle::setupCollider()
+{
+    m_compoundShape = new btCompoundShape();
+
+    m_collider = m_resourceManager->getModel("../src/assets/car/car-collider.obj");
+
+    for (int i = 0; i < m_collider->meshes.size(); i++)
+    {
+        Mesh &mesh = m_collider->meshes[i];
+
+        btConvexHullShape *shape = getBodyShape(mesh);
+
+        btTransform localTrans;
+        localTrans.setIdentity();
+        localTrans.setOrigin(btVector3(0.f, 0.3f, -0.35f));
+        // Same with car rotation
+        localTrans.setRotation(btQuaternion(0.f, -0.707f, 0.f, 0.707f));
+
+        m_compoundShape->addChildShape(localTrans, shape);
+    }
+}
+
+btConvexHullShape *Vehicle::getBodyShape(Mesh &mesh)
+{
+    btConvexHullShape *convexShape = new btConvexHullShape();
+
+    for (int i = 0; i < mesh.vertices.size(); ++i)
+        convexShape->addPoint(BulletGLM::getBulletVec3(mesh.vertices[i].position));
+
+    // Optional: Enable margin for better collision detection
+    convexShape->setMargin(0.04f); // Set an appropriate margin value
+    // Same with car scale
+    convexShape->setLocalScaling(btVector3(0.028f, 0.028f, 0.028f));
+
+    return convexShape;
 }
 
 void Vehicle::resetVehicle(btTransform tr)

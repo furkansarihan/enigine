@@ -200,7 +200,7 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Vehicle
-    CarController car(&physicsWorld, &editorCamera, character.m_position + glm::vec3(40.f, 5.f, 40.f));
+    CarController car(&physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(40.f, 5.f, 40.f));
     Vehicle &vehicle = *car.m_vehicle;
     glfwSetWindowUserPointer(window, &car);
     glfwSetKeyCallback(window, car.staticKeyCallback);

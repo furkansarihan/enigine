@@ -41,7 +41,7 @@ struct Follow
 class CarController
 {
 public:
-    CarController(PhysicsWorld * physicsWorld, Camera *followCamera, glm::vec3 position);
+    CarController(PhysicsWorld * physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
     ~CarController();
 
     Vehicle *m_vehicle;

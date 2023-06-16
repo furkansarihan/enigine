@@ -176,7 +176,7 @@ void PCharacter::shootRay()
         for (int i = 0; i < m_npcList.size(); i++)
         {
             if (m_npcList[i]->m_rigidbody == rb)
-                m_npcList[i]->activateRagdoll(m_followCamera->front, m_impulseStrength);
+                m_npcList[i]->activateRagdoll(m_followCamera->front * m_impulseStrength);
         }
     }
     // else

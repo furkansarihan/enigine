@@ -21,6 +21,9 @@ public:
 
     void render() override;
     void renderVec3(const char *header, glm::vec3 &vec, float dragSpeed);
+    void renderVec3(const char *header, btVector3 &vec, float dragSpeed);
+    void renderQuat(const char *header, glm::quat &quat, float dragSpeed);
+    void renderCompoundShapeEditor(const char *header, btCompoundShape *compoundShape);
     void updateWheelInfo();
 };
 

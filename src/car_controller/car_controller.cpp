@@ -1,9 +1,9 @@
 #include "car_controller.h"
 
-CarController::CarController(PhysicsWorld *physicsWorld, Camera *followCamera, glm::vec3 position)
+CarController::CarController(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position)
     : m_followCamera(followCamera)
 {
-    m_vehicle = new Vehicle(physicsWorld, position);
+    m_vehicle = new Vehicle(physicsWorld, resourceManager, position);
 
     m_exhausParticle = new ParticleEngine(followCamera);
     m_exhausParticle->m_particlesPerSecond = 100.f;
