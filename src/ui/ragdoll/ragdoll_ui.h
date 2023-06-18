@@ -24,6 +24,9 @@ public:
     int m_floatIndex = 2;
 
     void render() override;
+    void renderConeTwist(int index, btConeTwistConstraint *constraint);
+    void renderHinge(int index, btHingeConstraint *constraint);
+    std::string getJointName(int index);
 };
 
 #endif /* ragdoll_ui_hpp */

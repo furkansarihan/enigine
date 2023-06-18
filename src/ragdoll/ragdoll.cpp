@@ -109,7 +109,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     localB.getBasis().setEulerZYX(0, 0, M_PI_2);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-0.14), btScalar(0.)));
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_HEAD], localA, localB);
-    coneC->setLimit(M_PI_4, M_PI_4, M_PI_2);
+    coneC->setLimit(M_PI_4, M_PI_4, M_PI_2, 0.85f);
     m_joints[JOINT_SPINE_HEAD] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
     nodeHead.index = JOINT_SPINE_HEAD;
@@ -123,7 +123,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     localB.getBasis().setEulerZYX(0, 0, -M_PI_4);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_LEFT_UPPER_LEG], localA, localB);
-    coneC->setLimit(M_PI_4, M_PI_4, 0);
+    coneC->setLimit(M_PI_4, M_PI_4, 0, 0.85f);
     m_joints[JOINT_LEFT_HIP] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
     nodeLeftUpLeg.index = JOINT_LEFT_HIP;
@@ -149,7 +149,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     localB.getBasis().setEulerZYX(0, 0, M_PI_4);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(0.225), btScalar(0.)));
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_RIGHT_UPPER_LEG], localA, localB);
-    coneC->setLimit(M_PI_4, M_PI_4, 0);
+    coneC->setLimit(M_PI_4, M_PI_4, 0, 0.85f);
     m_joints[JOINT_RIGHT_HIP] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
     nodeRightUpLeg.index = JOINT_RIGHT_HIP;
@@ -176,7 +176,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     // TODO: why to -Y direction instead of -X ?
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
-    coneC->setLimit(M_PI_2, M_PI_2, 0);
+    coneC->setLimit(M_PI_2, M_PI_2, 0, 0.85f);
     m_joints[JOINT_LEFT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
     nodeLeftArm.index = JOINT_LEFT_SHOULDER;
@@ -202,7 +202,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     localB.getBasis().setEulerZYX(0, 0, M_PI_2);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-0.18), btScalar(0.)));
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
-    coneC->setLimit(M_PI_2, M_PI_2, 0);
+    coneC->setLimit(M_PI_2, M_PI_2, 0, 0.85f);
     m_joints[JOINT_RIGHT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
     nodeRightArm.index = JOINT_RIGHT_SHOULDER;
@@ -219,6 +219,47 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     m_joints[JOINT_RIGHT_ELBOW] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
     nodeRightForeArm.index = JOINT_RIGHT_ELBOW;
+
+    // joint targets
+    m_fetalTargets[JOINT_PELVIS_SPINE].angle.x = -M_PI_2;
+    m_fetalTargets[JOINT_PELVIS_SPINE].force = 500.f;
+    m_fetalTargets[JOINT_PELVIS_SPINE].active = true;
+
+    m_fetalTargets[JOINT_LEFT_KNEE].angle.x = M_PI_2;
+    m_fetalTargets[JOINT_LEFT_KNEE].force = 60.f;
+    m_fetalTargets[JOINT_LEFT_KNEE].active = true;
+
+    m_fetalTargets[JOINT_RIGHT_KNEE].angle.x = M_PI_2;
+    m_fetalTargets[JOINT_RIGHT_KNEE].force = 60.f;
+    m_fetalTargets[JOINT_RIGHT_KNEE].active = true;
+
+    m_fetalTargets[JOINT_LEFT_ELBOW].angle.x = -M_PI_2;
+    m_fetalTargets[JOINT_LEFT_ELBOW].force = 60.f;
+    m_fetalTargets[JOINT_LEFT_ELBOW].active = true;
+
+    m_fetalTargets[JOINT_RIGHT_ELBOW].angle.x = -M_PI_2;
+    m_fetalTargets[JOINT_RIGHT_ELBOW].force = 60.f;
+    m_fetalTargets[JOINT_RIGHT_ELBOW].active = true;
+
+    m_fetalTargets[JOINT_LEFT_HIP].angle = glm::vec4(0.707f, 0.f, 0.f, 0.707f);
+    m_fetalTargets[JOINT_LEFT_HIP].force = 200.f;
+    m_fetalTargets[JOINT_LEFT_HIP].active = true;
+
+    m_fetalTargets[JOINT_RIGHT_HIP].angle = glm::vec4(0.707f, 0.f, 0.f, 0.707f);
+    m_fetalTargets[JOINT_RIGHT_HIP].force = 200.f;
+    m_fetalTargets[JOINT_RIGHT_HIP].active = true;
+
+    m_fetalTargets[JOINT_LEFT_SHOULDER].angle = glm::vec4(-0.466f, -0.372f, -0.802f, 0.024);
+    m_fetalTargets[JOINT_LEFT_SHOULDER].force = 200.f;
+    m_fetalTargets[JOINT_LEFT_SHOULDER].active = true;
+
+    m_fetalTargets[JOINT_RIGHT_SHOULDER].angle = glm::vec4(0.466f, -0.372f, -0.802f, 0.024);
+    m_fetalTargets[JOINT_RIGHT_SHOULDER].force = 200.f;
+    m_fetalTargets[JOINT_RIGHT_SHOULDER].active = true;
+
+    m_fetalTargets[JOINT_SPINE_HEAD].angle = glm::vec4(-0.404f, 0.f, 0.f, 0.915);
+    m_fetalTargets[JOINT_SPINE_HEAD].force = 150.f;
+    m_fetalTargets[JOINT_SPINE_HEAD].active = true;
 }
 
 Ragdoll::~Ragdoll()
@@ -261,6 +302,72 @@ AssimpNodeData &getNode(AssimpNodeData &node, std::string name)
 
     AssimpNodeData emptyNode;
     return emptyNode;
+}
+
+void Ragdoll::update(float deltaTime)
+{
+    if (m_status.prevState != m_status.state)
+    {
+        updateStateChange();
+        m_status.prevState = m_status.state;
+    }
+
+    if (m_status.state == RagdollState::loose)
+        return;
+
+    JointTarget *targets;
+
+    if (m_status.state == RagdollState::fetal)
+        targets = m_fetalTargets;
+
+    for (int i = 0; i < JOINT_COUNT; i++)
+    {
+        JointTarget &target = targets[i];
+
+        if (!target.active)
+            continue;
+
+        if (btConeTwistConstraint *h = dynamic_cast<btConeTwistConstraint *>(m_joints[i]))
+        {
+            btConeTwistConstraint *constraint = (btConeTwistConstraint *)m_joints[i];
+            constraint->setMotorTarget(btQuaternion(target.angle.x, target.angle.y, target.angle.z, target.angle.w));
+            constraint->setMaxMotorImpulse(deltaTime * target.force);
+        }
+        else
+        {
+            btHingeConstraint *constraint = (btHingeConstraint *)m_joints[i];
+            constraint->setMotorTarget(target.angle.x, deltaTime);
+            constraint->setMaxMotorImpulse(deltaTime * target.force);
+        }
+    }
+}
+
+void Ragdoll::updateStateChange()
+{
+    bool enabled = m_status.state == RagdollState::fetal;
+
+    for (int i = 0; i < JOINT_COUNT; i++)
+    {
+        if (btConeTwistConstraint *h = dynamic_cast<btConeTwistConstraint *>(m_joints[i]))
+        {
+            btConeTwistConstraint *constraint = (btConeTwistConstraint *)m_joints[i];
+            constraint->setMotorTarget(btQuaternion::getIdentity());
+            constraint->enableMotor(enabled);
+            constraint->setMaxMotorImpulse(0.f);
+        }
+        else
+        {
+            btHingeConstraint *constraint = (btHingeConstraint *)m_joints[i];
+            constraint->enableMotor(enabled);
+            constraint->setMaxMotorImpulse(0.f);
+        }
+    }
+}
+
+void Ragdoll::changeState(RagdollState newState)
+{
+    m_status.prevState = m_status.state;
+    m_status.state = newState;
 }
 
 // TODO: initial orientation around Y axis

@@ -207,6 +207,7 @@ void Character::update(float deltaTime)
         m_controller->update(deltaTime);
 
     // update ragdoll
+    m_ragdoll->update(deltaTime);
     checkPhysicsStateChange();
     if (m_ragdollActive)
         m_ragdoll->syncToAnimation(m_position);
@@ -393,6 +394,7 @@ void Character::activateRagdoll(glm::vec3 impulse)
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position);
     m_ragdoll->resetTransforms(modelPos, m_rotation.y);
     m_ragdoll->unFreezeBodies();
+    m_ragdoll->changeState(RagdollState::fetal);
     m_ragdollActive = true;
 
     btRigidBody *pelvis = m_ragdoll->m_bodies[BODYPART_PELVIS];
@@ -407,6 +409,7 @@ void Character::resetRagdoll()
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position + glm::vec3(0.f, 10.f, 0.f));
     m_ragdoll->resetTransforms(modelPos, m_rotation.y);
     m_ragdoll->freezeBodies();
+    m_ragdoll->changeState(RagdollState::loose);
     m_rigidbody->setLinearFactor(btVector3(1.0f, 1.0f, 1.0f));
     m_rigidbody->setActivationState(1);
     m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);

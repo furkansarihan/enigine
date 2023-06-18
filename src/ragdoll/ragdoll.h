@@ -40,6 +40,25 @@ enum
     JOINT_COUNT
 };
 
+struct JointTarget
+{
+    bool active = false;
+    glm::vec4 angle = glm::vec4(0.f); // quat or float as .x
+    float force = 0.f;
+};
+
+enum RagdollState
+{
+    loose,
+    fetal
+};
+
+struct RagdollStatus
+{
+    RagdollState state = RagdollState::loose;
+    RagdollState prevState = RagdollState::loose;
+};
+
 class Ragdoll
 {
 
@@ -53,6 +72,9 @@ public:
     btCollisionShape *m_shapes[BODYPART_COUNT];
     btRigidBody *m_bodies[BODYPART_COUNT];
     btTypedConstraint *m_joints[JOINT_COUNT];
+
+    JointTarget m_fetalTargets[JOINT_COUNT];
+    RagdollStatus m_status;
 
     // debug
     btQuaternion orients[JOINT_COUNT];
@@ -69,9 +91,14 @@ public:
     void resetTransforms(const btVector3 &positionOffset, float angleY);
     void freezeBodies();
     void unFreezeBodies();
+    void update(float deltaTime);
+    void changeState(RagdollState newState);
 
     void syncToAnimation(glm::vec3 &position);
     void syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrientation, btQuaternion parentBoneOrientation, glm::vec3 &position, bool fromParent);
+
+private:
+    void updateStateChange();
 };
 
 #endif /* ragdoll_hpp */
