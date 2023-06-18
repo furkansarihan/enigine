@@ -29,13 +29,13 @@ void RagdollUI::render()
         }
         ImGui::EndCombo();
     }
+
     ImGui::BeginTable("JointTargetsTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None);
     ImGui::TableSetupColumn("Force", ImGuiTableColumnFlags_None);
     ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_None);
     ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_None);
     ImGui::TableHeadersRow();
-
     for (int i = 0; i < JOINT_COUNT; i++)
     {
         JointTarget &target = ragdoll->m_fetalTargets[i];
@@ -57,6 +57,24 @@ void RagdollUI::render()
         ImGui::Checkbox((std::to_string(i) + ":active").c_str(), &target.active);
     }
     ImGui::EndTable();
+
+    RagdollSize &size = ragdoll->m_size;
+    RagdollSize copy = size;
+    ImGui::DragFloat("pelvisHeight", &size.pelvisHeight, 0.01f);
+    ImGui::DragFloat("spineHeight", &size.spineHeight, 0.01f);
+    ImGui::DragFloat("headHeight", &size.headHeight, 0.01f);
+    ImGui::DragFloat("shoulderOffsetHorizontal", &size.shoulderOffsetHorizontal, 0.01f);
+    ImGui::DragFloat("shoulderOffsetVertical", &size.shoulderOffsetVertical, 0.01f);
+    ImGui::DragFloat("lowerArmLength", &size.lowerArmLength, 0.01f);
+    ImGui::DragFloat("upperArmLength", &size.upperArmLength, 0.01f);
+    ImGui::DragFloat("lowerLegLength", &size.lowerLegLength, 0.01f);
+    ImGui::DragFloat("upperLegLength", &size.upperLegLength, 0.01f);
+    if (size != copy)
+    {
+        ragdoll->updateJointSizes();
+        ragdoll->updateJointFrames();
+    }
+    ImGui::Separator();
 
     ImGui::DragFloat("m_floatHeight", &m_floatHeight, 0.1f);
     ImGui::Checkbox("activateObject", &m_activateObject);

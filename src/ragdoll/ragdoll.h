@@ -59,6 +59,32 @@ struct RagdollStatus
     RagdollState prevState = RagdollState::loose;
 };
 
+struct RagdollSize
+{
+    float upperArmLength = 0.23f;
+    float lowerArmLength = 0.25f;
+    float shoulderOffsetVertical = 0.05f;
+    float shoulderOffsetHorizontal = 0.22f;
+    float upperLegLength = 0.38f;
+    float lowerLegLength = 0.37f;
+    float pelvisHeight = 0.23f;
+    float spineHeight = 0.29f;
+    float headHeight = 0.05f;
+
+    bool operator==(const RagdollSize &other) const
+    {
+        return upperArmLength == other.upperArmLength &&
+               lowerArmLength == other.lowerArmLength &&
+               shoulderOffsetVertical == other.shoulderOffsetVertical &&
+               shoulderOffsetHorizontal == other.shoulderOffsetHorizontal &&
+               upperLegLength == other.upperLegLength &&
+               lowerLegLength == other.lowerLegLength &&
+               pelvisHeight == other.pelvisHeight &&
+               spineHeight == other.spineHeight &&
+               headHeight == other.headHeight;
+    }
+};
+
 class Ragdoll
 {
 
@@ -69,12 +95,13 @@ public:
     PhysicsWorld *m_physicsWorld;
     Animation *m_animation;
     btScalar m_scale;
-    btCollisionShape *m_shapes[BODYPART_COUNT];
+    btCapsuleShape *m_shapes[BODYPART_COUNT];
     btRigidBody *m_bodies[BODYPART_COUNT];
     btTypedConstraint *m_joints[JOINT_COUNT];
 
     JointTarget m_fetalTargets[JOINT_COUNT];
     RagdollStatus m_status;
+    RagdollSize m_size;
 
     // debug
     btQuaternion orients[JOINT_COUNT];
@@ -93,6 +120,9 @@ public:
     void unFreezeBodies();
     void update(float deltaTime);
     void changeState(RagdollState newState);
+    void updateJointFrames();
+    void updateJointSizes();
+    void updateJointSize(btCapsuleShape *shape, btRigidBody *body, float size);
 
     void syncToAnimation(glm::vec3 &position);
     void syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrientation, btQuaternion parentBoneOrientation, glm::vec3 &position, bool fromParent);
