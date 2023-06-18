@@ -34,7 +34,7 @@ struct AnimatorState
 class Animator
 {
 public:
-    std::vector<glm::mat4> m_FinalBoneMatrices;
+    std::vector<glm::mat4> m_finalBoneMatrices;
     std::vector<glm::mat4> m_globalMatrices;
     std::vector<Animation *> m_animations;
     std::vector<float> m_timers;

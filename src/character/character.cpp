@@ -1,8 +1,7 @@
 #include "character.h"
 
-Character::Character(ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+Character::Character(ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
     : m_resourceManager(resourceManager),
-      m_shaderManager(shaderManager),
       m_physicsWorld(physicsWorld),
       m_followCamera(followCamera),
       m_firing(false)
@@ -182,11 +181,6 @@ void Character::init()
     m_rigidbody->setGravity(btVector3(0, -20.0f, 0));
 
     m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
-
-    // TODO: make independent or manageable - fix
-    // init shaders after model read && before ragdoll ???? :D
-    m_shaderManager->initShaders();
-
     m_ragdoll = new Ragdoll(m_physicsWorld, animationRagdoll, BulletGLM::getBulletVec3(m_position), 2.0f);
 }
 

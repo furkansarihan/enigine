@@ -11,9 +11,9 @@ Animator::Animator(std::vector<Animation *> animations)
     // TODO: initial state
 
     // TODO: better way?
-    m_FinalBoneMatrices.reserve(MAX_BONES);
+    m_finalBoneMatrices.reserve(MAX_BONES);
     for (int i = 0; i < MAX_BONES; i++)
-        m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
+        m_finalBoneMatrices.push_back(glm::mat4(1.0f));
 
     m_globalMatrices.reserve(MAX_BONES);
     for (int i = 0; i < MAX_BONES; i++)
@@ -123,7 +123,7 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     {
         int index = boneInfoMap[nodeName].id;
         glm::mat4 offset = boneInfoMap[nodeName].offset;
-        m_FinalBoneMatrices[index] = globalTransformation * offset;
+        m_finalBoneMatrices[index] = globalTransformation * offset;
         m_globalMatrices[index] = globalTransformation;
     }
 

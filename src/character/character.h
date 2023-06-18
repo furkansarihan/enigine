@@ -66,7 +66,7 @@ public:
     float m_ragdolActivateFactor = 0.1f;
     float m_stateChangeSpeed = 10.f;
 
-    Character(ResourceManager *resourceManager, ShaderManager *m_shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    Character(ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);

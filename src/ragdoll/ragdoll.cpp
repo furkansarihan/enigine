@@ -1,6 +1,6 @@
 #include "ragdoll.h"
 
-AssimpNodeData &getNode(AssimpNodeData &node, std::string name);
+AssimpNodeData *getNode(AssimpNodeData &node, std::string name);
 
 Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVector3 &positionOffset, btScalar scale)
     : m_physicsWorld(physicsWorld),
@@ -49,27 +49,27 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     }
 
     // save rigidbodies to nodes
-    AssimpNodeData &nodePelvis = getNode(m_animation->m_RootNode, "mixamorig:Hips");
+    AssimpNodeData &nodePelvis = *getNode(m_animation->m_RootNode, "mixamorig:Hips");
     nodePelvis.rigidBody = m_bodies[BODYPART_PELVIS];
-    AssimpNodeData &nodeSpine = getNode(m_animation->m_RootNode, "mixamorig:Spine1");
+    AssimpNodeData &nodeSpine = *getNode(m_animation->m_RootNode, "mixamorig:Spine1");
     nodeSpine.rigidBody = m_bodies[BODYPART_SPINE];
-    AssimpNodeData &nodeHead = getNode(m_animation->m_RootNode, "mixamorig:Head");
+    AssimpNodeData &nodeHead = *getNode(m_animation->m_RootNode, "mixamorig:Head");
     nodeHead.rigidBody = m_bodies[BODYPART_HEAD];
-    AssimpNodeData &nodeLeftUpLeg = getNode(m_animation->m_RootNode, "mixamorig:LeftUpLeg");
+    AssimpNodeData &nodeLeftUpLeg = *getNode(m_animation->m_RootNode, "mixamorig:LeftUpLeg");
     nodeLeftUpLeg.rigidBody = m_bodies[BODYPART_LEFT_UPPER_LEG];
-    AssimpNodeData &nodeLeftLeg = getNode(m_animation->m_RootNode, "mixamorig:LeftLeg");
+    AssimpNodeData &nodeLeftLeg = *getNode(m_animation->m_RootNode, "mixamorig:LeftLeg");
     nodeLeftLeg.rigidBody = m_bodies[BODYPART_LEFT_LOWER_LEG];
-    AssimpNodeData &nodeRightUpLeg = getNode(m_animation->m_RootNode, "mixamorig:RightUpLeg");
+    AssimpNodeData &nodeRightUpLeg = *getNode(m_animation->m_RootNode, "mixamorig:RightUpLeg");
     nodeRightUpLeg.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_LEG];
-    AssimpNodeData &nodeRightLeg = getNode(m_animation->m_RootNode, "mixamorig:RightLeg");
+    AssimpNodeData &nodeRightLeg = *getNode(m_animation->m_RootNode, "mixamorig:RightLeg");
     nodeRightLeg.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_LEG];
-    AssimpNodeData &nodeRightArm = getNode(m_animation->m_RootNode, "mixamorig:RightArm");
+    AssimpNodeData &nodeRightArm = *getNode(m_animation->m_RootNode, "mixamorig:RightArm");
     nodeRightArm.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_ARM];
-    AssimpNodeData &nodeRightForeArm = getNode(m_animation->m_RootNode, "mixamorig:RightForeArm");
+    AssimpNodeData &nodeRightForeArm = *getNode(m_animation->m_RootNode, "mixamorig:RightForeArm");
     nodeRightForeArm.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_ARM];
-    AssimpNodeData &nodeLeftArm = getNode(m_animation->m_RootNode, "mixamorig:LeftArm");
+    AssimpNodeData &nodeLeftArm = *getNode(m_animation->m_RootNode, "mixamorig:LeftArm");
     nodeLeftArm.rigidBody = m_bodies[BODYPART_LEFT_UPPER_ARM];
-    AssimpNodeData &nodeLeftForeArm = getNode(m_animation->m_RootNode, "mixamorig:LeftForeArm");
+    AssimpNodeData &nodeLeftForeArm = *getNode(m_animation->m_RootNode, "mixamorig:LeftForeArm");
     nodeLeftForeArm.rigidBody = m_bodies[BODYPART_LEFT_LOWER_ARM];
 
     // TODO: fix with joint postitions
@@ -230,20 +230,19 @@ Ragdoll::~Ragdoll()
     }
 }
 
-AssimpNodeData &getNode(AssimpNodeData &node, std::string name)
+AssimpNodeData *getNode(AssimpNodeData &node, std::string name)
 {
     if (node.name == name)
-        return node;
+        return &node;
 
     for (int i = 0; i < node.childrenCount; i++)
     {
-        AssimpNodeData &foundNode = getNode(node.children[i], name);
-        if (!foundNode.name.empty())
+        AssimpNodeData *foundNode = getNode(node.children[i], name);
+        if (foundNode && !foundNode->name.empty())
             return foundNode;
     }
 
-    AssimpNodeData emptyNode;
-    return emptyNode;
+    return nullptr;
 }
 
 void Ragdoll::update(float deltaTime)

@@ -11,7 +11,7 @@
 class PCharacter : public Character
 {
 public:
-    PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
     SoundEngine *m_soundEngine;

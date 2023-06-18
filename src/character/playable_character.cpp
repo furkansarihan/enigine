@@ -1,7 +1,7 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(resourceManager, shaderManager, physicsWorld, followCamera),
+PCharacter::PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(resourceManager, physicsWorld, followCamera),
       m_soundEngine(soundEngine)
 {
     try

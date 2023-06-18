@@ -140,6 +140,7 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
     shaderManager.addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&exhaustShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/exhaust.fs"));
+    shaderManager.initShaders();
 
     // Create geometries
     ResourceManager resourceManager;
@@ -175,8 +176,10 @@ int main(int argc, char **argv)
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Characters
-    NPCharacter npc1(&resourceManager, &shaderManager, &physicsWorld, &editorCamera);
-    PCharacter character(&soundEngine, &resourceManager, &shaderManager, &physicsWorld, &editorCamera);
+    NPCharacter npc1(&resourceManager, &physicsWorld, &editorCamera);
+    PCharacter character(&soundEngine, &resourceManager, &physicsWorld, &editorCamera);
+
+    editorCamera.position = npc1.m_position + glm::vec3(0.f, -1.f, 10.f);
 
     std::vector<Character *> characters;
     characters.push_back(&character);
@@ -446,11 +449,9 @@ int main(int argc, char **argv)
             {
                 Character *character = characters[i];
 
-                auto transforms = character->m_animator->m_FinalBoneMatrices;
-                for (int i = 0; i < transforms.size(); ++i)
-                {
-                    animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
-                }
+                auto transforms = character->m_animator->m_finalBoneMatrices;
+                for (int j = 0; j < transforms.size(); ++j)
+                    animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
 
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::translate(model, character->m_position);
@@ -482,7 +483,7 @@ int main(int argc, char **argv)
             animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
             animShader.setFloat("lightPower", tempUI.m_lightPower);
 
-            auto transforms = character->m_animator->m_FinalBoneMatrices;
+            auto transforms = character->m_animator->m_finalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
             {
                 animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
