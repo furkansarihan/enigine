@@ -76,9 +76,11 @@ Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::
         0,
         1,
         1,
-        false);
+        false,
+        btVector3(0, 0, 0));
 
-    terrainBody->setCollisionFlags(btRigidBody::CF_DISABLE_VISUALIZE_OBJECT);
+    terrainBody->setCollisionFlags(btRigidBody::CF_DISABLE_VISUALIZE_OBJECT |
+                                   btCollisionObject::CF_STATIC_OBJECT);
 
     updateHorizontalScale();
 

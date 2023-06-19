@@ -30,7 +30,7 @@ public:
     btRigidBody *createCylinder(const btScalar mass, const btScalar axis, const btVector3 &halfExtend, const btVector3 &position);
     btRigidBody *createCapsule(const btScalar mass, const btScalar axis, const btScalar radius, const btScalar height, const btVector3 &position);
     btRigidBody *createTerrain(const int width, const int height, const float *heightfieldData,
-                               btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges);
+                               btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges, const btVector3 &position);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform);
 

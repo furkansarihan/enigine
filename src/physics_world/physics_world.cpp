@@ -175,7 +175,7 @@ btRigidBody *PhysicsWorld::createCylinder(const btScalar mass, const btScalar ax
 }
 
 btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, const float *heightfieldData,
-                                         btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges)
+                                         btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges, const btVector3 &position)
 {
     btHeightfieldTerrainShape *shape = new btHeightfieldTerrainShape(
         width,
@@ -186,13 +186,7 @@ btRigidBody *PhysicsWorld::createTerrain(const int width, const int height, cons
         upAxis,
         flipQuadEdges);
 
-    shape->setUseDiamondSubdivision(true);
-    // shape->setUseZigzagSubdivision(true);
-
-    // TODO: scale the shape
-    // TODO: position
-
-    return createRigidBody(shape, 0, btVector3(0, 0, 0));
+    return createRigidBody(shape, 0, position);
 }
 
 btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position)
