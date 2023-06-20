@@ -63,8 +63,8 @@ public:
     glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
     glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
 
-    bool m_controlVehicle = true;
-    bool m_followVehicle = true;
+    bool m_controlVehicle = false;
+    bool m_followVehicle = false;
 
     glm::vec3 m_pos = glm::vec3(0.0f, 2.5f, 0.0f);
     Follow m_follow;

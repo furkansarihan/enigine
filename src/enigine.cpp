@@ -37,6 +37,7 @@
 #include "character/np_character.h"
 #include "resource_manager/resource_manager.h"
 #include "car_controller/car_controller.h"
+#include "task_manager/task_manager.h"
 
 int main(int argc, char **argv)
 {
@@ -185,8 +186,13 @@ int main(int argc, char **argv)
     characters.push_back(&character);
     characters.push_back(&npc1);
 
-    npc1.m_avoidAimList.push_back(&character);
     character.m_npcList.push_back(&npc1);
+
+    // Task manager
+    TaskManager taskManager;
+
+    FollowTask followTask1(&npc1, &character);
+    taskManager.m_tasks.push_back(&followTask1);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -294,12 +300,15 @@ int main(int argc, char **argv)
         // Process input
         editorCamera.processInput(window, deltaTime);
 
+        // Update Physics
+        physicsWorld.update(deltaTime);
+
+        // Update tasks
+        taskManager.update();
+
         // Update character
         character.update(window, deltaTime);
         npc1.update(window, deltaTime);
-
-        // Update Physics
-        physicsWorld.update(deltaTime);
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();

@@ -12,7 +12,8 @@ NPCharacter::~NPCharacter()
 void NPCharacter::update(GLFWwindow *window, float deltaTime)
 {
     Character::update(deltaTime);
-    avoidAim(window, deltaTime);
+    // TODO: convert task
+    // avoidAim(window, deltaTime);
 }
 
 void NPCharacter::avoidAim(GLFWwindow *window, float deltaTime)

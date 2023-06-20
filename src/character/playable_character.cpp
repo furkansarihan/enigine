@@ -100,6 +100,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     {
         for (int i = 0; i < m_npcList.size(); i++)
             m_npcList[i]->resetRagdoll();
+        resetRagdoll();
     }
 
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)

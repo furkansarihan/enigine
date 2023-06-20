@@ -73,6 +73,10 @@ add_executable( enigine
                 src/resource_manager/resource_manager.cpp
                 src/car_controller/car_controller.h
                 src/car_controller/car_controller.cpp
+                src/task_manager/task_manager.h
+                src/task_manager/task_manager.cpp
+                src/character_task/follow_task.h
+                src/character_task/follow_task.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

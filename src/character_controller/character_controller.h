@@ -70,6 +70,8 @@ public:
     bool m_aimLocked = false;
 
     glm::vec3 m_lookDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
+    glm::vec3 m_refFront = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 m_refRight = glm::vec3(1.0f, 0.0f, 0.0f);
     float m_signedMoveAngle = M_PI; // +Z
     float m_signedMoveAngleTarget = M_PI;
     float m_moveAngleForce = 0.1f;

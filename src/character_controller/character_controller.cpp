@@ -59,6 +59,9 @@ void CharacterController::recieveInput(GLFWwindow *window, float deltaTime)
     m_actionState.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
     m_actionState.run = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
     m_actionState.jump = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+
+    m_refFront = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
+    m_refRight = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
 }
 
 void CharacterController::update(float deltaTime)
@@ -121,7 +124,7 @@ void CharacterController::update(float deltaTime)
     if (frontForce != 0.0f && !m_falling)
     {
         move = true;
-        glm::vec3 frontXZ = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
+        glm::vec3 frontXZ = m_refFront;
         glm::vec3 front = frontXZ * frontForce;
         moveTarget += front;
     }
@@ -129,7 +132,7 @@ void CharacterController::update(float deltaTime)
     if (rightForce != 0.0f && !m_falling)
     {
         move = true;
-        glm::vec3 rightXZ = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
+        glm::vec3 rightXZ = m_refRight;
         glm::vec3 right = rightXZ * rightForce;
         moveTarget += right;
     }
@@ -141,7 +144,7 @@ void CharacterController::update(float deltaTime)
     // look
     glm::vec3 lookTarget;
     if (m_aimLocked)
-        lookTarget = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
+        lookTarget = m_refFront;
     else
         lookTarget = glm::normalize(moveTarget);
 
