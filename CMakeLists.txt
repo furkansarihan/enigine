@@ -104,6 +104,17 @@ add_executable( enigine
                 src/ui/particle/particle_ui.h
                 src/ui/particle/particle_ui.cpp
                 # external
+                src/external/jps3d/include/jps_basis/data_type.h
+                src/external/jps3d/include/jps_basis/data_utils.h
+                src/external/jps3d/include/jps_collision/map_util.h
+                src/external/jps3d/include/jps_planner/distance_map_planner/distance_map_planner.h
+                src/external/jps3d/include/jps_planner/distance_map_planner/graph_search.h
+                src/external/jps3d/include/jps_planner/jps_planner/graph_search.h
+                src/external/jps3d/include/jps_planner/jps_planner/jps_planner.h
+                src/external/jps3d/src/distance_map_planner/distance_map_planner.cpp
+                src/external/jps3d/src/distance_map_planner/graph_search.cpp
+                src/external/jps3d/src/jps_planner/graph_search.cpp
+                src/external/jps3d/src/jps_planner/jps_planner.cpp
                 src/external/imgui/imgui.h
                 src/external/imgui/src/imgui_impl_glfw.cpp
                 src/external/imgui/src/imgui_impl_glfw.h

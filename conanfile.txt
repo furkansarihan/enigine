@@ -7,6 +7,8 @@ assimp/5.2.2
 openal/1.22.2
 bullet3/3.25
 libsndfile/1.2.0
+boost/1.82.0
+eigen/3.4.0
 
 [generators]
 cmake
