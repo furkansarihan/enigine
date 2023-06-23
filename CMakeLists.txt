@@ -77,6 +77,8 @@ add_executable( enigine
                 src/task_manager/task_manager.cpp
                 src/character_task/follow_task.h
                 src/character_task/follow_task.cpp
+                src/character_task/follow_path.h
+                src/character_task/follow_path.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

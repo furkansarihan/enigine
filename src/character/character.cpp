@@ -1,7 +1,8 @@
 #include "character.h"
 
-Character::Character(ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : m_resourceManager(resourceManager),
+Character::Character(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : m_taskManager(taskManager),
+      m_resourceManager(resourceManager),
       m_physicsWorld(physicsWorld),
       m_followCamera(followCamera),
       m_firing(false)
@@ -32,6 +33,7 @@ void Character::init()
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model, AnimationType::Pose);
     Animation *animation17 = new Animation("firing", m_model, AnimationType::Pose);
+    Animation *animation18 = new Animation("enter-car", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -53,6 +55,7 @@ void Character::init()
     animations.push_back(animation15);
     animations.push_back(animationRagdoll);
     animations.push_back(animation17);
+    animations.push_back(animation18);
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
@@ -168,6 +171,10 @@ void Character::init()
     animPose.index = 17;
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
+    // enter-car
+    animPose.index = 18;
+    animPose.blendFactor = 0.0f;
+    m_animator->m_state.poses.push_back(animPose);
 
     // TODO:
     for (int i = 0; i < 13; i++)
@@ -202,7 +209,7 @@ void Character::update(float deltaTime)
 
     // update ragdoll
     m_ragdoll->update(deltaTime);
-    checkPhysicsStateChange();
+    // checkPhysicsStateChange();
     if (m_ragdollActive)
         m_ragdoll->syncToAnimation(m_position);
 
@@ -482,4 +489,170 @@ void Character::updateAimPoseBlendMask(float blendFactor)
     blendMask["mixamorig:RightHandPinky4"] = 1.0f;
 
     m_animator->m_animations[15]->setBlendMask(blendMask, 0.0f);
+}
+
+// TODO: move
+class MyContactResultCallback : public btCollisionWorld::ContactResultCallback
+{
+public:
+    CarController *m_controller = nullptr;
+
+    virtual btScalar addSingleResult(btManifoldPoint &cp,
+                                     const btCollisionObjectWrapper *colObj0Wrap,
+                                     int partId0,
+                                     int index0,
+                                     const btCollisionObjectWrapper *colObj1Wrap,
+                                     int partId1,
+                                     int index1) override
+    {
+        void *userPointer0 = colObj0Wrap->getCollisionObject()->getUserPointer();
+        void *userPointer1 = colObj1Wrap->getCollisionObject()->getUserPointer();
+
+        CarController *controller = dynamic_cast<CarController *>(static_cast<CarController *>(userPointer0));
+        if (!controller)
+            return 1.0f;
+
+        m_controller = controller;
+
+        return 0.0f;
+    }
+};
+
+void Character::cancelEnterCar()
+{
+    // TODO: can not called from playable_character
+    m_taskManager->interruptFollowPath(this);
+}
+
+// TODO: move
+// TODO: run in a thread
+void Character::enterNearestCar()
+{
+    // check if there is any car in a distance
+    btScalar radius = 30.0f;
+    btSphereShape queryShape(radius);
+
+    btTransform queryTransform;
+    queryTransform.setIdentity();
+    btVector3 position = BulletGLM::getBulletVec3(m_position);
+    queryTransform.setOrigin(position);
+
+    btCollisionObject queryObject;
+    queryObject.setCollisionShape(&queryShape);
+    queryObject.setWorldTransform(queryTransform);
+
+    btCollisionWorld *collisionWorld = m_physicsWorld->m_dynamicsWorld->getCollisionWorld();
+    MyContactResultCallback callback;
+    collisionWorld->contactTest(&queryObject, callback);
+
+    if (!callback.m_controller)
+    {
+        // std::cout << "enterNearestCar: no car found" << std::endl;
+        return;
+    }
+
+    // std::cout << "enterNearestCar: car found" << std::endl;
+
+    // find far distance
+    float carWidth = callback.m_controller->m_safeSize.x;
+    float carLenght = callback.m_controller->m_safeSize.y;
+    glm::vec2 doorOffset = callback.m_controller->m_doorOffset;
+
+    std::vector<glm::vec3> corners;
+    corners.push_back(CommonUtil::positionFromModel(callback.m_controller->translateOffset(glm::vec3(carWidth, 0.f, carLenght))));
+    corners.push_back(CommonUtil::positionFromModel(callback.m_controller->translateOffset(glm::vec3(-carWidth, 0.f, carLenght))));
+    corners.push_back(CommonUtil::positionFromModel(callback.m_controller->translateOffset(glm::vec3(-carWidth, 0.f, -carLenght))));
+    corners.push_back(CommonUtil::positionFromModel(callback.m_controller->translateOffset(glm::vec3(carWidth, 0.f, -carLenght))));
+    glm::vec3 frontDoor = CommonUtil::positionFromModel(callback.m_controller->translateOffset(glm::vec3(doorOffset.x, 0.f, doorOffset.y)));
+
+    float farthest = 0.f;
+    for (glm::vec3 &corner : corners)
+    {
+        float distance = glm::distance(corner, m_position);
+        if (distance > farthest)
+            farthest = distance;
+    }
+
+    // create jsp
+    int size = (ceil(farthest) + 2.f) * 2;
+
+    Vec2i dim(size, size);
+    JPS::Tmap data;
+    data.resize(dim.x() * dim.y(), 0);
+
+    glm::vec2 start((float)size / 2, (float)size / 2);
+
+    // TODO: other colliders
+    // insert car into map
+    std::vector<std::vector<glm::vec2>> points;
+    points.push_back(CommonUtil::getLinePoints(glm::vec2(corners[0].x, corners[0].z), glm::vec2(corners[1].x, corners[1].z)));
+    points.push_back(CommonUtil::getLinePoints(glm::vec2(corners[1].x, corners[1].z), glm::vec2(corners[2].x, corners[2].z)));
+    points.push_back(CommonUtil::getLinePoints(glm::vec2(corners[2].x, corners[2].z), glm::vec2(corners[3].x, corners[3].z)));
+    points.push_back(CommonUtil::getLinePoints(glm::vec2(corners[3].x, corners[3].z), glm::vec2(corners[0].x, corners[0].z)));
+
+    for (std::vector<glm::vec2> &pointList : points)
+    {
+        for (glm::vec2 &point : pointList)
+        {
+            glm::vec2 offset = point - glm::vec2(m_position.x, m_position.z);
+            glm::vec2 p = start + offset;
+            data[size * round(p.y) + round(p.x)] = 100;
+        }
+    }
+
+    // found the goal point
+    // find path
+    std::shared_ptr<JPS::OccMapUtil> map_util = std::make_shared<JPS::OccMapUtil>();
+    map_util->setMap(Vec2f(0, 0), dim, data, 1);
+
+    glm::vec2 offset = glm::vec2(frontDoor.x, frontDoor.z) - glm::vec2(m_position.x, m_position.z);
+    glm::vec2 offset2 = start + offset;
+    const Vec2f goal(offset2.x, offset2.y);
+
+    JPSPlanner2D planner(false);
+    planner.setMapUtil(map_util);
+    planner.updateMap();                                               // Set map, must be called before plan
+    bool valid = planner.plan(Vec2f(start.x, start.y), goal, 1, true); // Plan from start to goal with heuristic weight 1, using JPS
+    vec_Vec2f path = planner.getRawPath();
+
+    // TODO: optionally enable
+    // if (dmEnabled)
+    {
+        DMPlanner2D dmp(false);
+        dmp.setPotentialRadius(Vec2f(2.f, 2.f));
+        dmp.setSearchRadius(Vec2f(2.f, 2.f));
+        dmp.setMap(map_util, Vec2f(start.x, start.y));
+        bool valid = dmp.computePath(Vec2f(start.x, start.y), goal, path);
+        if (valid)
+            path = dmp.getRawPath();
+    }
+
+    PathResult result;
+    result.dim = dim;
+    result.data = data;
+    result.start = Vec2f(start.x, start.y);
+    result.startWorld = Vec2f(m_position.x, m_position.z);
+    result.goal = goal;
+    result.path = path;
+    result.empty = false;
+
+    // std::cout << "valid: " << valid << ", size: " << path.size() << std::endl;
+    // std::cout << "dim: (" << dim.x() << ", " << dim.y() << ")" << std::endl;
+    // std::cout << "start: (" << start.x << ", " << start.y << ")" << std::endl;
+    // std::cout << "goal: (" << goal.x() << ", " << goal.y() << ")" << std::endl;
+
+    m_lastCarEnterPath = result;
+
+    // create task
+    std::vector<glm::vec3> resultPath;
+    for (Vec2f &point : path)
+    {
+        glm::vec3 offset = glm::vec3(point.x(), 0.f, point.y()) - glm::vec3(start.x, 0, start.y);
+        resultPath.push_back(m_position + offset);
+    }
+
+    glm::vec3 doorDir = glm::normalize(corners[1] - corners[0]);
+    doorDir = glm::normalize(glm::vec3(doorDir.x, 0, doorDir.z));
+    FollowPath followPath(this, resultPath, doorDir);
+    m_taskManager->newFollowPath(followPath);
 }

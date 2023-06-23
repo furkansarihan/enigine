@@ -12,6 +12,8 @@ void CharacterUI::render()
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
     ImGui::Checkbox("m_drawBones", &m_drawBones);
+    ImGui::Checkbox("m_renderLastEnterPath", &m_renderLastEnterPath);
+    renderLastEnterCarPath();
     if (ImGui::CollapsingHeader("m_followOffsetNormal", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         ImGui::DragFloat("m_followOffsetNormalX", &m_character->m_followOffsetNormal.x, 0.1f);
@@ -159,6 +161,74 @@ void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string nam
         ImGui::DragFloat((name + nameLength + std::to_string(i)).c_str(), &point.lengthFactor, 0.1f);
         ImGui::Separator();
     }
+}
+
+void CharacterUI::renderLastEnterCarPath()
+{
+    if (!m_renderLastEnterPath || m_character->m_lastCarEnterPath.empty)
+        return;
+
+    ImGui::SetNextWindowSize(ImVec2(400, 400));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(200, 200, 200, 255));
+    ImGui::Begin("m_lastCarEnterPath");
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    PathResult &path = m_character->m_lastCarEnterPath;
+    int mapSize = path.dim.x();
+    float tileSize = windowSize.x / mapSize;
+
+    ImDrawList *drawList = ImGui::GetWindowDrawList();
+    ImVec2 startPos = ImGui::GetCursorScreenPos();
+
+    // TODO: setup once?
+    for (int y = 0; y < mapSize; ++y)
+    {
+        for (int x = 0; x < mapSize; ++x)
+        {
+            int index = y * mapSize + x;
+            ImVec2 rectMin = ImVec2(startPos.x + x * tileSize, startPos.y + y * tileSize);
+            ImVec2 rectMax = ImVec2(rectMin.x + tileSize, rectMin.y + tileSize);
+            ImU32 fillColor = (path.data[index] == 100) ? IM_COL32(0, 0, 0, 255) : IM_COL32(200, 200, 200, 255);
+            drawList->AddRectFilled(rectMin, rectMax, fillColor);
+        }
+    }
+    // path
+    int pathSize = path.path.size();
+    for (int i = 0; pathSize > 0 && i < pathSize - 1; ++i)
+    {
+        glm::vec2 first = glm::vec2(path.path[i].x(), path.path[i].y());
+        glm::vec2 second = glm::vec2(path.path[i + 1].x(), path.path[i + 1].y());
+        ImVec2 from = ImVec2(startPos.x + first.x * tileSize, startPos.y + first.y * tileSize);
+        ImVec2 to = ImVec2(startPos.x + second.x * tileSize, startPos.y + second.y * tileSize);
+        drawList->AddLine(from, to, IM_COL32(0, 255, 0, 255), 4.f);
+    }
+    for (int i = 0; i < pathSize; ++i)
+    {
+        ImVec2 pos(path.path[i].x(), path.path[i].y());
+        ImVec2 center = ImVec2(startPos.x + pos.x * tileSize, startPos.y + pos.y * tileSize);
+        drawList->AddCircleFilled(center, 4.f, IM_COL32(0, 100, 0, 255));
+    }
+    // start
+    {
+        ImVec2 pos(path.start.x(), path.start.y());
+        ImVec2 center = ImVec2(startPos.x + pos.x * tileSize, startPos.y + pos.y * tileSize);
+        drawList->AddCircleFilled(center, 4.f, IM_COL32(255, 0, 0, 255));
+    }
+    // goal
+    {
+        ImVec2 pos(path.goal.x(), path.goal.y());
+        ImVec2 center = ImVec2(startPos.x + pos.x * tileSize, startPos.y + pos.y * tileSize);
+        drawList->AddCircleFilled(center, 4.f, IM_COL32(0, 0, 255, 255));
+    }
+    // current pos
+    {
+        ImVec2 worldPos(m_character->m_position.x, m_character->m_position.z);
+        ImVec2 offset(worldPos.x - path.startWorld.x(), worldPos.y - path.startWorld.y());
+        ImVec2 pos((path.dim.x() / 2) + offset.x, (path.dim.y() / 2) + offset.y);
+        ImVec2 center = ImVec2(startPos.x + pos.x * tileSize, startPos.y + pos.y * tileSize);
+        drawList->AddCircleFilled(center, 6.f, IM_COL32(120, 120, 120, 255));
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
 }
 
 void renderQuaternion(const char *label, glm::quat &quaternion)

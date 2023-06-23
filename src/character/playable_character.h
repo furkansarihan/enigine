@@ -11,9 +11,10 @@
 class PCharacter : public Character
 {
 public:
-    PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
+    TaskManager *m_taskManager;
     SoundEngine *m_soundEngine;
     std::vector<Character *> m_npcList;
     ALuint m_fireSoundBuffer;
@@ -48,6 +49,9 @@ public:
     float m_fireLimit = 0.5f;
     float m_fireAnimStartTime = 1.f;
     int m_fireAnimTimeMilli = 100;
+
+    float m_lastCarEnterRequest = 0.f;
+    float m_carEnterRequestLimit = 1.f;
 
     void update(GLFWwindow *window, float deltaTime);
     void updatePistolModelMatrix();

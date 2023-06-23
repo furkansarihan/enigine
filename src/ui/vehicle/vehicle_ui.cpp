@@ -36,6 +36,8 @@ void VehicleUI::render()
     renderVec3("m_bodyRotation", m_cController->m_bodyRotation, 0.001f);
     renderVec3("m_hoodOffset", m_cController->m_hoodOffset, 0.01f);
     renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
+    renderVec2("m_safeSize", m_cController->m_safeSize, 0.01f);
+    renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
     renderCompoundShapeEditor("compound shapes", m_cController->m_vehicle->m_compoundShape);
     for (int i = 0; i < 4; i++)
         renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_cController->m_doorOffsets[i], 0.01f);
@@ -71,6 +73,15 @@ void VehicleUI::render()
         btVector3 interia;
         m_vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
         m_vehicle->m_carChassis->setMassProps(mass, interia);
+    }
+}
+
+void VehicleUI::renderVec2(const char *header, glm::vec2 &vec, float dragSpeed)
+{
+    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat((std::string(header) + "X").c_str(), &vec.x, dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Y").c_str(), &vec.y, dragSpeed);
     }
 }
 

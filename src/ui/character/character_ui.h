@@ -8,6 +8,7 @@
 #include "../../model/model.h"
 #include "../../character_controller/character_controller.h"
 #include "../../character/playable_character.h"
+#include "../../utils/common.h"
 
 class CharacterUI : public BaseUI
 {
@@ -50,9 +51,11 @@ public:
     std::vector<std::string> m_bones;
     float m_boneScale = 5.f;
     bool m_drawBones = false;
+    bool m_renderLastEnterPath = true;
 
     void render() override;
     void renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string name);
+    void renderLastEnterCarPath();
     void drawArmatureBones(Character &character, Shader &simpleShader, Model &model, glm::mat4 viewProjection);
 };
 

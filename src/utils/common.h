@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include <mach/mach.h>
 
 #include <GL/glew.h>
@@ -77,11 +78,45 @@ public:
         return result;
     }
 
-    static glm::vec2 cubicBezier(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, double t)
+    static inline glm::vec2 cubicBezier(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, double t)
     {
         double x = pow(1 - t, 3) * p0.x + 3 * t * pow(1 - t, 2) * p1.x + 3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x;
         double y = pow(1 - t, 3) * p0.y + 3 * t * pow(1 - t, 2) * p1.y + 3 * pow(t, 2) * (1 - t) * p2.y + pow(t, 3) * p3.y;
         return glm::vec2(x, y);
+    }
+
+    // Bresenham's line
+    static inline std::vector<glm::vec2> getLinePoints(glm::vec2 from, glm::vec2 to)
+    {
+        std::vector<glm::vec2> points;
+        int x0 = from.x;
+        int y0 = from.y;
+        int x1 = to.x;
+        int y1 = to.y;
+
+        int dx = abs(x1 - x0);
+        int dy = abs(y1 - y0);
+        int sgnX = x0 < x1 ? 1 : -1;
+        int sgnY = y0 < y1 ? 1 : -1;
+        int e = 0;
+        for (int i = 0; i < dx + dy; i++)
+        {
+            points.push_back(glm::vec2(x0, y0));
+            int e1 = e + dy;
+            int e2 = e - dx;
+            if (abs(e1) < abs(e2))
+            {
+                x0 += sgnX;
+                e = e1;
+            }
+            else
+            {
+                y0 += sgnY;
+                e = e2;
+            }
+        }
+
+        return points;
     }
 
     static glm::vec3 positionFromModel(glm::mat4 model)

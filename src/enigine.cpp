@@ -176,9 +176,12 @@ int main(int argc, char **argv)
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // Task manager
+    TaskManager taskManager;
+
     // Characters
-    NPCharacter npc1(&resourceManager, &physicsWorld, &editorCamera);
-    PCharacter character(&soundEngine, &resourceManager, &physicsWorld, &editorCamera);
+    NPCharacter npc1(&taskManager, &resourceManager, &physicsWorld, &editorCamera);
+    PCharacter character(&taskManager, &soundEngine, &resourceManager, &physicsWorld, &editorCamera);
 
     editorCamera.position = npc1.m_position + glm::vec3(0.f, -1.f, 10.f);
 
@@ -188,11 +191,8 @@ int main(int argc, char **argv)
 
     character.m_npcList.push_back(&npc1);
 
-    // Task manager
-    TaskManager taskManager;
-
     FollowTask followTask1(&npc1, &character);
-    taskManager.m_tasks.push_back(&followTask1);
+    // taskManager.m_tasksFollowCharacter.push_back(followTask1);
 
     // Time
     float deltaTime = 0.0f;                 // Time between current frame and last frame
@@ -209,8 +209,11 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Vehicle
-    CarController car(&physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(40.f, 5.f, 40.f));
+    CarController car(&physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(10.f, 5.f, 10.f));
     Vehicle &vehicle = *car.m_vehicle;
+    // TODO: vehicle state
+    vehicle.m_vehicle->setBrake(100, 0);
+    vehicle.m_vehicle->setBrake(100, 1);
     glfwSetWindowUserPointer(window, &car);
     glfwSetKeyCallback(window, car.staticKeyCallback);
 

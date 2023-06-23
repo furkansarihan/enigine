@@ -4,6 +4,7 @@ CarController::CarController(PhysicsWorld *physicsWorld, ResourceManager *resour
     : m_followCamera(followCamera)
 {
     m_vehicle = new Vehicle(physicsWorld, resourceManager, position);
+    m_vehicle->m_carChassis->setUserPointer(this);
 
     m_exhausParticle = new ParticleEngine(followCamera);
     m_exhausParticle->m_particlesPerSecond = 100.f;
@@ -137,4 +138,15 @@ void CarController::updateExhaust(GLFWwindow *window, float deltaTime)
         particlesPerSecond = (1.f - m_vehicle->m_speed / maxSpeed) * maxParticlesPerSecond;
 
     m_exhausParticle->m_particlesPerSecond = particlesPerSecond;
+}
+
+glm::mat4 CarController::translateOffset(glm::vec3 offset)
+{
+    glm::mat4 model = m_vehicle->m_chassisModel;
+    model = glm::translate(model, offset);
+    model = glm::rotate(model, m_exhaustRotation.x, glm::vec3(1, 0, 0));
+    model = glm::rotate(model, m_exhaustRotation.y, glm::vec3(0, 1, 0));
+    model = glm::rotate(model, m_exhaustRotation.z, glm::vec3(0, 0, 1));
+    model = model * m_carModel;
+    return model;
 }

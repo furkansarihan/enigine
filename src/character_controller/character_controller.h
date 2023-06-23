@@ -68,6 +68,7 @@ public:
     bool m_running = false;
     bool m_turning = false;
     bool m_aimLocked = false;
+    bool m_rotate = false;
 
     glm::vec3 m_lookDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
     glm::vec3 m_refFront = glm::vec3(0.0f, 0.0f, 1.0f);

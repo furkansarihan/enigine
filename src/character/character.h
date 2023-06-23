@@ -13,6 +13,9 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include "btBulletDynamicsCommon.h"
 
+#include "../external/jps3d/include/jps_planner/jps_planner/jps_planner.h"
+#include "../external/jps3d/include/jps_planner/distance_map_planner/distance_map_planner.h"
+
 #include "../camera/camera.h"
 #include "../model/model.h"
 #include "../ragdoll/ragdoll.h"
@@ -22,10 +25,26 @@
 #include "../utils/bullet_glm.h"
 #include "../shader_manager/shader_manager.h"
 #include "../resource_manager/resource_manager.h"
+#include "../car_controller/car_controller.h"
+class TaskManager;
+#include "../task_manager/task_manager.h"
+#include "../character_task/follow_path.h"
+
+struct PathResult
+{
+    bool empty = true;
+    Vec2i dim;
+    JPS::Tmap data;
+    Vec2f start;
+    Vec2f startWorld;
+    Vec2f goal;
+    vec_Vec2f path;
+};
 
 class Character
 {
 public:
+    TaskManager *m_taskManager;
     ResourceManager *m_resourceManager;
     ShaderManager *m_shaderManager;
     PhysicsWorld *m_physicsWorld;
@@ -35,6 +54,7 @@ public:
     Ragdoll *m_ragdoll;
     btRigidBody *m_rigidbody;
     Model *m_model;
+    PathResult m_lastCarEnterPath;
 
     // TODO: transformation struct
     glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
@@ -66,7 +86,7 @@ public:
     float m_ragdolActivateFactor = 0.1f;
     float m_stateChangeSpeed = 10.f;
 
-    Character(ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    Character(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);
@@ -78,6 +98,8 @@ public:
     AnimPose &getAimPose();
     AnimPose &getFiringPose();
     void updateAimPoseBlendMask(float blendFactor);
+    void enterNearestCar();
+    void cancelEnterCar();
 };
 
 #endif /* character_hpp */

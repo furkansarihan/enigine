@@ -41,7 +41,7 @@ struct Follow
 class CarController
 {
 public:
-    CarController(PhysicsWorld * physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
+    CarController(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
     ~CarController();
 
     Vehicle *m_vehicle;
@@ -63,6 +63,10 @@ public:
     glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
     glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
 
+    // entering to car
+    glm::vec2 m_safeSize = glm::vec2(1.f, 3.f);
+    glm::vec2 m_doorOffset = glm::vec2(3.f, 0.f);
+
     bool m_controlVehicle = false;
     bool m_followVehicle = false;
 
@@ -73,6 +77,7 @@ public:
 
     void update(GLFWwindow *window, float deltaTime);
     void updateExhaust(GLFWwindow *window, float deltaTime);
+    glm::mat4 translateOffset(glm::vec3 offset);
     void updateModels();
     void followCar();
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);

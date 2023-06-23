@@ -1,7 +1,7 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(resourceManager, physicsWorld, followCamera),
+PCharacter::PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(taskManager, resourceManager, physicsWorld, followCamera),
       m_soundEngine(soundEngine)
 {
     try
@@ -65,7 +65,17 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     updatePistolModelMatrix();
 
     if (m_controlCharacter)
+    {
         m_controller->recieveInput(window, deltaTime);
+        bool anyInput = m_controller->m_actionState.forward ||
+                        m_controller->m_actionState.backward ||
+                        m_controller->m_actionState.left ||
+                        m_controller->m_actionState.right ||
+                        m_controller->m_actionState.jump;
+        // TODO: better way?
+        if (anyInput)
+            cancelEnterCar();
+    }
     if (m_followCharacter)
     {
         m_followOffsetTarget = m_controller->m_aimLocked ? m_followOffsetAim : m_followOffsetNormal;
@@ -105,13 +115,22 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
 
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
-        m_controller->m_aimLocked = false;
+        float now = (float)glfwGetTime();
+        if (now - m_lastCarEnterRequest > m_carEnterRequestLimit)
+        {
+            m_lastCarEnterRequest = now;
+            enterNearestCar();
+        }
     }
 
+    // TODO: single key event
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
         m_controller->m_aimLocked = true;
+        cancelEnterCar();
     }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+        m_controller->m_aimLocked = false;
 }
 
 void PCharacter::updatePistolModelMatrix()

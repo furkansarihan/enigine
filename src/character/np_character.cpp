@@ -1,7 +1,7 @@
 #include "np_character.h"
 
-NPCharacter::NPCharacter(ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(resourceManager, physicsWorld, followCamera)
+NPCharacter::NPCharacter(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(taskManager, resourceManager, physicsWorld, followCamera)
 {
 }
 

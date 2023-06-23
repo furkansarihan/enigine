@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+class Character;
+class NPCharacter;
+class PCharacter;
 #include "../character/character.h"
 
 class FollowTask
