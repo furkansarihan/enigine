@@ -32,13 +32,13 @@ public:
     float m_Duration;
     float m_playbackSpeed = 1.f;
     int m_TicksPerSecond;
-    AnimationType m_animType;
-    std::unordered_map<std::string, Bone*> m_bones;
+    bool m_timed = false;
+    std::unordered_map<std::string, Bone *> m_bones;
     AssimpNodeData m_RootNode;
     std::map<std::string, BoneInfo> m_BoneInfoMap;
     std::unordered_map<std::string, float> m_blendMask;
 
-    Animation(const std::string &animationName, Model *model, AnimationType animType = AnimationType::Cycle);
+    Animation(const std::string &animationName, Model *model, bool timed = false);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);

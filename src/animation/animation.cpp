@@ -2,9 +2,9 @@
 
 #include "animation.h"
 
-Animation::Animation(const std::string &animationName, Model *model, AnimationType animType)
+Animation::Animation(const std::string &animationName, Model *model, bool timed)
     : m_name(animationName),
-      m_animType(animType)
+      m_timed(timed)
 {
     const aiScene *scene = model->m_scene;
     assert(scene && scene->mRootNode);
@@ -84,7 +84,7 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
             boneCount++;
         }
 
-        Bone *bone = new Bone(boneName, boneInfoMap[boneName].id, channel, m_animType);
+        Bone *bone = new Bone(boneName, boneInfoMap[boneName].id, channel);
         m_bones[boneName] = bone;
     }
 

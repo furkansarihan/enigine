@@ -23,6 +23,7 @@ struct AnimPose
 {
     int index;
     float blendFactor;
+    float time = 0.f;
 };
 
 struct AnimatorState

@@ -22,12 +22,6 @@ struct KeyQuat
     glm::quat value;
 };
 
-enum AnimationType
-{
-    Cycle,
-    Pose
-};
-
 class Bone
 {
 public:
@@ -44,10 +38,9 @@ public:
     std::string m_name;
     int m_ID;
 
-    AnimationType m_animType;
     float m_blendFactor = 1.0f;
 
-    Bone(const std::string &name, int ID, const aiNodeAnim *channel, AnimationType m_animType);
+    Bone(const std::string &name, int ID, const aiNodeAnim *channel);
     ~Bone();
     void update(float animationTime);
     void updatePose();

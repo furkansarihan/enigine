@@ -6,10 +6,9 @@
 
 #include "bone.h"
 
-Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel, AnimationType animType)
+Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
     : m_name(name),
       m_ID(ID),
-      m_animType(animType),
       m_translation(1.0f),
       m_rotation(glm::vec3(1.0f)),
       m_scale(1.0f)
@@ -53,7 +52,7 @@ Bone::~Bone()
 // TODO: snap to keyframe
 void Bone::update(float animationTime)
 {
-    if (m_animType == AnimationType::Pose)
+    if (animationTime == 0.f)
         updatePose();
     else
         updateCycle(animationTime);
