@@ -35,18 +35,19 @@ public:
     float m_moveForce = 4500.0f;
     float m_jumpForce = 300.0f;
     float m_speedAtJumpStart = 0.0f;
-    float m_walkToRunAnimTreshold = 0.8f;
+    float m_walkToRunAnimThreshold = 0.8f;
     float m_toIdleForce = 2250.0f;
     float m_toIdleForceHoriz = 900.0f;
     float m_elevationDistance = 0.0f;
     float m_worldElevation = 0.0f;
-    float m_groundTreshold = 0.2f;
+    float m_groundThreshold = 0.2f;
     float m_floatElevation = 0.05f;
     // turn
-    float m_turnTreshold = 0.01f;
+    float m_turnThreshold = 0.01f;
     float m_turnForce = 0.2f;
     float m_turnAnimForce = 0.1f;
     float m_turnFactor = 0.0f;
+    float m_minTurnFactor = 0.03f;
     float m_det = 0.0f;
     float m_turnTarget = 0.0f;
     float m_turnAnimMaxFactor = 0.4f;
@@ -59,6 +60,8 @@ public:
     btVector3 m_verticalVelocity;
     float m_verticalSpeed;
     float m_horizontalSpeed;
+
+    float m_walkFactor = 1.f;
 
     ActionState m_actionState;
     bool m_moving = false;

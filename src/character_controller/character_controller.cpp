@@ -73,7 +73,7 @@ void CharacterController::update(float deltaTime)
     this->updateElevation();
     this->updateVelocity();
 
-    m_onGround = m_elevationDistance < (m_halfHeight + m_groundTreshold);
+    m_onGround = m_elevationDistance < (m_halfHeight + m_groundThreshold);
 
     if (m_elevationDistance > prevElevation + 1.0f)
     {
@@ -152,15 +152,15 @@ void CharacterController::update(float deltaTime)
     float normalizedDistance = 1.f;
     if (m_moving || m_aimLocked || m_rotate)
     {
-        float distance = glm::distance(m_lookDir, lookTarget);
+        float distance = std::abs(glm::distance(m_lookDir, lookTarget));
         // avoid 180 degree
-        if (distance == 2.0f)
+        if (distance > 1.9f)
         {
             lookTarget = glm::rotateY(lookTarget, (float)M_PI_4);
-            distance = glm::distance(m_lookDir, lookTarget);
+            distance = std::abs(glm::distance(m_lookDir, lookTarget));
         }
 
-        m_turning = distance > m_turnTreshold;
+        m_turning = distance > m_turnThreshold;
         normalizedDistance = ((2.0f - distance) / 2.0f);
         m_turnTarget = (1.0f - normalizedDistance) * m_turnAnimMaxFactor;
 
@@ -173,7 +173,10 @@ void CharacterController::update(float deltaTime)
             m_det = glm::determinant(mat);
             m_turnTarget *= m_det > 0.0f ? 1.0f : -1.0f;
 
-            m_lookDir = glm::normalize(glm::mix(m_lookDir, lookTarget, m_turnForce * glm::abs(m_turnFactor)));
+            float factor = m_turnForce * glm::abs(m_turnFactor);
+            if (factor < m_minTurnFactor)
+                factor = m_minTurnFactor;
+            m_lookDir = glm::normalize(glm::mix(m_lookDir, lookTarget, factor));
         }
         else
             m_lookDir = lookTarget;
@@ -219,7 +222,7 @@ void CharacterController::update(float deltaTime)
         bool moveBlocked = false;
         if (m_jumping && m_verticalSpeed > m_speedAtJumpStart)
             moveBlocked = true;
-        else if (!m_running && m_verticalSpeed > m_maxWalkRelative)
+        else if (!m_running && m_verticalSpeed > m_maxWalkRelative * m_walkFactor)
             moveBlocked = true;
         else if (m_running && m_verticalSpeed > m_maxRunRelative)
             moveBlocked = true;

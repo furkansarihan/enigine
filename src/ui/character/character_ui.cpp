@@ -65,6 +65,7 @@ void CharacterUI::render()
     ImGui::Text("m_turnFactor: %.3f", m_controller->m_turnFactor);
     ImGui::Text("m_signedMoveAngle: %.3f", m_controller->m_signedMoveAngle);
     ImGui::Text("m_dotFront: %.3f", m_controller->m_dotFront);
+    ImGui::DragFloat("m_minTurnFactor", &m_controller->m_minTurnFactor, 0.001f, 0.f, 1.f);
     ImGui::DragFloat("m_moveAngleForce", &m_controller->m_moveAngleForce, 0.1f, 0);
     ImGui::DragFloat("m_blendSpeed", &m_character->m_blendSpeed, 0.1f, 0);
     ImGui::DragFloat("m_turnAnimMult", &m_controller->m_turnAnimMult, 0.1f, 0);
@@ -82,12 +83,14 @@ void CharacterUI::render()
     ImGui::DragFloat("m_turnForce", &m_controller->m_turnForce, 0.001f, 0);
     ImGui::DragFloat("m_toIdleForce", &m_controller->m_toIdleForce, 0.1f, 0);
     ImGui::DragFloat("m_toIdleForceHoriz", &m_controller->m_toIdleForceHoriz, 0.1f, 0);
-    ImGui::DragFloat("m_groundTreshold", &m_controller->m_groundTreshold, 0.1f, 0);
-    ImGui::DragFloat("m_turnTreshold", &m_controller->m_turnTreshold, 0.001f, 0);
-    ImGui::DragFloat("m_walkToRunAnimTreshold", &m_controller->m_walkToRunAnimTreshold, 0.1f, 0);
+    ImGui::DragFloat("m_groundThreshold", &m_controller->m_groundThreshold, 0.1f, 0);
+    ImGui::DragFloat("m_turnThreshold", &m_controller->m_turnThreshold, 0.001f, 0);
+    ImGui::DragFloat("m_walkToRunAnimThreshold", &m_controller->m_walkToRunAnimThreshold, 0.1f, 0);
     ImGui::DragFloat("m_turnAnimForce", &m_controller->m_turnAnimForce, 0.01f, 0);
     ImGui::DragFloat("m_turnAnimMaxFactor", &m_controller->m_turnAnimMaxFactor, 0.1f, 0);
     ImGui::DragFloat("m_floatElevation", &m_controller->m_floatElevation, 0.001f, 0);
+    ImGui::DragFloat("m_rotation.x", &m_character->m_rotation.x, 0.1f);
+    ImGui::DragFloat("m_rotation.z", &m_character->m_rotation.z, 0.1f);
     float gravityY = m_rb->getGravity().getY();
     if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
     {
