@@ -4,12 +4,13 @@
 #include <iostream>
 #include <string>
 
+#include "character_task.h"
 class Character;
 class NPCharacter;
 class PCharacter;
 #include "../character/character.h"
 
-class FollowTask
+class FollowTask : public CharacterTask
 {
 public:
     FollowTask(Character *source, Character *destination);
@@ -18,7 +19,8 @@ public:
     Character *m_source;
     Character *m_destination;
 
-    void update();
+    void interrupt();
+    bool update();
 };
 
 #endif /* follow_task_hpp */

@@ -75,6 +75,7 @@ add_executable( enigine
                 src/car_controller/car_controller.cpp
                 src/task_manager/task_manager.h
                 src/task_manager/task_manager.cpp
+                src/character_task/character_task.h
                 src/character_task/follow_task.h
                 src/character_task/follow_task.cpp
                 src/character_task/follow_path.h

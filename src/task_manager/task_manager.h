@@ -4,11 +4,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stack>
 
-class FollowTask;
-#include "../character_task/follow_task.h"
-class FollowPath;
-#include "../character_task/follow_path.h"
+#include "../character_task/character_task.h"
 
 class TaskManager
 {
@@ -16,12 +14,17 @@ public:
     TaskManager();
     ~TaskManager();
 
-    std::vector<FollowTask> m_tasksFollowCharacter;
-    std::vector<FollowPath> m_tasksFollowPath;
-
     void update();
-    void newFollowPath(FollowPath &followPath);
-    void interruptFollowPath(void *character);
+    void addTask(CharacterTask *task);
+    void addTaskStack(std::stack<CharacterTask *> taskStack);
+    std::vector<CharacterTask *> getTaskPointers(std::function<bool(CharacterTask *)> callback) const;
+
+private:
+    std::vector<CharacterTask *> m_tasks;
+    std::vector<std::stack<CharacterTask *>> m_taskStacks;
+
+    void updateTasks(std::vector<CharacterTask *> &list);
+    void updateTaskStacks();
 };
 
 #endif /* task_manager_hpp */

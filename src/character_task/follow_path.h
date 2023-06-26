@@ -4,12 +4,13 @@
 #include <iostream>
 #include <string>
 
+#include "character_task.h"
 class Character;
 class NPCharacter;
 class PCharacter;
 #include "../character/character.h"
 
-class FollowPath
+class FollowPath : public CharacterTask
 {
 public:
     FollowPath(Character *source, std::vector<glm::vec3> path, glm::vec3 lookDir);
@@ -22,8 +23,8 @@ public:
     bool m_positionReady = false;
     bool m_orientationReady = false;
 
-    void exit();
-    void update();
+    void interrupt();
+    bool update();
     bool follow(glm::vec3 point);
 };
 

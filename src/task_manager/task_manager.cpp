@@ -10,40 +10,89 @@ TaskManager::~TaskManager()
 
 void TaskManager::update()
 {
-    for (int i = 0; i < m_tasksFollowCharacter.size(); i++)
-        m_tasksFollowCharacter[i].update();
-
-    for (int i = 0; i < m_tasksFollowPath.size(); i++)
-        m_tasksFollowPath[i].update();
+    updateTasks(m_tasks);
+    updateTaskStacks();
 }
 
-void TaskManager::newFollowPath(FollowPath &followPath)
+void TaskManager::updateTasks(std::vector<CharacterTask *> &list)
 {
-    for (int i = 0; i < m_tasksFollowPath.size(); i++)
+    for (int i = 0; i < list.size(); i++)
     {
-        if (m_tasksFollowPath[i].m_source == followPath.m_source)
-            m_tasksFollowPath[i] = followPath;
+        if (!list[i])
+        {
+            list.erase(list.begin() + i);
+            --i;
+            continue;
+        }
+
+        bool result = list[i]->update();
+
+        if (result)
+        {
+            delete list[i];
+            list.erase(list.begin() + i);
+            --i;
+        }
+    }
+}
+
+void TaskManager::updateTaskStacks()
+{
+    for (int i = 0; i < m_taskStacks.size(); i++)
+    {
+        std::stack<CharacterTask *> &taskStack = m_taskStacks[i];
+
+        if (taskStack.size() == 0)
+        {
+            m_taskStacks.erase(m_taskStacks.begin() + i);
+            --i;
+            continue;
+        }
+
+        CharacterTask *task = taskStack.top();
+        bool result = task->update();
+
+        if (result)
+        {
+            delete task;
+            taskStack.pop();
+        }
+    }
+}
+
+void TaskManager::addTask(CharacterTask *task)
+{
+    m_tasks.push_back(task);
+}
+
+void TaskManager::addTaskStack(std::stack<CharacterTask *> taskStack)
+{
+    m_taskStacks.push_back(taskStack);
+}
+
+// TODO: O(n)
+std::vector<CharacterTask *> TaskManager::getTaskPointers(std::function<bool(CharacterTask *)> callback) const
+{
+    std::vector<CharacterTask *> taskPointers;
+
+    for (CharacterTask *task : m_tasks)
+    {
+        if (callback(task))
+            taskPointers.push_back(task);
     }
 
-    m_tasksFollowPath.push_back(followPath);
-}
-
-// TODO: O(1)
-void TaskManager::interruptFollowPath(void *character)
-{
-    int index = -1;
-    for (int i = 0; i < m_tasksFollowPath.size(); i++)
+    for (const std::stack<CharacterTask *> &stack : m_taskStacks)
     {
-        if (m_tasksFollowPath[i].m_source == character)
+        std::stack<CharacterTask *> tempStack = stack;
+        while (!tempStack.empty())
         {
-            index = i;
-            break;
+            CharacterTask *task = tempStack.top();
+            if (callback(task))
+                taskPointers.push_back(task);
+
+            tempStack.pop();
         }
     }
 
-    if (index != -1)
-    {
-        m_tasksFollowPath[index].exit();
-        m_tasksFollowPath.erase(m_tasksFollowPath.begin() + index);
-    }
+    return taskPointers;
 }
