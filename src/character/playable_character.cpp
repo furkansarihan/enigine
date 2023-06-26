@@ -37,6 +37,9 @@ PCharacter::PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, Resou
     m_muzzleFlash->m_minDuration = 0.2f;
     m_muzzleFlash->m_maxDuration = 0.6f;
     m_muzzleFlash->m_particleScale = 0.15f;
+
+    m_controlCharacter = true;
+    m_followCharacter = true;
 }
 
 PCharacter::~PCharacter()
@@ -116,10 +119,21 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
         float now = (float)glfwGetTime();
-        if (now - m_lastCarEnterRequest > m_carEnterRequestLimit)
+        if (passengerInfo.state == PassengerState::outside)
         {
-            m_lastCarEnterRequest = now;
-            enterNearestCar();
+            if (now - m_lastCarRequest > m_carRequestLimit)
+            {
+                m_lastCarRequest = now;
+                enterNearestCar();
+            }
+        }
+        else if (passengerInfo.state == PassengerState::inside)
+        {
+            if (now - m_lastCarRequest > m_carRequestLimit)
+            {
+                m_lastCarRequest = now;
+                exitFromCar();
+            }
         }
     }
 

@@ -1,0 +1,121 @@
+#include "enter_car.h"
+
+EnterCar::EnterCar(Character *character, CarController *car)
+    : m_character(character),
+      m_car(car)
+{
+}
+
+EnterCar::~EnterCar()
+{
+}
+
+void EnterCar::interrupt()
+{
+    m_interrupted = true;
+
+    m_car->m_controlVehicle = false;
+    m_car->m_followVehicle = false;
+    m_character->activateCollider();
+    m_character->m_controlCharacter = true;
+    m_character->m_followCharacter = true;
+    m_character->m_controller->m_rotate = false;
+    m_character->m_syncPositionFromPhysics = true;
+    m_character->passengerInfo.state = PassengerState::outside;
+    m_character->passengerInfo.car = nullptr;
+
+    // TODO: animation adaptation
+    AnimPose &animPose = m_character->getEnterCarAnim();
+    animPose.blendFactor = 0.f;
+}
+
+// TODO: animation adaptation for car distance
+// TODO: interrupt - check distance
+bool EnterCar::update()
+{
+    if (m_interrupted)
+        return true;
+
+    // TODO: better way?
+    if (m_character->passengerInfo.exitRequested)
+    {
+        // std::cout << "EnterCar::update: exitRequested" << std::endl;
+        m_character->passengerInfo.exitRequested = false;
+        return true;
+    }
+
+    if (!m_firstUpdate)
+    {
+        // std::cout << "EnterCar::update: m_firstUpdate" << std::endl;
+        m_character->m_animator->setAnimTime(18, 0.f);
+        m_character->m_syncPositionFromPhysics = false;
+        m_character->m_controller->m_rotate = true;
+        m_character->inactivateCollider();
+        m_firstUpdate = true;
+    }
+
+    AnimPose &animPose = m_character->getEnterCarAnim();
+    animPose.blendFactor += m_stateChangeSpeed;
+    animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
+
+    // TODO: check if anim played - stop at the end
+    float animTime = m_character->m_animator->m_animations[18]->m_Duration;
+    if (!m_sitting)
+    {
+        // TODO: better end detection?
+        m_sitting = m_character->m_animator->m_timers[18] >= animTime - 34.f;
+        if (m_sitting)
+        {
+            m_car->m_controlVehicle = true;
+            m_car->m_followVehicle = true;
+            m_character->m_controlCharacter = false;
+            m_character->m_followCharacter = false;
+            m_character->passengerInfo.state = PassengerState::inside;
+            m_character->passengerInfo.car = m_car;
+        }
+    }
+    else
+    {
+        m_character->m_animator->m_animations[18]->m_timed = true;
+        animPose.time = animTime - 34.f;
+    }
+
+    updateRefValues();
+
+    if (m_positionReached)
+        m_character->m_position = m_refPos;
+    else
+    {
+        // TODO: curve
+        m_character->m_position = glm::mix(m_character->m_position, m_refPos, m_posFactor);
+        float distance = std::abs(glm::distance(m_character->m_position, m_refPos));
+        m_positionReached = distance < 0.03f;
+    }
+
+    if (m_rotationReached)
+        m_character->m_controller->m_lookDir = m_lookDir;
+    else
+    {
+        m_character->m_controller->m_refFront = m_lookDir;
+        m_character->m_controller->m_refRight = glm::cross(m_lookDir, glm::vec3(0.f, 1.f, 0.f));
+
+        float distance = std::abs(glm::distance(m_character->m_controller->m_lookDir, m_lookDir));
+
+        m_rotationReached = distance < 0.01f;
+    }
+
+    return false;
+}
+
+void EnterCar::updateRefValues()
+{
+    glm::vec3 doorOffset = m_car->m_animDoorOffset;
+
+    glm::vec3 corner0 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(1.f, 0.f, 0.f)));
+    glm::vec3 corner1 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(-1.f, 0.f, 0.f)));
+    glm::vec3 doorDir = glm::normalize(corner1 - corner0);
+
+    m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(doorOffset));
+    // m_refPos.y = m_character->m_position.y;
+    m_lookDir = glm::normalize(glm::vec3(doorDir.x, doorDir.y, doorDir.z));
+}

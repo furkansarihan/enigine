@@ -80,6 +80,10 @@ add_executable( enigine
                 src/character_task/follow_task.cpp
                 src/character_task/follow_path.h
                 src/character_task/follow_path.cpp
+                src/character_task/enter_car.h
+                src/character_task/enter_car.cpp
+                src/character_task/exit_car.h
+                src/character_task/exit_car.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

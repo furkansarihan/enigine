@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <stack>
 #include <future>
 #include <atomic>
 #include <chrono>
@@ -29,6 +30,8 @@
 class TaskManager;
 #include "../task_manager/task_manager.h"
 #include "../character_task/follow_path.h"
+#include "../character_task/enter_car.h"
+#include "../character_task/exit_car.h"
 
 struct PathResult
 {
@@ -39,6 +42,21 @@ struct PathResult
     Vec2f startWorld;
     Vec2f goal;
     vec_Vec2f path;
+};
+
+enum PassengerState
+{
+    outside,
+    entering,
+    inside,
+    exiting
+};
+
+struct PassengerInfo
+{
+    PassengerState state = PassengerState::outside;
+    bool exitRequested = false;
+    CarController *car = nullptr;
 };
 
 class Character
@@ -55,6 +73,8 @@ public:
     btRigidBody *m_rigidbody;
     Model *m_model;
     PathResult m_lastCarEnterPath;
+    PassengerInfo passengerInfo;
+    bool m_syncPositionFromPhysics = true;
 
     // TODO: transformation struct
     glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
@@ -82,9 +102,12 @@ public:
     // ragdoll
     bool m_ragdollActive = false;
     float m_impulseStrength = 600.f;
-    float m_ragdolActivateTreshold = 3000.f;
+    float m_ragdolActivateThreshold = 3000.f;
     float m_ragdolActivateFactor = 0.1f;
     float m_stateChangeSpeed = 10.f;
+
+    bool m_controlCharacter = false;
+    bool m_followCharacter = false;
 
     Character(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
@@ -93,13 +116,17 @@ public:
     void interpolateBlendTargets();
     void activateRagdoll(glm::vec3 impulse);
     void resetRagdoll();
+    void activateCollider();
+    void inactivateCollider();
     void checkPhysicsStateChange();
     AnimPose &getRagdolPose();
     AnimPose &getAimPose();
     AnimPose &getFiringPose();
+    AnimPose &getEnterCarAnim();
     void updateAimPoseBlendMask(float blendFactor);
     void enterNearestCar();
     void cancelEnterCar();
+    void exitFromCar();
 };
 
 #endif /* character_hpp */

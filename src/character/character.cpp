@@ -16,8 +16,8 @@ void Character::init()
     m_model = m_resourceManager->getModel("../src/assets/gltf/char6.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
-    Animation *animation2 = new Animation("left", m_model, AnimationType::Pose);
-    Animation *animation3 = new Animation("right", m_model, AnimationType::Pose);
+    Animation *animation2 = new Animation("left", m_model, true);
+    Animation *animation3 = new Animation("right", m_model, true);
     Animation *animation4 = new Animation("running-forward", m_model);
     Animation *animation5 = new Animation("walking-left", m_model);
     Animation *animation6 = new Animation("walking-right", m_model);
@@ -29,11 +29,11 @@ void Character::init()
     Animation *animation12 = new Animation("walking-back-right", m_model);
     Animation *animation13 = new Animation("running-back-left", m_model);
     Animation *animation14 = new Animation("running-back-right", m_model);
-    Animation *animation15 = new Animation("pistol-aim-1", m_model, AnimationType::Pose);
+    Animation *animation15 = new Animation("pistol-aim-1", m_model, true);
     // TODO: create empty at runtime?
-    Animation *animationRagdoll = new Animation("pose", m_model, AnimationType::Pose);
-    Animation *animation17 = new Animation("firing", m_model, AnimationType::Pose);
-    Animation *animation18 = new Animation("enter-car", m_model);
+    Animation *animationRagdoll = new Animation("pose", m_model, true);
+    Animation *animation17 = new Animation("firing", m_model, true);
+    Animation *animation18 = new Animation("enter-car-3", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -234,10 +234,13 @@ void Character::update(float deltaTime)
     // sync animator with controller
     if (m_rigidbody && m_rigidbody->getMotionState() && !m_ragdollActive)
     {
-        btTransform trans;
-        m_rigidbody->getMotionState()->getWorldTransform(trans);
-        m_position = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
-        m_position -= glm::vec3(0, m_controller->m_halfHeight, 0);
+        if (m_syncPositionFromPhysics)
+        {
+            btTransform trans;
+            m_rigidbody->getMotionState()->getWorldTransform(trans);
+            m_position = glm::vec3(float(trans.getOrigin().getX()), float(trans.getOrigin().getY()), float(trans.getOrigin().getZ()));
+            m_position -= glm::vec3(0, m_controller->m_halfHeight, 0);
+        }
         m_rotation.y = glm::atan(m_controller->m_lookDir.x, m_controller->m_lookDir.z);
 
         float front = 0.f;
@@ -297,7 +300,7 @@ void Character::update(float deltaTime)
         m_blendTargets[11] = 0.f; // run-back-left
         m_blendTargets[12] = 0.f; // run-back-right
 
-        float maxWalkSpeed = m_controller->m_maxWalkRelative + m_controller->m_walkToRunAnimTreshold;
+        float maxWalkSpeed = m_controller->m_maxWalkRelative + m_controller->m_walkToRunAnimThreshold;
         if (m_controller->m_verticalSpeed > maxWalkSpeed)
         {
             float runnningGap = m_controller->m_maxRunRelative - maxWalkSpeed;
@@ -389,9 +392,7 @@ void Character::interpolateBlendTargets()
 
 void Character::activateRagdoll(glm::vec3 impulse)
 {
-    m_rigidbody->setLinearFactor(btVector3(0.0f, 0.0f, 0.0f));
-    m_rigidbody->setActivationState(0);
-    m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+    inactivateCollider();
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position);
     m_ragdoll->resetTransforms(modelPos, m_rotation.y);
     m_ragdoll->unFreezeBodies();
@@ -411,17 +412,29 @@ void Character::resetRagdoll()
     m_ragdoll->resetTransforms(modelPos, m_rotation.y);
     m_ragdoll->freezeBodies();
     m_ragdoll->changeState(RagdollState::loose);
+    activateCollider();
+    m_ragdollActive = false;
+}
+
+void Character::activateCollider()
+{
     m_rigidbody->setLinearFactor(btVector3(1.0f, 1.0f, 1.0f));
     m_rigidbody->setActivationState(1);
     m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
-    m_ragdollActive = false;
+}
+
+void Character::inactivateCollider()
+{
+    m_rigidbody->setLinearFactor(btVector3(0.0f, 0.0f, 0.0f));
+    m_rigidbody->setActivationState(0);
+    m_rigidbody->setCollisionFlags(m_rigidbody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
 }
 
 void Character::checkPhysicsStateChange()
 {
     btVector3 totalForce = m_rigidbody->getTotalForce();
     float force = totalForce.length();
-    if (force > m_ragdolActivateTreshold)
+    if (force > m_ragdolActivateThreshold)
     {
         activateRagdoll(-BulletGLM::getGLMVec3(totalForce) * m_ragdolActivateFactor);
     }
@@ -440,6 +453,11 @@ AnimPose &Character::getAimPose()
 AnimPose &Character::getFiringPose()
 {
     return m_animator->m_state.poses[4];
+}
+
+AnimPose &Character::getEnterCarAnim()
+{
+    return m_animator->m_state.poses[5];
 }
 
 // TODO: single run in a thread
@@ -518,10 +536,28 @@ public:
     }
 };
 
+// TODO: can not interrupt if the entering process is beyond some level
 void Character::cancelEnterCar()
 {
-    // TODO: can not called from playable_character
-    m_taskManager->interruptFollowPath(this);
+    // TODO: can not called from playable_character - check still?
+
+    auto callback = [&](CharacterTask *task)
+    {
+        if (FollowPath *followPath = dynamic_cast<FollowPath *>(static_cast<FollowPath *>(task)))
+        {
+            return followPath->m_source == this;
+        }
+        else if (EnterCar *enterCar = dynamic_cast<EnterCar *>(static_cast<EnterCar *>(task)))
+        {
+            return enterCar->m_character == this;
+        }
+
+        return false;
+    };
+    std::vector<CharacterTask *> pointers = m_taskManager->getTaskPointers(callback);
+
+    for (CharacterTask *task : pointers)
+        task->interrupt();
 }
 
 // TODO: move
@@ -550,6 +586,8 @@ void Character::enterNearestCar()
         // std::cout << "enterNearestCar: no car found" << std::endl;
         return;
     }
+
+    passengerInfo.state = PassengerState::entering;
 
     // std::cout << "enterNearestCar: car found" << std::endl;
 
@@ -650,9 +688,34 @@ void Character::enterNearestCar()
         glm::vec3 offset = glm::vec3(point.x(), 0.f, point.y()) - glm::vec3(start.x, 0, start.y);
         resultPath.push_back(m_position + offset);
     }
+    // goal point
+    glm::vec3 offset3 = glm::vec3(goal.x(), 0.f, goal.y()) - glm::vec3(start.x, 0, start.y);
+    resultPath.push_back(m_position + offset3);
 
     glm::vec3 doorDir = glm::normalize(corners[1] - corners[0]);
     doorDir = glm::normalize(glm::vec3(doorDir.x, 0, doorDir.z));
-    FollowPath followPath(this, resultPath, doorDir);
-    m_taskManager->newFollowPath(followPath);
+    FollowPath *followPath = new FollowPath(this, resultPath, doorDir);
+    EnterCar *enterCar = new EnterCar(this, callback.m_controller);
+
+    std::stack<CharacterTask *> taskStack;
+    taskStack.push(enterCar);
+    taskStack.push(followPath);
+    cancelEnterCar();
+    m_taskManager->addTaskStack(taskStack);
+}
+
+void Character::exitFromCar()
+{
+    if (passengerInfo.state != PassengerState::inside)
+    {
+        std::cout << "exitFromCar: not inside a car" << std::endl;
+        return;
+    }
+
+    passengerInfo.state = PassengerState::exiting;
+    passengerInfo.exitRequested = true;
+
+    ExitCar *exitCar = new ExitCar(this, passengerInfo.car);
+
+    m_taskManager->addTask(exitCar);
 }

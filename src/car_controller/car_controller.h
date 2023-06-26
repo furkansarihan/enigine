@@ -63,9 +63,11 @@ public:
     glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
     glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
 
-    // entering to car
+    // enter-car pathfind
     glm::vec2 m_safeSize = glm::vec2(1.f, 3.f);
-    glm::vec2 m_doorOffset = glm::vec2(3.f, 0.f);
+    glm::vec2 m_doorOffset = glm::vec2(2.17f, -0.86f);
+    // enter-car animation
+    glm::vec3 m_animDoorOffset = glm::vec3(2.17f, 0.210f, -0.86f);
 
     bool m_controlVehicle = false;
     bool m_followVehicle = false;

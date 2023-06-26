@@ -21,8 +21,6 @@ public:
     std::vector<SoundSource> m_fireSounds;
 
     bool m_firstPerson = false;
-    bool m_controlCharacter = true;
-    bool m_followCharacter = true;
 
     glm::vec3 m_followOffsetAim = glm::vec3(-1.2f, 3.4f, -2.3f);
     glm::vec3 m_followOffsetNormal = glm::vec3(0.0f, 3.f, -8.f);
@@ -50,8 +48,8 @@ public:
     float m_fireAnimStartTime = 1.f;
     int m_fireAnimTimeMilli = 100;
 
-    float m_lastCarEnterRequest = 0.f;
-    float m_carEnterRequestLimit = 1.f;
+    float m_lastCarRequest = 0.f;
+    float m_carRequestLimit = 1.f;
 
     void update(GLFWwindow *window, float deltaTime);
     void updatePistolModelMatrix();

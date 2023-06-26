@@ -38,6 +38,7 @@ void VehicleUI::render()
     renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
     renderVec2("m_safeSize", m_cController->m_safeSize, 0.01f);
     renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
+    renderVec3("m_animDoorOffset", m_cController->m_animDoorOffset, 0.01f);
     renderCompoundShapeEditor("compound shapes", m_cController->m_vehicle->m_compoundShape);
     for (int i = 0; i < 4; i++)
         renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_cController->m_doorOffsets[i], 0.01f);

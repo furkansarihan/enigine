@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
     character.m_npcList.push_back(&npc1);
 
-    FollowTask followTask1(&npc1, &character);
+    // FollowTask followTask1(&npc1, &character);
     // taskManager.m_tasksFollowCharacter.push_back(followTask1);
 
     // Time
@@ -306,9 +306,6 @@ int main(int argc, char **argv)
         // Update Physics
         physicsWorld.update(deltaTime);
 
-        // Update tasks
-        taskManager.update();
-
         // Update character
         character.update(window, deltaTime);
         npc1.update(window, deltaTime);
@@ -330,6 +327,9 @@ int main(int argc, char **argv)
         listenerOrientation.push_back(editorCamera.up.y);
         listenerOrientation.push_back(editorCamera.up.z);
         soundEngine.setListenerOrientation(&listenerOrientation);
+
+        // Update tasks - should called at last
+        taskManager.update();
 
         // Clear window
         glClearColor(0.46f, 0.71f, 0.98f, 1.00f);
@@ -719,6 +719,8 @@ int main(int argc, char **argv)
             // doors
             for (int i = 0; i < 4; i++)
             {
+                if (i == 0)
+                    continue;
                 glm::mat4 model = vehicle.m_chassisModel;
                 model = glm::translate(model, car.m_doorOffsets[i]);
                 model = model * car.m_carModel;

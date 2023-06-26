@@ -144,9 +144,6 @@ glm::mat4 CarController::translateOffset(glm::vec3 offset)
 {
     glm::mat4 model = m_vehicle->m_chassisModel;
     model = glm::translate(model, offset);
-    model = glm::rotate(model, m_exhaustRotation.x, glm::vec3(1, 0, 0));
-    model = glm::rotate(model, m_exhaustRotation.y, glm::vec3(0, 1, 0));
-    model = glm::rotate(model, m_exhaustRotation.z, glm::vec3(0, 0, 1));
     model = model * m_carModel;
     return model;
 }
