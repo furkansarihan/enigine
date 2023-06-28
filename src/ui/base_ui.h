@@ -2,6 +2,8 @@
 #define base_ui_hpp
 
 #include "../external/imgui/imgui.h"
+#include "common/vector_ui.h"
+#include "common/physics_ui.h"
 
 class BaseUI
 {
