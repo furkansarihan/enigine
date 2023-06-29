@@ -22,13 +22,15 @@ public:
 
     glm::vec3 m_refPos;
     glm::vec3 m_lookDir;
-    float m_stateChangeSpeed = 0.01f;
+    float m_stateChangeSpeed = 0.05f;
     float m_posFactor = 0.01f;
 
     bool m_firstUpdate = false;
     bool m_sitting = false;
     bool m_positionReached = false;
     bool m_rotationReached = false;
+    bool m_doorOpened = false;
+    bool m_doorClosed = false;
 
     void interrupt();
     bool update();

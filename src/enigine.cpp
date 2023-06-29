@@ -110,7 +110,9 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe |
+                             btIDebugDraw::DBG_DrawConstraints |
+                             btIDebugDraw::DBG_DrawConstraintLimits);
     physicsWorld.m_dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     // Shaders
@@ -211,9 +213,6 @@ int main(int argc, char **argv)
     // Vehicle
     CarController car(&physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(10.f, 5.f, 10.f));
     Vehicle &vehicle = *car.m_vehicle;
-    // TODO: vehicle state
-    vehicle.m_vehicle->setBrake(100, 0);
-    vehicle.m_vehicle->setBrake(100, 1);
     glfwSetWindowUserPointer(window, &car);
     glfwSetKeyCallback(window, car.staticKeyCallback);
 
@@ -445,10 +444,7 @@ int main(int argc, char **argv)
             // doors
             for (int i = 0; i < 4; i++)
             {
-                glm::mat4 model = vehicle.m_chassisModel;
-                model = glm::translate(model, car.m_doorOffsets[i]);
-                model = model * car.m_carModel;
-                depthShader.setMat4("MVP", depthVP * model);
+                depthShader.setMat4("MVP", depthVP * car.m_doorModels[i]);
                 doors[i]->draw(depthShader);
             }
 
@@ -719,13 +715,8 @@ int main(int argc, char **argv)
             // doors
             for (int i = 0; i < 4; i++)
             {
-                if (i == 0)
-                    continue;
-                glm::mat4 model = vehicle.m_chassisModel;
-                model = glm::translate(model, car.m_doorOffsets[i]);
-                model = model * car.m_carModel;
-                pbrShader.setMat4("model", model);
-                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+                pbrShader.setMat4("model", car.m_doorModels[i]);
+                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(car.m_doorModels[i]))));
                 doors[i]->draw(pbrShader);
             }
 

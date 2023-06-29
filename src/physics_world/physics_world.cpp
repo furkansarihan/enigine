@@ -18,6 +18,8 @@ PhysicsWorld::~PhysicsWorld()
         }
         m_dynamicsWorld->removeCollisionObject(obj);
 
+        // TODO: shape already deleted?
+        // TODO: shapes not in collision world?
         btCollisionShape *shape = body->getCollisionShape();
         delete obj;
 

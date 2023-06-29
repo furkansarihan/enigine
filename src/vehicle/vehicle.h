@@ -29,6 +29,44 @@ struct ControlState
     bool left, right, forward, back;
 };
 
+enum Door
+{
+    frontLeft,
+    frontRight,
+    fbackLeft,
+    backRight
+};
+
+enum HingeState
+{
+    active,
+    deactive,
+    count
+};
+
+enum DoorState
+{
+    open,
+    closed
+};
+
+struct HingeTarget
+{
+    float angle = 0.f;
+    float force = 1000.f;
+};
+
+struct VehicleDoor
+{
+    btHingeConstraint *joint;
+    btRigidBody *body;
+    HingeState hingeState;
+    DoorState doorState;
+    HingeTarget hingeTarget;
+    btVector3 aFrame, bFrame, posOffset;
+    float doorClosedAt = 0.f;
+};
+
 class Vehicle
 {
 public:
@@ -43,6 +81,8 @@ public:
 
     btCompoundShape *m_compoundShape;
     Model *m_collider;
+    VehicleDoor m_doors[4];
+    glm::quat m_doorRotate = glm::quat(0.5f, -0.5f, -0.5f, -0.5f);
 
     btDefaultVehicleRaycaster *m_vehicleRayCaster;
     btRaycastVehicle *m_vehicle;
@@ -73,6 +113,9 @@ public:
     void update(float deltaTime);
     void recieveInput(GLFWwindow *window);
     void resetVehicle(btTransform tr);
+    void updateHingeState(int door, HingeState newState);
+    void openDoor(int door);
+    void closeDoor(int door);
 
 private:
     int m_keyForward = GLFW_KEY_W;
@@ -84,8 +127,11 @@ private:
     void initVehicle();
     void setupCollider();
     btConvexHullShape *getBodyShape(Mesh &mesh);
+    void setupDoors();
+    btTransform getDoorTransform(int door);
     void updateSteering(float deltaTime);
     void updateAcceleration(float deltaTime);
+    void updateDoorAngles(float deltaTime);
 };
 
 #endif /* vehicle_hpp */

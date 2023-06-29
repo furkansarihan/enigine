@@ -59,11 +59,12 @@ bool EnterCar::update()
     animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
 
     // TODO: check if anim played - stop at the end
-    float animTime = m_character->m_animator->m_animations[18]->m_Duration;
+    float animDuration = m_character->m_animator->m_animations[18]->m_Duration;
     if (!m_sitting)
     {
         // TODO: better end detection?
-        m_sitting = m_character->m_animator->m_timers[18] >= animTime - 34.f;
+        float animTime = m_character->m_animator->m_timers[18];
+        m_sitting = animTime >= animDuration - 34.f;
         if (m_sitting)
         {
             m_car->m_controlVehicle = true;
@@ -73,11 +74,22 @@ bool EnterCar::update()
             m_character->passengerInfo.state = PassengerState::inside;
             m_character->passengerInfo.car = m_car;
         }
+
+        if (!m_doorOpened && animTime > m_character->m_doorOpenTime)
+        {
+            m_car->m_vehicle->openDoor(Door::frontLeft);
+            m_doorOpened = true;
+        }
+        else if (!m_doorClosed && animTime > m_character->m_doorCloseTime)
+        {
+            m_car->m_vehicle->closeDoor(Door::frontLeft);
+            m_doorClosed = true;
+        }
     }
     else
     {
         m_character->m_animator->m_animations[18]->m_timed = true;
-        animPose.time = animTime - 34.f;
+        animPose.time = animDuration - 34.f;
     }
 
     updateRefValues();

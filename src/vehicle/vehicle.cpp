@@ -18,11 +18,11 @@ Vehicle::~Vehicle()
 void Vehicle::initDefaultValues()
 {
     this->gEngineForce = 0.f;
-    this->accelerationVelocity = 5000.f;
+    this->accelerationVelocity = 6000.f;
     this->decreaseVelocity = 3000.f;
-    this->breakingVelocity = 100.f;
+    this->breakingVelocity = 250.f;
 
-    this->maxEngineForce = 6000.f;  // this should be engine/velocity dependent
+    this->maxEngineForce = 7000.f;  // this should be engine/velocity dependent
     this->minEngineForce = -3000.f; // this should be engine/velocity dependent
 
     this->gVehicleSteering = 0.f;
@@ -39,6 +39,22 @@ void Vehicle::initDefaultValues()
     m_suspensionCompression = 4.4f;
     m_rollInfluence = 0.1f;
     m_suspensionRestLength = 0.75f;
+
+    // doors
+    m_doors[0].aFrame = btVector3(1.5f, 2.9f, 1.6f);
+    m_doors[1].aFrame = btVector3(-1.5f, 2.9f, 1.6f);
+    m_doors[2].aFrame = btVector3(1.5f, 2.9f, -0.6f);
+    m_doors[3].aFrame = btVector3(-1.5f, 2.9f, -0.6f);
+
+    m_doors[0].bFrame = btVector3(0.98f, -0.01f, 0.95f);
+    m_doors[1].bFrame = btVector3(0.98f, -0.04f, 0.95f);
+    m_doors[2].bFrame = btVector3(0.728f, 0.03f, 0.89f);
+    m_doors[3].bFrame = btVector3(0.728f, -0.04f, 0.89f);
+
+    m_doors[0].posOffset = btVector3(1.51f, 1.95f, 0.62);
+    m_doors[1].posOffset = btVector3(-1.46f, 1.95f, 0.62);
+    m_doors[2].posOffset = btVector3(1.46f, 2.01f, -1.33);
+    m_doors[3].posOffset = btVector3(-1.46f, 2.01f, -1.32);
 }
 
 void Vehicle::initVehicle()
@@ -89,6 +105,8 @@ void Vehicle::initVehicle()
         wheel.m_frictionSlip = m_wheelFriction;
         wheel.m_rollInfluence = m_rollInfluence;
     }
+
+    setupDoors();
 }
 
 void Vehicle::setupCollider()
@@ -128,6 +146,103 @@ btConvexHullShape *Vehicle::getBodyShape(Mesh &mesh)
     return convexShape;
 }
 
+void Vehicle::setupDoors()
+{
+    btBoxShape *shape = new btBoxShape(btVector3(0.7f, 0.15f, 0.8f));
+    float doorMass = 20.f;
+
+    for (int i = 0; i < 4; i++)
+    {
+        m_doors[i].body = m_physicsWorld->createRigidBody(shape, doorMass, getDoorTransform(i));
+
+        btVector3 yAxis(0, 1, 0);
+        btVector3 zAxis(0, 0, 1);
+        m_doors[i].joint = new btHingeConstraint(*m_carChassis, *m_doors[i].body, m_doors[i].aFrame, m_doors[i].bFrame, yAxis, zAxis, true);
+
+        if (i % 2 == 0)
+            m_doors[i].joint->setLimit(-M_PI_2 - M_PI_4, -M_PI_2);
+        else
+            m_doors[i].joint->setLimit(-M_PI_2, -M_PI_4);
+
+        m_physicsWorld->m_dynamicsWorld->addConstraint(m_doors[i].joint, true);
+
+        m_doors[i].doorState = DoorState::closed;
+        m_doors[i].hingeState = HingeState::active; // for replace logic
+        updateHingeState(i, HingeState::deactive);
+    }
+}
+
+void Vehicle::updateHingeState(int door, HingeState newState)
+{
+    HingeState currentState = m_doors[door].hingeState;
+
+    if (currentState == newState)
+        return;
+
+    if (newState == HingeState::deactive)
+    {
+        m_doors[door].joint->enableMotor(false);
+        m_doors[door].joint->setMaxMotorImpulse(0.f);
+        m_physicsWorld->m_dynamicsWorld->removeConstraint(m_doors[door].joint);
+
+        m_doors[door].body->setLinearVelocity(btVector3(0, 0, 0));
+        m_doors[door].body->setAngularVelocity(btVector3(0, 0, 0));
+        m_physicsWorld->m_dynamicsWorld->removeRigidBody(m_doors[door].body);
+    }
+    else
+    {
+        // TODO: fix teleport
+        btTransform transform = getDoorTransform(door);
+        m_doors[door].body->setWorldTransform(transform);
+        // m_doors[door].body->getMotionState()->setWorldTransform(transform);
+
+        m_doors[door].body->setLinearVelocity(btVector3(0, 0, 0));
+        m_doors[door].body->setAngularVelocity(btVector3(0, 0, 0));
+
+        m_physicsWorld->m_dynamicsWorld->addRigidBody(m_doors[door].body);
+
+        m_doors[door].joint->enableMotor(true);
+        m_doors[door].joint->setMaxMotorImpulse(0.f);
+        m_physicsWorld->m_dynamicsWorld->addConstraint(m_doors[door].joint, true);
+    }
+
+    m_doors[door].hingeState = newState;
+}
+
+btTransform Vehicle::getDoorTransform(int door)
+{
+    btTransform transform;
+    m_carChassis->getMotionState()->getWorldTransform(transform);
+
+    btTransform doorTransform;
+    doorTransform.setIdentity();
+    doorTransform.setOrigin(m_doors[door].posOffset);
+    doorTransform.setRotation(BulletGLM::getBulletQuat(m_doorRotate));
+
+    btTransform bodyTransform;
+    bodyTransform.setIdentity();
+    // TODO: from car body rotation - fix body rotation align
+    bodyTransform.setRotation(BulletGLM::getBulletQuat(glm::quat(glm::vec3(0.f, 0.f, 0.02f))));
+    transform = transform * doorTransform * bodyTransform;
+    // transform = transform * doorTransform;
+
+    return transform;
+}
+
+void Vehicle::openDoor(int door)
+{
+    updateHingeState(door, HingeState::active);
+    m_doors[door].hingeTarget.angle = door % 2 == 0 ? (float)M_PI_2 : 0.f;
+    m_doors[door].doorState = DoorState::open;
+}
+
+void Vehicle::closeDoor(int door)
+{
+    m_doors[door].hingeTarget.angle = door % 2 == 1 ? (float)M_PI_2 : 0.f;
+    m_doors[door].doorClosedAt = (float)glfwGetTime();
+    m_doors[door].doorState = DoorState::closed;
+}
+
 void Vehicle::resetVehicle(btTransform tr)
 {
     m_carChassis->setCenterOfMassTransform(tr);
@@ -144,6 +259,32 @@ void Vehicle::recieveInput(GLFWwindow *window)
     m_controlState.right = glfwGetKey(window, m_keyRight) == GLFW_PRESS;
 }
 
+void Vehicle::updateDoorAngles(float deltaTime)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (m_doors[i].hingeState == HingeState::deactive)
+            continue;
+
+        if (m_doors[i].doorState == DoorState::closed)
+        {
+            float now = (float)glfwGetTime();
+            float elapsedTime = now - m_doors[i].doorClosedAt;
+            float maxTime = 1.f;
+            if (elapsedTime > maxTime)
+            {
+                updateHingeState(i, HingeState::deactive);
+                m_doors[i].hingeTarget.angle = 0.f;
+
+                continue;
+            }
+        }
+
+        m_doors[i].joint->setMotorTarget(m_doors[i].hingeTarget.angle, deltaTime);
+        m_doors[i].joint->setMaxMotorImpulse(deltaTime * m_doors[i].hingeTarget.force);
+    }
+}
+
 void Vehicle::update(float deltaTime)
 {
     m_speed = m_carChassis->getLinearVelocity().length();
@@ -157,6 +298,7 @@ void Vehicle::update(float deltaTime)
 
     updateSteering(deltaTime);
     updateAcceleration(deltaTime);
+    updateDoorAngles(deltaTime);
 }
 
 // TODO: steeringIncrement based on vehicle velocity
@@ -234,6 +376,23 @@ void Vehicle::updateAcceleration(float deltaTime)
     }
 
     m_inAction = m_controlState.forward || m_controlState.back;
+
+    if (!m_inAction)
+    {
+        // TODO: better stop handling ?
+        float velocity = decreaseVelocity * deltaTime;
+        if (std::fabs(gEngineForce) < velocity)
+        {
+            gEngineForce = 0.f;
+            m_vehicle->setBrake(100, 0);
+            m_vehicle->setBrake(100, 1);
+        }
+        else
+        {
+            m_vehicle->setBrake(0, 0);
+            m_vehicle->setBrake(0, 1);
+        }
+    }
 
     if (gEngineForce >= maxEngineForce)
     {

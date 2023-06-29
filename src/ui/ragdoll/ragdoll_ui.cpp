@@ -2,10 +2,6 @@
 
 const char *stateNames[] = {"Loose", "Fetal"};
 
-void renderQuat(const char *header, glm::vec4 &vector, float dragSpeed);
-void renderVec3(const char *header, glm::vec3 &vector, float dragSpeed);
-void renderVec2(const char *header, glm::vec2 &vector, float dragSpeed);
-
 void RagdollUI::render()
 {
     if (!ImGui::CollapsingHeader("Ragdoll", ImGuiTreeNodeFlags_NoTreePushOnOpen))
@@ -46,7 +42,7 @@ void RagdollUI::render()
 
         ImGui::TableNextColumn();
         if (btConeTwistConstraint *h = dynamic_cast<btConeTwistConstraint *>(ragdoll->m_joints[i]))
-            renderQuat((std::to_string(i) + ":angle").c_str(), target.angle, 0.01f);
+            VectorUI::renderNormalizedQuat((std::to_string(i) + ":angle").c_str(), target.angle, 0.01f);
         else
             ImGui::DragFloat((std::to_string(i) + ":angle").c_str(), &target.angle.x, 0.01f);
 
@@ -114,6 +110,7 @@ void RagdollUI::render()
     ImGui::TableSetupColumn("Motor");
     ImGui::TableSetupColumn("Limit");
     ImGui::TableSetupColumn("Angle");
+    ImGui::TableSetupColumn("Frames");
     ImGui::TableHeadersRow();
     for (int i = 0; i < JOINT_COUNT; i++)
     {
@@ -125,7 +122,7 @@ void RagdollUI::render()
         if (btConeTwistConstraint *h = dynamic_cast<btConeTwistConstraint *>(ragdoll->m_joints[i]))
             renderConeTwist(i, (btConeTwistConstraint *)ragdoll->m_joints[i]);
         else
-            renderHinge(i, (btHingeConstraint *)ragdoll->m_joints[i]);
+            PhysicsUI::renderHinge(i, (btHingeConstraint *)ragdoll->m_joints[i]);
     }
     ImGui::EndTable();
 }
@@ -144,68 +141,12 @@ void RagdollUI::renderConeTwist(int index, btConeTwistConstraint *constraint)
     limit.y = constraint->getLimit(4); // swingSpan2
     limit.z = constraint->getLimit(3); // twistSpan
     glm::vec3 copy = limit;
-    renderVec3((std::to_string(index) + ":limit").c_str(), limit, 0.001f);
+    VectorUI::renderVec3((std::to_string(index) + ":limit").c_str(), limit, 0.001f);
     if (limit != copy)
         constraint->setLimit(limit.x, limit.y, limit.z);
 
     ImGui::TableSetColumnIndex(4);
     ImGui::Text("%.3f", (float)constraint->getTwistAngle());
-}
-
-void RagdollUI::renderHinge(int index, btHingeConstraint *constraint)
-{
-    ImGui::TableSetColumnIndex(1);
-    ImGui::Text("Hinge");
-
-    ImGui::TableSetColumnIndex(2);
-    bool isMotorEnabled = (constraint->getMaxMotorImpulse() > 0.0);
-    ImGui::Text(isMotorEnabled ? "enabled" : "disabled");
-
-    ImGui::TableSetColumnIndex(3);
-    glm::vec2 limit(0.f);
-    limit.x = constraint->getLowerLimit();
-    limit.y = constraint->getUpperLimit();
-    glm::vec2 copy = limit;
-    renderVec2((std::to_string(index) + ":limit").c_str(), limit, 0.001f);
-    if (limit != copy)
-        constraint->setLimit(limit.x, limit.y);
-
-    ImGui::TableSetColumnIndex(4);
-    ImGui::Text("%.3f", (float)constraint->getHingeAngle());
-}
-
-void renderQuat(const char *header, glm::vec4 &vector, float dragSpeed)
-{
-    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        ImGui::DragFloat((std::string(header) + "X").c_str(), &vector[0], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Y").c_str(), &vector[1], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Z").c_str(), &vector[2], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "W").c_str(), &vector[3], dragSpeed);
-    }
-
-    glm::quat normalized = glm::normalize(glm::quat(vector.w, vector.x, vector.y, vector.z));
-    vector.x = normalized.x;
-    vector.y = normalized.y;
-    vector.z = normalized.z;
-    vector.w = normalized.w;
-}
-
-void renderVec3(const char *header, glm::vec3 &vector, float dragSpeed)
-{
-    if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
-        return;
-    ImGui::DragFloat((std::string(header) + "X").c_str(), &vector[0], dragSpeed);
-    ImGui::DragFloat((std::string(header) + "Y").c_str(), &vector[1], dragSpeed);
-    ImGui::DragFloat((std::string(header) + "Z").c_str(), &vector[2], dragSpeed);
-}
-
-void renderVec2(const char *header, glm::vec2 &vector, float dragSpeed)
-{
-    if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
-        return;
-    ImGui::DragFloat((std::string(header) + "X").c_str(), &vector[0], dragSpeed);
-    ImGui::DragFloat((std::string(header) + "Y").c_str(), &vector[1], dragSpeed);
 }
 
 std::string RagdollUI::getJointName(int index)

@@ -33,7 +33,7 @@ void Character::init()
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model, true);
     Animation *animation17 = new Animation("firing", m_model, true);
-    Animation *animation18 = new Animation("enter-car-3", m_model);
+    Animation *animation18 = new Animation("enter-car-4", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;

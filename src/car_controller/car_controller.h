@@ -55,10 +55,10 @@ public:
     glm::vec3 m_rotation = glm::vec3(0.f, -M_PI_2, 0.f);
     glm::vec3 m_wheelRotation = glm::vec3(0.f, -M_PI_2, 0.f);
     glm::vec3 m_bodyRotation = glm::vec3(0.f, 0.f, -0.020f);
+    glm::vec3 m_doorRotation = glm::vec3(M_PI_2, 0.f, 0.f);
 
     glm::vec3 m_hoodOffset = glm::vec3(0.f, 1.87f, 3.12f);
     glm::vec3 m_trunkOffset = glm::vec3(0.f, 2.15f, -3.89f);
-    glm::vec3 m_doorOffsets[4];
 
     glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
     glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
@@ -67,7 +67,7 @@ public:
     glm::vec2 m_safeSize = glm::vec2(1.f, 3.f);
     glm::vec2 m_doorOffset = glm::vec2(2.17f, -0.86f);
     // enter-car animation
-    glm::vec3 m_animDoorOffset = glm::vec3(2.17f, 0.210f, -0.86f);
+    glm::vec3 m_animDoorOffset = glm::vec3(2.27f, 0.210f, -0.86f);
 
     bool m_controlVehicle = false;
     bool m_followVehicle = false;
@@ -76,10 +76,12 @@ public:
     Follow m_follow;
 
     glm::mat4 m_carModel;
+    glm::mat4 m_doorModels[4];
 
     void update(GLFWwindow *window, float deltaTime);
     void updateExhaust(GLFWwindow *window, float deltaTime);
     glm::mat4 translateOffset(glm::vec3 offset);
+    glm::mat4 getDoorModel(int door);
     void updateModels();
     void followCar();
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);

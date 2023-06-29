@@ -94,6 +94,9 @@ public:
     float m_aimBlend = 0.0f;
     float m_aimStateChangeSpeed = 3.f;
 
+    float m_doorOpenTime = 700.f;
+    float m_doorCloseTime = 3500.f;
+
     float m_firingBlend = 0.0f;
     float m_firingStateChangeSpeed = 3.f;
 

@@ -14,11 +14,6 @@ CarController::CarController(PhysicsWorld *physicsWorld, ResourceManager *resour
     m_exhausParticle->m_minDuration = 1.0f;
     m_exhausParticle->m_maxDuration = 2.0f;
     m_exhausParticle->m_particleScale = 0.1f;
-
-    m_doorOffsets[0] = glm::vec3(1.51f, 1.95f, 0.62);
-    m_doorOffsets[1] = glm::vec3(-1.46f, 1.95f, 0.62);
-    m_doorOffsets[2] = glm::vec3(1.46f, 2.01f, -1.33);
-    m_doorOffsets[3] = glm::vec3(-1.46f, 2.01f, -1.32);
 }
 
 CarController::~CarController()
@@ -116,6 +111,8 @@ void CarController::updateModels()
     m_carModel = glm::rotate(m_carModel, m_bodyRotation.y, glm::vec3(0, 1, 0));
     m_carModel = glm::rotate(m_carModel, m_bodyRotation.z, glm::vec3(0, 0, 1));
     m_carModel = glm::scale(m_carModel, glm::vec3(m_scale));
+    for (int i = 0; i < 4; i++)
+        m_doorModels[i] = getDoorModel(i);
 }
 
 void CarController::updateExhaust(GLFWwindow *window, float deltaTime)
@@ -145,5 +142,36 @@ glm::mat4 CarController::translateOffset(glm::vec3 offset)
     glm::mat4 model = m_vehicle->m_chassisModel;
     model = glm::translate(model, offset);
     model = model * m_carModel;
+    return model;
+}
+
+glm::mat4 CarController::getDoorModel(int i)
+{
+    glm::mat4 model;
+    if (m_vehicle->m_doors[i].hingeState == HingeState::deactive)
+    {
+        model = m_vehicle->m_chassisModel;
+        model = glm::translate(model, BulletGLM::getGLMVec3(m_vehicle->m_doors[i].posOffset));
+        model = model * m_carModel;
+    }
+    else
+    {
+        // TODO: remove this workaround
+        btTransform transform;
+        if (m_vehicle->m_speed > 10.f)
+            m_vehicle->m_doors[i].body->getMotionState()->getWorldTransform(transform);
+        else
+            transform = m_vehicle->m_doors[i].body->getWorldTransform();
+
+        transform.getOpenGLMatrix((btScalar *)&model);
+        model = glm::rotate(model, m_doorRotation.x, glm::vec3(1, 0, 0));
+        model = glm::rotate(model, m_doorRotation.y, glm::vec3(0, 1, 0));
+        model = glm::rotate(model, m_doorRotation.z, glm::vec3(0, 0, 1));
+        model = glm::rotate(model, m_bodyRotation.x, glm::vec3(1, 0, 0));
+        model = glm::rotate(model, m_bodyRotation.y, glm::vec3(0, 1, 0));
+        model = glm::rotate(model, m_bodyRotation.z, glm::vec3(0, 0, 1));
+        model = glm::scale(model, glm::vec3(m_scale));
+    }
+
     return model;
 }

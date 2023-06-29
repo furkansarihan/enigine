@@ -24,8 +24,6 @@ bool ExitCar::update()
 
     m_car->m_controlVehicle = false;
     m_car->m_followVehicle = false;
-    m_car->m_vehicle->m_vehicle->setBrake(100, 0);
-    m_car->m_vehicle->m_vehicle->setBrake(100, 1);
     m_character->m_controlCharacter = true;
     m_character->m_followCharacter = true;
     m_character->m_controller->m_rotate = false;

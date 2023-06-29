@@ -1,5 +1,8 @@
 #include "vehicle_ui.h"
 
+const char *doorStateNames[] = {"active", "deactive"};
+std::string getJointName(int index);
+
 VehicleUI::VehicleUI(CarController *carController, Vehicle *vehicle)
     : m_cController(carController),
       m_vehicle(vehicle)
@@ -14,7 +17,7 @@ void VehicleUI::render()
     Follow &m_follow = m_cController->m_follow;
     ImGui::Checkbox("m_controlVehicle", &m_cController->m_controlVehicle);
     ImGui::Checkbox("m_followVehicle", &m_cController->m_followVehicle);
-    renderVec3("m_followOffset", m_follow.offset, 0.1f);
+    VectorUI::renderVec3("m_followOffset", m_follow.offset, 0.1f);
     ImGui::DragFloat("m_follow.distance", &m_follow.distance, 0.1f);
     ImGui::DragFloat("m_follow.gapFactor", &m_follow.gapFactor, 0.001f);
     ImGui::DragFloat("m_follow.gap", &m_follow.gap, 0.001f);
@@ -30,20 +33,21 @@ void VehicleUI::render()
     ImGui::DragFloat("m_follow.angularSpeedRange", &m_follow.angularSpeedRange, 1.f);
     ImGui::DragFloat("m_scale", &m_cController->m_scale, 0.001f);
     ImGui::DragFloat("m_wheelScale", &m_cController->m_wheelScale, 0.001f);
-    renderVec3("m_bodyOffset", m_cController->m_bodyOffset, 0.01f);
-    renderVec3("m_wheelOffset", m_cController->m_wheelOffset, 0.01f);
-    renderVec3("m_rotation", m_cController->m_rotation, 0.001f);
-    renderVec3("m_bodyRotation", m_cController->m_bodyRotation, 0.001f);
-    renderVec3("m_hoodOffset", m_cController->m_hoodOffset, 0.01f);
-    renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
-    renderVec2("m_safeSize", m_cController->m_safeSize, 0.01f);
-    renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
-    renderVec3("m_animDoorOffset", m_cController->m_animDoorOffset, 0.01f);
+    VectorUI::renderVec3("m_bodyOffset", m_cController->m_bodyOffset, 0.01f);
+    VectorUI::renderVec3("m_wheelOffset", m_cController->m_wheelOffset, 0.01f);
+    VectorUI::renderVec3("m_rotation", m_cController->m_rotation, 0.001f);
+    VectorUI::renderVec3("m_bodyRotation", m_cController->m_bodyRotation, 0.001f);
+    VectorUI::renderVec3("m_doorRotation", m_cController->m_doorRotation, 0.001f);
+    VectorUI::renderVec3("m_hoodOffset", m_cController->m_hoodOffset, 0.01f);
+    VectorUI::renderVec3("m_trunkOffset", m_cController->m_trunkOffset, 0.01f);
+    VectorUI::renderVec2("m_safeSize", m_cController->m_safeSize, 0.01f);
+    VectorUI::renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
+    VectorUI::renderVec3("m_animDoorOffset", m_cController->m_animDoorOffset, 0.01f);
     renderCompoundShapeEditor("compound shapes", m_cController->m_vehicle->m_compoundShape);
     for (int i = 0; i < 4; i++)
-        renderVec3((std::string("m_doorOffsets:") + std::to_string(i)).c_str(), m_cController->m_doorOffsets[i], 0.01f);
-    renderVec3("m_exhaustOffset", m_cController->m_exhaustOffset, 0.01f);
-    renderVec3("m_exhaustRotation", m_cController->m_exhaustRotation, 0.01f);
+        VectorUI::renderVec3((std::string("m_doorPosOffsets:") + std::to_string(i)).c_str(), m_cController->m_vehicle->m_doors[i].posOffset, 0.01f);
+    VectorUI::renderVec3("m_exhaustOffset", m_cController->m_exhaustOffset, 0.01f);
+    VectorUI::renderVec3("m_exhaustRotation", m_cController->m_exhaustRotation, 0.01f);
     ImGui::Text("gVehicleSteering = %f", m_vehicle->gVehicleSteering);
     ImGui::Text("m_speed = %f", m_vehicle->m_speed);
     ImGui::Text("m_vehicle.speedKmHour = %f", m_vehicle->m_vehicle->getCurrentSpeedKmHour());
@@ -68,6 +72,11 @@ void VehicleUI::render()
     ImGui::DragFloat("breakingVelocity", &m_vehicle->breakingVelocity, 2.0f);
     ImGui::DragFloat("steeringIncrement", &m_vehicle->steeringIncrement, 0.2f);
     ImGui::DragFloat("steeringSpeed", &m_vehicle->steeringSpeed, 0.001f);
+    for (int i = 0; i < 4; i++)
+        VectorUI::renderVec3((std::to_string(i) + "posOffsets").c_str(), m_vehicle->m_doors[i].posOffset, 0.01f);
+
+    VectorUI::renderNormalizedQuat("m_doorRotate", m_vehicle->m_doorRotate, 0.01f);
+
     float mass = m_vehicle->m_carChassis->getMass();
     if (ImGui::DragFloat("m_carChassis.mass", &mass, 1.0f, 1, 10000))
     {
@@ -75,45 +84,74 @@ void VehicleUI::render()
         m_vehicle->m_carChassis->getCollisionShape()->calculateLocalInertia(mass, interia);
         m_vehicle->m_carChassis->setMassProps(mass, interia);
     }
-}
 
-void VehicleUI::renderVec2(const char *header, glm::vec2 &vec, float dragSpeed)
-{
-    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    ImGui::BeginTable("Doors", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::TableSetupColumn("Name");
+    ImGui::TableSetupColumn("Type");
+    ImGui::TableSetupColumn("Motor");
+    ImGui::TableSetupColumn("Limit");
+    ImGui::TableSetupColumn("Angle");
+    ImGui::TableSetupColumn("Frames");
+    ImGui::TableSetupColumn("State");
+    ImGui::TableHeadersRow();
+    for (int i = 0; i < 4; i++)
     {
-        ImGui::DragFloat((std::string(header) + "X").c_str(), &vec.x, dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Y").c_str(), &vec.y, dragSpeed);
+        ImGui::TableNextRow();
+
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("%s", getJointName(i).c_str());
+        btHingeConstraint *hinge = m_vehicle->m_doors[i].joint;
+        PhysicsUI::renderHinge(i, hinge);
+        ImGui::TableSetColumnIndex(6);
+        renderHingeState(i);
+    }
+    ImGui::EndTable();
+
+    ImGui::BeginTable("HingeTargetsTable", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None);
+    ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_None);
+    ImGui::TableSetupColumn("Force", ImGuiTableColumnFlags_None);
+    ImGui::TableHeadersRow();
+    for (int i = 0; i < 4; i++)
+    {
+        HingeTarget &target = m_vehicle->m_doors[i].hingeTarget;
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("%s", getJointName(i).c_str());
+
+        ImGui::TableNextColumn();
+        ImGui::DragFloat((std::to_string(i) + ":angle").c_str(), &target.angle, 0.01f);
+
+        ImGui::TableNextColumn();
+        ImGui::DragFloat((std::to_string(i) + ":force").c_str(), &target.force, 0.1f);
+    }
+    ImGui::EndTable();
+
+    if (ImGui::Button("open door"))
+    {
+        m_vehicle->openDoor(0);
+    }
+    if (ImGui::Button("close door"))
+    {
+        m_vehicle->closeDoor(0);
     }
 }
 
-void VehicleUI::renderVec3(const char *header, glm::vec3 &vec, float dragSpeed)
+std::string getJointName(int index)
 {
-    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    switch (index)
     {
-        ImGui::DragFloat((std::string(header) + "X").c_str(), &vec.x, dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Y").c_str(), &vec.y, dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Z").c_str(), &vec.z, dragSpeed);
-    }
-}
-
-void VehicleUI::renderVec3(const char *header, btVector3 &vec, float dragSpeed)
-{
-    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        ImGui::DragFloat((std::string(header) + "X").c_str(), (float *)&vec.m_floats[0], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Y").c_str(), (float *)&vec.m_floats[1], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Z").c_str(), (float *)&vec.m_floats[2], dragSpeed);
-    }
-}
-
-void VehicleUI::renderQuat(const char *header, glm::quat &quat, float dragSpeed)
-{
-    if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        ImGui::DragFloat((std::string(header) + "W").c_str(), &quat[0], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "X").c_str(), &quat[1], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Y").c_str(), &quat[2], dragSpeed);
-        ImGui::DragFloat((std::string(header) + "Z").c_str(), &quat[3], dragSpeed);
+    case 0:
+        return "FRONT_LEFT";
+    case 1:
+        return "FRONT_RIGHT";
+    case 2:
+        return "BACK_LEFT";
+    case 3:
+        return "BACK_RIGHT";
+    default:
+        return "UNKNOWN_JOINT";
     }
 }
 
@@ -136,12 +174,12 @@ void VehicleUI::renderCompoundShapeEditor(const char *header, btCompoundShape *c
 
         std::string positionHeader = childHeader + ":position";
         btVector3 &childOrigin = childTransform.getOrigin();
-        renderVec3(positionHeader.c_str(), childOrigin, 0.001f);
+        VectorUI::renderVec3(positionHeader.c_str(), childOrigin, 0.001f);
 
         std::string rotationHeader = childHeader + ":rotation";
         glm::quat childRotation = BulletGLM::getGLMQuat(childTransform.getRotation());
         glm::quat copy = childRotation;
-        renderQuat(rotationHeader.c_str(), childRotation, 0.001f);
+        VectorUI::renderQuat(rotationHeader.c_str(), childRotation, 0.001f);
         if (childRotation != copy)
             childTransform.setRotation(BulletGLM::getBulletQuat(childRotation));
 
@@ -161,6 +199,24 @@ void VehicleUI::renderCompoundShapeEditor(const char *header, btCompoundShape *c
         //         m_vehicle->m_physicsWorld->m_dynamicsWorld->addVehicle(m_vehicle->m_vehicle);
         //     }
         // }
+    }
+}
+
+void VehicleUI::renderHingeState(int index)
+{
+    HingeState state = m_vehicle->m_doors[index].hingeState;
+
+    if (ImGui::BeginCombo((":" + std::to_string(index)).c_str(), doorStateNames[state]))
+    {
+        for (int i = 0; i < sizeof(doorStateNames) / sizeof(doorStateNames[0]); i++)
+        {
+            bool isSelected = (state == static_cast<HingeState>(i));
+            if (ImGui::Selectable(doorStateNames[i], isSelected))
+            {
+                m_vehicle->updateHingeState(index, static_cast<HingeState>(i));
+            }
+        }
+        ImGui::EndCombo();
     }
 }
 

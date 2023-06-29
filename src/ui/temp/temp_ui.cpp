@@ -16,9 +16,12 @@ void TempUI::render()
     ImGui::Text("m_deltaTime: %.6f", m_deltaTime);
     ImGui::DragInt("m_maxSubSteps", &m_physicsWorld->m_maxSubSteps);
     bool debugEnabled = m_debugDrawer->getDebugMode();
-    if (ImGui::Checkbox("wireframe", &debugEnabled))
+    if (ImGui::Checkbox("debugEnabled", &debugEnabled))
     {
-        m_debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawWireframe : btIDebugDraw::DBG_NoDebug);
+        m_debugDrawer->setDebugMode(debugEnabled ? btIDebugDraw::DBG_DrawWireframe |
+                                                       btIDebugDraw::DBG_DrawConstraints |
+                                                       btIDebugDraw::DBG_DrawConstraintLimits
+                                                 : btIDebugDraw::DBG_NoDebug);
     }
     int lines = m_debugDrawer->getLines().size();
     ImGui::DragInt("lines", &lines);
