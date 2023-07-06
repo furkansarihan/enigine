@@ -58,7 +58,7 @@ public:
     float m_speed;
     btVector3 m_velocity;
     btVector3 m_verticalVelocity;
-    float m_verticalSpeed;
+    float m_verticalSpeed = 0.f;
     float m_horizontalSpeed;
 
     float m_walkFactor = 1.f;

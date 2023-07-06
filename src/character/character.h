@@ -86,6 +86,22 @@ public:
     float m_blendTargetsPose[2];
     float m_blendSpeed = 0.2f;
 
+    float m_runFactor = 0.f;
+    float m_idleFactor = 0.f;
+    float m_prevRunFactor = 0.f;
+    float m_prevIdleFactor = 0.f;
+
+    float m_walkStepFreq = 1.f;
+    float m_runStepFreq = 1.f;
+
+    float m_stopBlendSpeed = 0.022f;
+
+    float m_walkPerc = 0.f;
+    float m_runPerc = 0.f;
+
+    float m_walkAnimSpeed = 0.f;
+    float m_runAnimSpeed = 0.f;
+
     float m_leftBlendEdge = 1.45f;
     float m_rightBlendEdge = 1.2f;
     float m_leftForward = 0.35f;
@@ -117,6 +133,11 @@ public:
     void init();
     void update(float deltaTime);
     void interpolateBlendTargets();
+    void syncFootstepFrequency();
+    void setWalkPlaybackSpeed(float animSpeed);
+    void setRunPlaybackSpeed(float animSpeed);
+    void setWalkTimer(float time);
+    void setRunTimer(float time);
     void activateRagdoll(glm::vec3 impulse);
     void resetRagdoll();
     void activateCollider();

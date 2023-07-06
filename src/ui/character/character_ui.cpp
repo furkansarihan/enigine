@@ -45,6 +45,19 @@ void CharacterUI::render()
     ImGui::DragFloat("m_fireAnimStartTime", &m_character->m_fireAnimStartTime, 0.05f);
     ImGui::DragInt("m_fireAnimTimeMilli", &m_character->m_fireAnimTimeMilli, 25);
     ImGui::DragFloat("m_aimStateChangeSpeed", &m_character->m_aimStateChangeSpeed, 0.1f);
+    if (ImGui::CollapsingHeader("Footstep", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::DragFloat("m_walkStepFreq", &m_character->m_walkStepFreq, 0.1f);
+        ImGui::DragFloat("m_runStepFreq", &m_character->m_runStepFreq, 0.1f);
+        ImGui::DragFloat("m_verticalSpeed", &m_controller->m_verticalSpeed, 0.1f);
+        ImGui::DragFloat("m_stopBlendSpeed", &m_character->m_stopBlendSpeed, 0.001f);
+        ImGui::Text("m_walkStepFreq: %.5f", m_character->m_walkStepFreq);
+        ImGui::Text("m_runStepFreq: %.5f", m_character->m_runStepFreq);
+        ImGui::Text("m_walkPerc: %.3f", m_character->m_walkPerc);
+        ImGui::Text("m_runPerc: %.3f", m_character->m_runPerc);
+        ImGui::Text("m_walkAnimSpeed: %.3f", m_character->m_walkAnimSpeed);
+        ImGui::Text("m_runAnimSpeed: %.3f", m_character->m_runAnimSpeed);
+    }
     ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
     ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
     ImGui::DragFloat("m_rightBlendEdge", &m_character->m_rightBlendEdge, 0.01f);

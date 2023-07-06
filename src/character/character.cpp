@@ -13,7 +13,7 @@ Character::Character(TaskManager *taskManager, ResourceManager *resourceManager,
 void Character::init()
 {
     // Animation
-    m_model = m_resourceManager->getModel("../src/assets/gltf/char6.glb");
+    m_model = m_resourceManager->getModel("../src/assets/gltf/swat.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model, true);
@@ -176,6 +176,9 @@ void Character::init()
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
 
+    m_walkStepFreq = 1.f / m_animator->m_animations[1]->m_Duration;
+    m_runStepFreq = 1.f / m_animator->m_animations[4]->m_Duration;
+
     // TODO:
     for (int i = 0; i < 13; i++)
         m_blendTargets[i] = 0.0f;
@@ -300,12 +303,16 @@ void Character::update(float deltaTime)
         m_blendTargets[11] = 0.f; // run-back-left
         m_blendTargets[12] = 0.f; // run-back-right
 
+        m_runFactor = 0.f;
+        m_idleFactor = m_animator->m_state.animations[0].blendFactor;
+
         float maxWalkSpeed = m_controller->m_maxWalkRelative + m_controller->m_walkToRunAnimThreshold;
         if (m_controller->m_verticalSpeed > maxWalkSpeed)
         {
             float runnningGap = m_controller->m_maxRunRelative - maxWalkSpeed;
             float runningLevel = m_controller->m_verticalSpeed - maxWalkSpeed;
-            float clamped = CommonUtil::snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
+            m_runFactor = CommonUtil::snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
+            float clamped = m_runFactor;
 
             m_blendTargets[1] *= (1.f - clamped);
             m_blendTargets[2] *= (1.f - clamped);
@@ -332,6 +339,8 @@ void Character::update(float deltaTime)
             m_blendTargets[5] *= clamped;
             m_blendTargets[6] *= clamped;
         }
+
+        syncFootstepFrequency();
 
         // TODO: fix - wrong blend while locked
         // full body rotating
@@ -378,6 +387,9 @@ void Character::update(float deltaTime)
                 animL = std::max(0.0f, std::min(rightB / m_rightBlendEdge, 1.0f));
         }
 
+        m_prevRunFactor = m_runFactor;
+        m_prevIdleFactor = m_idleFactor;
+
         interpolateBlendTargets();
     }
 }
@@ -388,6 +400,112 @@ void Character::interpolateBlendTargets()
         m_animator->m_state.animations[i].blendFactor = CommonUtil::lerp(m_animator->m_state.animations[i].blendFactor, m_blendTargets[i], m_blendSpeed);
     for (int i = 0; i < 2; i++)
         m_animator->m_state.poses[i].blendFactor = CommonUtil::lerp(m_animator->m_state.poses[i].blendFactor, m_blendTargetsPose[i], m_blendSpeed);
+}
+
+void Character::syncFootstepFrequency()
+{
+    if (m_runFactor > 0.f && m_runFactor < 1.f)
+    {
+        m_walkPerc = m_animator->m_timers[1] / m_animator->m_animations[1]->m_Duration;
+        m_runPerc = m_animator->m_timers[4] / m_animator->m_animations[4]->m_Duration;
+
+        m_walkAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_runFactor) / m_walkStepFreq;
+        m_runAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_runFactor) / m_runStepFreq;
+
+        setWalkPlaybackSpeed(m_walkAnimSpeed);
+        setRunPlaybackSpeed(m_runAnimSpeed);
+
+        // refresh to fix error gap
+        float timerGap = std::fabs(m_walkPerc - m_runPerc);
+        bool timerOff = timerGap > 0.01f;
+
+        // if (timerOff)
+        //     std::cout << "timerOff: timerGap: " << timerGap << std::endl;
+
+        if (m_prevRunFactor == 0.f || (timerOff && m_runFactor < 0.5f))
+        {
+            float runTimer = m_walkPerc * m_animator->m_animations[4]->m_Duration;
+            setRunTimer(runTimer);
+        }
+        else if (m_prevRunFactor == 1.f || timerOff)
+        {
+            float walkTimer = m_runPerc * m_animator->m_animations[1]->m_Duration;
+            setWalkTimer(walkTimer);
+        }
+    }
+    else
+    {
+        if (m_runFactor == 0.f)
+            setWalkPlaybackSpeed(1.f);
+        else if (m_runFactor == 1.f)
+            setRunPlaybackSpeed(1.f);
+    }
+
+    // return to idle
+    float gap = m_idleFactor - m_prevIdleFactor;
+    if (m_idleFactor != 1.f && gap > 0.01f) // stopping
+    {
+        float nextTime;
+        float fullTime = m_animator->m_animations[1]->m_Duration;
+        float halfTime = fullTime / 2.f;
+
+        float time = m_animator->m_timers[1];
+
+        // TODO: better sync
+        if (time > halfTime)
+            nextTime = fullTime;
+        else
+            nextTime = halfTime;
+
+        m_animator->m_timers[1] = CommonUtil::lerp(m_animator->m_timers[1], nextTime, m_stopBlendSpeed);
+        m_animator->m_timers[7] = CommonUtil::lerp(m_animator->m_timers[7], nextTime, m_stopBlendSpeed);
+        m_animator->m_timers[11] = CommonUtil::lerp(m_animator->m_timers[11], nextTime, m_stopBlendSpeed);
+        m_animator->m_timers[12] = CommonUtil::lerp(m_animator->m_timers[12], nextTime, m_stopBlendSpeed);
+        m_animator->m_timers[5] = CommonUtil::lerp(m_animator->m_timers[5], nextTime, m_stopBlendSpeed);
+        m_animator->m_timers[6] = CommonUtil::lerp(m_animator->m_timers[6], nextTime, m_stopBlendSpeed);
+
+        // TODO: stop character at stop anim position
+    }
+}
+
+void Character::setWalkPlaybackSpeed(float animSpeed)
+{
+    m_animator->m_animations[1]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[7]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[11]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[12]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[5]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[6]->m_playbackSpeed = animSpeed;
+}
+
+void Character::setRunPlaybackSpeed(float animSpeed)
+{
+    m_animator->m_animations[4]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[10]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[8]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[9]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[13]->m_playbackSpeed = animSpeed;
+    m_animator->m_animations[14]->m_playbackSpeed = animSpeed;
+}
+
+void Character::setWalkTimer(float time)
+{
+    m_animator->m_timers[1] = time;
+    m_animator->m_timers[7] = time;
+    m_animator->m_timers[11] = time;
+    m_animator->m_timers[12] = time;
+    m_animator->m_timers[5] = time;
+    m_animator->m_timers[6] = time;
+}
+
+void Character::setRunTimer(float time)
+{
+    m_animator->m_timers[4] = time;
+    m_animator->m_timers[10] = time;
+    m_animator->m_timers[8] = time;
+    m_animator->m_timers[9] = time;
+    m_animator->m_timers[13] = time;
+    m_animator->m_timers[14] = time;
 }
 
 void Character::activateRagdoll(glm::vec3 impulse)
