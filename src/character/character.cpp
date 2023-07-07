@@ -34,6 +34,7 @@ void Character::init()
     Animation *animationRagdoll = new Animation("pose", m_model, true);
     Animation *animation17 = new Animation("firing", m_model, true);
     Animation *animation18 = new Animation("enter-car-4", m_model);
+    Animation *animation19 = new Animation("exit-car", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -56,6 +57,7 @@ void Character::init()
     animations.push_back(animationRagdoll);
     animations.push_back(animation17);
     animations.push_back(animation18);
+    animations.push_back(animation19);
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
@@ -173,6 +175,10 @@ void Character::init()
     m_animator->m_state.poses.push_back(animPose);
     // enter-car
     animPose.index = 18;
+    animPose.blendFactor = 0.0f;
+    m_animator->m_state.poses.push_back(animPose);
+    // exit-car
+    animPose.index = 19;
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
 
@@ -578,6 +584,11 @@ AnimPose &Character::getEnterCarAnim()
     return m_animator->m_state.poses[5];
 }
 
+AnimPose &Character::getExitCarAnim()
+{
+    return m_animator->m_state.poses[6];
+}
+
 // TODO: single run in a thread
 void Character::updateAimPoseBlendMask(float blendFactor)
 {
@@ -654,6 +665,21 @@ public:
     }
 };
 
+void Character::interruptExitCar()
+{
+    auto callback = [&](CharacterTask *task)
+    {
+        if (ExitCar *exitCar = dynamic_cast<ExitCar *>(static_cast<ExitCar *>(task)))
+            return exitCar->m_character == this;
+
+        return false;
+    };
+    std::vector<CharacterTask *> pointers = m_taskManager->getTaskPointers(callback);
+
+    for (CharacterTask *task : pointers)
+        task->interrupt();
+}
+
 // TODO: can not interrupt if the entering process is beyond some level
 void Character::cancelEnterCar()
 {
@@ -662,17 +688,17 @@ void Character::cancelEnterCar()
     auto callback = [&](CharacterTask *task)
     {
         if (FollowPath *followPath = dynamic_cast<FollowPath *>(static_cast<FollowPath *>(task)))
-        {
             return followPath->m_source == this;
-        }
         else if (EnterCar *enterCar = dynamic_cast<EnterCar *>(static_cast<EnterCar *>(task)))
-        {
             return enterCar->m_character == this;
-        }
 
         return false;
     };
     std::vector<CharacterTask *> pointers = m_taskManager->getTaskPointers(callback);
+
+    // can't cancel if EnterCar already started
+    if (pointers.size() == 1)
+        return;
 
     for (CharacterTask *task : pointers)
         task->interrupt();
@@ -705,7 +731,7 @@ void Character::enterNearestCar()
         return;
     }
 
-    passengerInfo.state = PassengerState::entering;
+    m_passengerInfo.state = PassengerState::entering;
 
     // std::cout << "enterNearestCar: car found" << std::endl;
 
@@ -824,16 +850,16 @@ void Character::enterNearestCar()
 
 void Character::exitFromCar()
 {
-    if (passengerInfo.state != PassengerState::inside)
+    if (m_passengerInfo.state != PassengerState::inside)
     {
         std::cout << "exitFromCar: not inside a car" << std::endl;
         return;
     }
 
-    passengerInfo.state = PassengerState::exiting;
-    passengerInfo.exitRequested = true;
+    m_passengerInfo.state = PassengerState::exiting;
+    m_passengerInfo.exitRequested = true;
 
-    ExitCar *exitCar = new ExitCar(this, passengerInfo.car);
+    ExitCar *exitCar = new ExitCar(this, m_passengerInfo.car);
 
     m_taskManager->addTask(exitCar);
 }

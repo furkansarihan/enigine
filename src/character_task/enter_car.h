@@ -32,6 +32,9 @@ public:
     bool m_doorOpened = false;
     bool m_doorClosed = false;
 
+    float m_doorOpenTime;
+    float m_doorCloseTime;
+
     void interrupt();
     bool update();
     void updateRefValues();

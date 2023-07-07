@@ -104,8 +104,6 @@ void CharacterUI::render()
     ImGui::DragFloat("m_floatElevation", &m_controller->m_floatElevation, 0.001f, 0);
     ImGui::DragFloat("m_rotation.x", &m_character->m_rotation.x, 0.1f);
     ImGui::DragFloat("m_rotation.z", &m_character->m_rotation.z, 0.1f);
-    ImGui::DragFloat("m_doorOpenTime", &m_character->m_doorOpenTime, 100.f);
-    ImGui::DragFloat("m_doorCloseTime", &m_character->m_doorCloseTime, 100.f);
     float gravityY = m_rb->getGravity().getY();
     if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
     {

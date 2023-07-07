@@ -59,7 +59,10 @@ void CharacterController::recieveInput(GLFWwindow *window, float deltaTime)
     m_actionState.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
     m_actionState.run = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
     m_actionState.jump = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+}
 
+void CharacterController::updateFollowVectors()
+{
     m_refFront = glm::normalize(glm::vec3(m_followCamera->front.x, 0.0f, m_followCamera->front.z));
     m_refRight = glm::normalize(glm::vec3(m_followCamera->right.x, 0.0f, m_followCamera->right.z));
 }

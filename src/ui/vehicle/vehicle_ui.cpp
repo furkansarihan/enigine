@@ -128,13 +128,13 @@ void VehicleUI::render()
     }
     ImGui::EndTable();
 
-    if (ImGui::Button("open door"))
+    for (int i = 0; i < 4; i++)
     {
-        m_vehicle->openDoor(0);
-    }
-    if (ImGui::Button("close door"))
-    {
-        m_vehicle->closeDoor(0);
+        if (ImGui::Button((std::to_string(i) + ":open door").c_str()))
+            m_vehicle->openDoor(i);
+        ImGui::SameLine();
+        if (ImGui::Button((std::to_string(i) + ":close door").c_str()))
+            m_vehicle->closeDoor(i);
     }
 }
 

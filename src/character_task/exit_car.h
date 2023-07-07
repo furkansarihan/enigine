@@ -25,12 +25,26 @@ public:
     float m_stateChangeSpeed = 0.02f;
     float m_posFactor = 0.05f;
 
-    bool m_firstUpdate =false;
+    bool m_firstUpdate = false;
     bool m_sitting = false;
     bool m_positionReached = false;
 
+    bool m_doorOpened = false;
+    bool m_doorClosed = false;
+
+    float m_doorOpenTime;
+    float m_doorCloseTime;
+    float m_minInterruptTime;
+
+    bool m_startAnimBlendReady = false;
+    bool m_animBlendReady = false;
+    bool m_animFinished = false;
+    bool m_interruptRequested = false;
+
     void interrupt();
     bool update();
+    void interruptUpdate();
+    void endTask();
     void updateRefValues();
 };
 

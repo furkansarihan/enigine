@@ -160,9 +160,9 @@ void Vehicle::setupDoors()
         m_doors[i].joint = new btHingeConstraint(*m_carChassis, *m_doors[i].body, m_doors[i].aFrame, m_doors[i].bFrame, yAxis, zAxis, true);
 
         if (i % 2 == 0)
-            m_doors[i].joint->setLimit(-M_PI_2 - M_PI_4, -M_PI_2);
+            m_doors[i].joint->setLimit(-M_PI_2 - M_PI_4 - M_PI_4 * 0.2f, -M_PI_2);
         else
-            m_doors[i].joint->setLimit(-M_PI_2, -M_PI_4);
+            m_doors[i].joint->setLimit(-M_PI_2, -M_PI_4 + M_PI_4 * 0.2f);
 
         m_physicsWorld->m_dynamicsWorld->addConstraint(m_doors[i].joint, true);
 
@@ -229,18 +229,24 @@ btTransform Vehicle::getDoorTransform(int door)
     return transform;
 }
 
+// TODO: update collider to match door void
 void Vehicle::openDoor(int door)
 {
     updateHingeState(door, HingeState::active);
-    m_doors[door].hingeTarget.angle = door % 2 == 0 ? (float)M_PI_2 : 0.f;
+    m_doors[door].hingeTarget.angle = door % 2 == 0 ? (float)M_PI : 0.f;
     m_doors[door].doorState = DoorState::open;
 }
 
 void Vehicle::closeDoor(int door)
 {
-    m_doors[door].hingeTarget.angle = door % 2 == 1 ? (float)M_PI_2 : 0.f;
+    m_doors[door].hingeTarget.angle = door % 2 == 1 ? (float)M_PI : 0.f;
     m_doors[door].doorClosedAt = (float)glfwGetTime();
     m_doors[door].doorState = DoorState::closed;
+}
+
+bool Vehicle::isDoorOpen(int door)
+{
+    return m_doors[door].doorState == DoorState::open;
 }
 
 void Vehicle::resetVehicle(btTransform tr)

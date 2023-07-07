@@ -73,7 +73,7 @@ public:
     btRigidBody *m_rigidbody;
     Model *m_model;
     PathResult m_lastCarEnterPath;
-    PassengerInfo passengerInfo;
+    PassengerInfo m_passengerInfo;
     bool m_syncPositionFromPhysics = true;
 
     // TODO: transformation struct
@@ -110,9 +110,6 @@ public:
     float m_aimBlend = 0.0f;
     float m_aimStateChangeSpeed = 3.f;
 
-    float m_doorOpenTime = 700.f;
-    float m_doorCloseTime = 3500.f;
-
     float m_firingBlend = 0.0f;
     float m_firingStateChangeSpeed = 3.f;
 
@@ -147,9 +144,11 @@ public:
     AnimPose &getAimPose();
     AnimPose &getFiringPose();
     AnimPose &getEnterCarAnim();
+    AnimPose &getExitCarAnim();
     void updateAimPoseBlendMask(float blendFactor);
     void enterNearestCar();
     void cancelEnterCar();
+    void interruptExitCar();
     void exitFromCar();
 };
 

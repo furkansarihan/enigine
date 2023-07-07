@@ -116,6 +116,7 @@ public:
     void updateHingeState(int door, HingeState newState);
     void openDoor(int door);
     void closeDoor(int door);
+    bool isDoorOpen(int door);
 
 private:
     int m_keyForward = GLFW_KEY_W;

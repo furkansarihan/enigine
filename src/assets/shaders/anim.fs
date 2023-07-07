@@ -43,7 +43,7 @@ void main()
     float diffuseLight = cosTheta + max(dot(Normal, lightDir), 0.0);
 
     // Calculate the ambient lighting contribution
-    vec3 ambient = diffuse * 4;
+    vec3 ambient = diffuse * 3;
 
     // Combine the diffuse and ambient lighting to get the final color
     vec3 finalColor = 

@@ -67,8 +67,9 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
 
     updatePistolModelMatrix();
 
-    if (m_controlCharacter)
+    // input
     {
+
         m_controller->recieveInput(window, deltaTime);
         bool anyInput = m_controller->m_actionState.forward ||
                         m_controller->m_actionState.backward ||
@@ -77,8 +78,25 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
                         m_controller->m_actionState.jump;
         // TODO: better way?
         if (anyInput)
-            cancelEnterCar();
+        {
+            if (m_passengerInfo.state == PassengerState::entering)
+                cancelEnterCar();
+            else if (m_passengerInfo.state == PassengerState::exiting)
+                interruptExitCar();
+        }
+
+        if (m_passengerInfo.state != PassengerState::outside)
+        {
+            m_controller->m_actionState.forward = false;
+            m_controller->m_actionState.backward = false;
+            m_controller->m_actionState.left = false;
+            m_controller->m_actionState.right = false;
+            m_controller->m_actionState.jump = false;
+        }
+        else
+            m_controller->updateFollowVectors();
     }
+
     if (m_followCharacter)
     {
         m_followOffsetTarget = m_controller->m_aimLocked ? m_followOffsetAim : m_followOffsetNormal;
@@ -119,7 +137,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
         float now = (float)glfwGetTime();
-        if (passengerInfo.state == PassengerState::outside)
+        if (m_passengerInfo.state == PassengerState::outside)
         {
             if (now - m_lastCarRequest > m_carRequestLimit)
             {
@@ -127,7 +145,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
                 enterNearestCar();
             }
         }
-        else if (passengerInfo.state == PassengerState::inside)
+        else if (m_passengerInfo.state == PassengerState::inside)
         {
             if (now - m_lastCarRequest > m_carRequestLimit)
             {

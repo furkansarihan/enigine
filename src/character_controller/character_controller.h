@@ -84,6 +84,7 @@ public:
     CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera);
     ~CharacterController();
     void recieveInput(GLFWwindow *window, float deltaTime);
+    void updateFollowVectors();
     void update(float deltaTime);
     void updateElevation();
     void updateVelocity();
