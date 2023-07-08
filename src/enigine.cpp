@@ -305,6 +305,10 @@ int main(int argc, char **argv)
         // Update Physics
         physicsWorld.update(deltaTime);
 
+        // Vehicle
+        // before character - parent transform
+        car.update(window, deltaTime);
+
         // Update character
         character.update(window, deltaTime);
         npc1.update(window, deltaTime);
@@ -312,9 +316,6 @@ int main(int argc, char **argv)
         // Update Debug Drawer
         debugDrawer.getLines().clear();
         physicsWorld.m_dynamicsWorld->debugDrawWorld();
-
-        // Vehicle
-        car.update(window, deltaTime);
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -461,13 +462,7 @@ int main(int argc, char **argv)
                 for (int j = 0; j < transforms.size(); ++j)
                     animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
 
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, character->m_position);
-                model = glm::rotate(model, character->m_rotation.x, glm::vec3(1, 0, 0));
-                model = glm::rotate(model, character->m_rotation.y * (1.0f - character->getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
-                model = glm::rotate(model, character->m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(character->m_scale));
-                animDepthShader.setMat4("model", model);
+                animDepthShader.setMat4("model", character->m_modelMatrix);
                 character->m_model->draw(animDepthShader);
             }
         }
@@ -497,13 +492,7 @@ int main(int argc, char **argv)
                 animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
             }
 
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, character->m_position);
-            model = glm::rotate(model, character->m_rotation.x, glm::vec3(1, 0, 0));
-            model = glm::rotate(model, character->m_rotation.y * (1.0f - character->getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
-            model = glm::rotate(model, character->m_rotation.z, glm::vec3(0, 0, 1));
-            model = glm::scale(model, glm::vec3(character->m_scale));
-            animShader.setMat4("model", model);
+            animShader.setMat4("model", character->m_modelMatrix);
             character->m_model->draw(animShader);
         }
 

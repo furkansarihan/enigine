@@ -105,9 +105,7 @@ bool EnterCar::update()
 
     updateRefValues();
 
-    if (m_positionReached)
-        m_character->m_position = m_refPos;
-    else
+    if (!m_positionReached)
     {
         // TODO: curve
         m_character->m_position = glm::mix(m_character->m_position, m_refPos, m_posFactor);
@@ -115,9 +113,7 @@ bool EnterCar::update()
         m_positionReached = distance < 0.03f;
     }
 
-    if (m_rotationReached)
-        m_character->m_controller->m_lookDir = m_lookDir;
-    else
+    if (!m_rotationReached)
     {
         m_character->m_controller->m_refFront = m_lookDir;
         m_character->m_controller->m_refRight = glm::cross(m_lookDir, glm::vec3(0.f, 1.f, 0.f));
@@ -132,13 +128,9 @@ bool EnterCar::update()
 
 void EnterCar::updateRefValues()
 {
-    glm::vec3 doorOffset = m_car->m_animDoorOffset;
-
     glm::vec3 corner0 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(1.f, 0.f, 0.f)));
     glm::vec3 corner1 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(-1.f, 0.f, 0.f)));
-    glm::vec3 doorDir = glm::normalize(corner1 - corner0);
+    m_lookDir = glm::normalize(corner1 - corner0);
 
-    m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(doorOffset));
-    // m_refPos.y = m_character->m_position.y;
-    m_lookDir = glm::normalize(glm::vec3(doorDir.x, doorDir.y, doorDir.z));
+    m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(m_car->m_animDoorOffset));
 }

@@ -49,7 +49,8 @@ enum PassengerState
     outside,
     entering,
     inside,
-    exiting
+    exiting,
+    exitInterrupt
 };
 
 struct PassengerInfo
@@ -77,6 +78,7 @@ public:
     bool m_syncPositionFromPhysics = true;
 
     // TODO: transformation struct
+    glm::mat4 m_modelMatrix;
     glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     float m_scale = 2.0;
@@ -129,6 +131,7 @@ public:
     ~Character();
     void init();
     void update(float deltaTime);
+    void updateModelMatrix();
     void interpolateBlendTargets();
     void syncFootstepFrequency();
     void setWalkPlaybackSpeed(float animSpeed);

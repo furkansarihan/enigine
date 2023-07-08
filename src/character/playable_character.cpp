@@ -85,7 +85,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
                 interruptExitCar();
         }
 
-        if (m_passengerInfo.state != PassengerState::outside)
+        if (!m_controlCharacter || m_passengerInfo.state != PassengerState::outside)
         {
             m_controller->m_actionState.forward = false;
             m_controller->m_actionState.backward = false;
@@ -93,7 +93,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
             m_controller->m_actionState.right = false;
             m_controller->m_actionState.jump = false;
         }
-        else
+        else if (m_controlCharacter)
             m_controller->updateFollowVectors();
     }
 
@@ -170,10 +170,7 @@ void PCharacter::updatePistolModelMatrix()
     int index = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:RightHand"].id;
     glm::mat4 model = m_animator->m_globalMatrices[index];
 
-    glm::mat4 model2(1.0f);
-    model2 = glm::translate(model2, m_position);
-    model2 = glm::rotate(model2, m_rotation.y * (1.0f - getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
-    model2 = glm::scale(model2, glm::vec3(m_scale));
+    glm::mat4 model2 = m_modelMatrix;
 
     model2 = model2 * model;
     glm::mat4 model3 = model2;

@@ -6,7 +6,7 @@ ExitCar::ExitCar(Character *character, CarController *car)
 {
     m_doorOpenTime = 100.f;
     m_doorCloseTime = 3000.f;
-    m_minInterruptTime = 2000.f;
+    m_minInterruptTime = 1500.f;
 }
 
 ExitCar::~ExitCar()
@@ -31,21 +31,20 @@ void ExitCar::interrupt()
     // std::cout << "interrupt: started" << std::endl;
 
     m_interruptRequested = true;
+    m_character->m_passengerInfo.state = PassengerState::exitInterrupt;
 
     //
     int index = m_character->m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:Hips"].id;
     glm::mat4 model = m_character->m_animator->m_globalMatrices[index];
 
-    glm::mat4 model2(1.0f);
-    model2 = glm::translate(model2, m_character->m_position);
-    model2 = glm::rotate(model2, m_character->m_rotation.y * (1.0f - m_character->getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
-    model2 = glm::scale(model2, glm::vec3(m_character->m_scale));
-
+    glm::mat4 model2 = m_character->m_modelMatrix;
     model2 = model2 * model;
 
     glm::mat3 rotation = glm::mat3(model2);
 
     m_refPos = CommonUtil::positionFromModel(model2);
+    // TODO: correct
+    m_refPos.y -= m_character->m_controller->m_halfHeight + 0.3f;
     m_lookDir = rotation * glm::vec3(0.f, 0.f, 1.f);
 
     m_character->m_controller->m_refFront = m_lookDir;
@@ -76,7 +75,7 @@ bool ExitCar::update()
         // std::cout << "EnterCar::update: m_firstUpdate" << std::endl;
         if (m_car->m_vehicle->isDoorOpen(Door::frontLeft))
         {
-            float startTime = 600.f;
+            float startTime = 400.f;
             m_character->m_animator->setAnimTime(19, startTime);
             m_doorOpened = true;
             m_startAnimBlendReady = false;
@@ -95,14 +94,17 @@ bool ExitCar::update()
 
         m_car->m_controlVehicle = false;
 
-        updateRefValues();
-
-        m_character->m_position = m_refPos;
-        m_character->m_controller->m_refFront = m_lookDir;
-        m_character->m_controller->m_refRight = glm::cross(m_lookDir, glm::vec3(0.f, 1.f, 0.f));
-
         m_firstUpdate = true;
     }
+
+    updateRefValues();
+
+    m_character->m_position = m_refPos;
+    m_character->m_controller->m_refFront = m_lookDir;
+    m_character->m_controller->m_refRight = glm::cross(m_lookDir, glm::vec3(0.f, 1.f, 0.f));
+
+    // environment interrupts
+    // TODO: check is car moving
 
     AnimPose &animPose = m_character->getExitCarAnim();
     AnimPose &enterAnimPose = m_character->getEnterCarAnim();
@@ -114,8 +116,6 @@ bool ExitCar::update()
     {
         animPose.blendFactor += m_stateChangeSpeed;
         animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
-
-        enterAnimPose.blendFactor = 1.f - animPose.blendFactor;
         return false;
     }
 
@@ -129,6 +129,8 @@ bool ExitCar::update()
 
         animPose.blendFactor -= m_stateChangeSpeed;
         animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
+
+        enterAnimPose.blendFactor = 0.f;
     }
 
     if (animPose.blendFactor == 0.f)
@@ -162,7 +164,6 @@ bool ExitCar::update()
 void ExitCar::interruptUpdate()
 {
     AnimPose &animPose = m_character->getExitCarAnim();
-
     if (animPose.blendFactor == 0.f)
     {
         // std::cout << "interruptUpdate: end" << std::endl;
@@ -171,11 +172,10 @@ void ExitCar::interruptUpdate()
         return;
     }
 
-    // wait at the end
-    animPose.blendFactor -= m_stateChangeSpeed;
+    animPose.blendFactor -= m_stateChangeSpeed * 2.f;
     animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
 
-    m_character->m_position = glm::mix(m_character->m_position, m_refPos, m_posFactor);
+    m_character->m_position = glm::mix(m_character->m_position, m_refPos, m_posFactor * 2.f);
 }
 
 void ExitCar::endTask()
@@ -202,12 +202,9 @@ void ExitCar::endTask()
 
 void ExitCar::updateRefValues()
 {
-    glm::vec3 doorOffset = m_car->m_animDoorOffset;
-
     glm::vec3 corner0 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(1.f, 0.f, 0.f)));
     glm::vec3 corner1 = CommonUtil::positionFromModel(m_car->translateOffset(glm::vec3(-1.f, 0.f, 0.f)));
-    glm::vec3 doorDir = glm::normalize(corner1 - corner0);
+    m_lookDir = glm::normalize(corner1 - corner0);
 
-    m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(doorOffset));
-    m_lookDir = glm::normalize(glm::vec3(doorDir.x, doorDir.y, doorDir.z));
+    m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(m_car->m_animDoorOffset));
 }

@@ -33,8 +33,8 @@ void Character::init()
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model, true);
     Animation *animation17 = new Animation("firing", m_model, true);
-    Animation *animation18 = new Animation("enter-car-4", m_model);
-    Animation *animation19 = new Animation("exit-car", m_model);
+    Animation *animation18 = new Animation("enter-car-5", m_model);
+    Animation *animation19 = new Animation("exit-car-2", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -398,6 +398,35 @@ void Character::update(float deltaTime)
 
         interpolateBlendTargets();
     }
+
+    updateModelMatrix();
+}
+
+void Character::updateModelMatrix()
+{
+    glm::mat4 model = glm::mat4(1.0f);
+
+    if (m_passengerInfo.state == PassengerState::inside ||
+        m_passengerInfo.state == PassengerState::exiting)
+    {
+        CarController *car = m_passengerInfo.car;
+        Vehicle *vehicle = car->m_vehicle;
+        model = glm::translate(vehicle->m_chassisModel, car->m_animDoorOffset);
+        model = glm::rotate(model, car->m_rotation.x, glm::vec3(1, 0, 0));
+        model = glm::rotate(model, car->m_rotation.y, glm::vec3(0, 1, 0));
+        model = glm::rotate(model, car->m_rotation.z, glm::vec3(0, 0, 1));
+        model = glm::scale(model, glm::vec3(m_scale));
+    }
+    else
+    {
+        model = glm::translate(model, m_position);
+        model = glm::rotate(model, m_rotation.x, glm::vec3(1, 0, 0));
+        model = glm::rotate(model, m_rotation.y * (1.0f - getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+        model = glm::rotate(model, m_rotation.z, glm::vec3(0, 0, 1));
+        model = glm::scale(model, glm::vec3(m_scale));
+    }
+
+    m_modelMatrix = model;
 }
 
 void Character::interpolateBlendTargets()
