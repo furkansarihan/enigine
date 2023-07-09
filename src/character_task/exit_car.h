@@ -19,6 +19,7 @@ public:
 
     Character *m_character;
     CarController *m_car;
+    bool m_jumping;
 
     glm::vec3 m_refPos;
     glm::vec3 m_lookDir;
@@ -46,6 +47,8 @@ public:
     void interruptUpdate();
     void endTask();
     void updateRefValues();
+    int exitAnimIndex();
+    int exitPoseIndex();
 };
 
 #endif /* exit_car_hpp */

@@ -67,7 +67,7 @@ public:
     glm::vec2 m_safeSize = glm::vec2(1.f, 3.f);
     glm::vec2 m_doorOffset = glm::vec2(2.17f, -0.86f);
     // enter-car animation
-    glm::vec3 m_animDoorOffset = glm::vec3(2.27f, 0.210f, -0.86f);
+    glm::vec3 m_animDoorOffset = glm::vec3(2.46f, 0.210f, -0.85f);
 
     bool m_controlVehicle = false;
     bool m_followVehicle = false;

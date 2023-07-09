@@ -443,13 +443,17 @@ void Ragdoll::updateJointFrames()
     hingeC->setFrames(localA, localB);
 }
 
-// TODO: initial orientation around Y axis
-void Ragdoll::resetTransforms(const btVector3 &positionOffset, float angleY)
+void Ragdoll::resetTransforms(const btVector3 &offsetPosition, float angleY)
+{
+    resetTransforms(offsetPosition, btQuaternion(btVector3(btScalar(0.), btScalar(1.), btScalar(0.)), angleY));
+}
+
+void Ragdoll::resetTransforms(const btVector3 &offsetPosition, btQuaternion offsetRotation)
 {
     btTransform offset;
     offset.setIdentity();
-    offset.setOrigin(positionOffset);
-    offset.setRotation(btQuaternion(btVector3(btScalar(0.), btScalar(1.), btScalar(0.)), angleY));
+    offset.setOrigin(offsetPosition);
+    offset.setRotation(offsetRotation);
 
     btTransform transform;
     transform.setIdentity();

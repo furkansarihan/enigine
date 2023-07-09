@@ -4,9 +4,13 @@ ExitCar::ExitCar(Character *character, CarController *car)
     : m_character(character),
       m_car(car)
 {
-    m_doorOpenTime = 100.f;
+    m_doorOpenTime = 25.f;
     m_doorCloseTime = 3000.f;
     m_minInterruptTime = 1500.f;
+
+    float minJumpSpeed = 5.f;
+    if (m_car->m_vehicle->m_speed > minJumpSpeed)
+        m_jumping = true;
 }
 
 ExitCar::~ExitCar()
@@ -21,7 +25,10 @@ void ExitCar::interrupt()
         return;
     }
 
-    float animTime = m_character->m_animator->m_timers[19];
+    if (m_jumping)
+        return;
+
+    float animTime = m_character->m_animator->m_timers[exitAnimIndex()];
     if (animTime < m_minInterruptTime)
     {
         // std::cout << "interrupt: can not interrupt" << std::endl;
@@ -49,7 +56,7 @@ void ExitCar::interrupt()
 
     m_character->m_controller->m_refFront = m_lookDir;
 
-    m_character->m_animator->m_animations[19]->m_playbackSpeed = 0.f;
+    m_character->m_animator->m_animations[exitAnimIndex()]->m_playbackSpeed = 0.f;
 }
 
 // TODO: with animation
@@ -76,19 +83,19 @@ bool ExitCar::update()
         if (m_car->m_vehicle->isDoorOpen(Door::frontLeft))
         {
             float startTime = 400.f;
-            m_character->m_animator->setAnimTime(19, startTime);
+            m_character->m_animator->setAnimTime(exitAnimIndex(), startTime);
             m_doorOpened = true;
             m_startAnimBlendReady = false;
         }
         else
         {
-            m_character->m_animator->setAnimTime(19, 0.f);
+            m_character->m_animator->setAnimTime(exitAnimIndex(), 0.f);
             m_startAnimBlendReady = true;
 
             AnimPose &enterPose = m_character->getEnterCarAnim();
             enterPose.blendFactor = 0.f;
 
-            AnimPose &animPose = m_character->getExitCarAnim();
+            AnimPose &animPose = m_character->m_animator->m_state.poses[exitPoseIndex()];
             animPose.blendFactor = 1.f;
         }
 
@@ -106,7 +113,7 @@ bool ExitCar::update()
     // environment interrupts
     // TODO: check is car moving
 
-    AnimPose &animPose = m_character->getExitCarAnim();
+    AnimPose &animPose = m_character->m_animator->m_state.poses[exitPoseIndex()];
     AnimPose &enterAnimPose = m_character->getEnterCarAnim();
 
     if (animPose.blendFactor == 1.f)
@@ -119,12 +126,13 @@ bool ExitCar::update()
         return false;
     }
 
-    float animDuration = m_character->m_animator->m_animations[19]->m_Duration;
+    float animDuration = m_character->m_animator->m_animations[exitAnimIndex()]->m_Duration;
+    float animTime = m_character->m_animator->m_timers[exitAnimIndex()];
 
     if (m_animFinished && animPose.blendFactor != 0.f)
     {
         // wait at the end
-        m_character->m_animator->m_animations[19]->m_timed = true;
+        m_character->m_animator->m_animations[exitAnimIndex()]->m_timed = true;
         animPose.time = animDuration - 34.f;
 
         animPose.blendFactor -= m_stateChangeSpeed;
@@ -140,9 +148,30 @@ bool ExitCar::update()
     if (m_animFinished)
         return false;
 
-    float animTime = m_character->m_animator->m_timers[19];
     if (animTime >= animDuration - 34.f)
     {
+        if (m_jumping)
+        {
+            int index = m_character->m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:Hips"].id;
+            glm::mat4 model = m_character->m_animator->m_finalBoneMatrices[index];
+            model = m_character->m_modelMatrix * model;
+
+            btVector3 offsetPos = BulletGLM::getBulletVec3(CommonUtil::positionFromModel(model));
+            btQuaternion offsetRot = BulletGLM::getBulletQuat(glm::quat_cast(model));
+
+            m_character->activateRagdoll();
+            // TODO: set linear velocity?
+            m_character->applyImpulseFullRagdoll(-m_character->m_controller->m_refRight * m_car->m_vehicle->m_speed * 50.f);
+            // TODO: sync anim to ragdoll
+            m_character->m_ragdoll->resetTransforms(offsetPos, offsetRot);
+
+            AnimPose &ragdolPose = m_character->getRagdolPose();
+            ragdolPose.blendFactor = 1.f;
+
+            animPose.blendFactor = 0.f;
+            m_animBlendReady = true;
+        }
+
         m_animFinished = true;
         return false;
     }
@@ -163,7 +192,7 @@ bool ExitCar::update()
 
 void ExitCar::interruptUpdate()
 {
-    AnimPose &animPose = m_character->getExitCarAnim();
+    AnimPose &animPose = m_character->m_animator->m_state.poses[exitPoseIndex()];
     if (animPose.blendFactor == 0.f)
     {
         // std::cout << "interruptUpdate: end" << std::endl;
@@ -196,8 +225,8 @@ void ExitCar::endTask()
     m_character->m_passengerInfo.car = nullptr;
 
     m_character->m_animator->m_animations[18]->m_timed = false;
-    m_character->m_animator->m_animations[19]->m_timed = false;
-    m_character->m_animator->m_animations[19]->m_playbackSpeed = 1.f;
+    m_character->m_animator->m_animations[exitAnimIndex()]->m_timed = false;
+    m_character->m_animator->m_animations[exitAnimIndex()]->m_playbackSpeed = 1.f;
 }
 
 void ExitCar::updateRefValues()
@@ -207,4 +236,15 @@ void ExitCar::updateRefValues()
     m_lookDir = glm::normalize(corner1 - corner0);
 
     m_refPos = CommonUtil::positionFromModel(m_car->translateOffset(m_car->m_animDoorOffset));
+}
+
+// TODO: better access
+int ExitCar::exitPoseIndex()
+{
+    return m_jumping ? 7 : 6;
+}
+
+int ExitCar::exitAnimIndex()
+{
+    return m_jumping ? 20 : 19;
 }

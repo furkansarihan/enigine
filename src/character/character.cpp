@@ -33,8 +33,9 @@ void Character::init()
     // TODO: create empty at runtime?
     Animation *animationRagdoll = new Animation("pose", m_model, true);
     Animation *animation17 = new Animation("firing", m_model, true);
-    Animation *animation18 = new Animation("enter-car-5", m_model);
-    Animation *animation19 = new Animation("exit-car-2", m_model);
+    Animation *animation18 = new Animation("enter-car-7", m_model);
+    Animation *animation19 = new Animation("exit-car-6", m_model);
+    Animation *animation20 = new Animation("jump-car-5", m_model);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -58,6 +59,7 @@ void Character::init()
     animations.push_back(animation17);
     animations.push_back(animation18);
     animations.push_back(animation19);
+    animations.push_back(animation20);
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
@@ -179,6 +181,10 @@ void Character::init()
     m_animator->m_state.poses.push_back(animPose);
     // exit-car
     animPose.index = 19;
+    animPose.blendFactor = 0.0f;
+    m_animator->m_state.poses.push_back(animPose);
+    // jump-car
+    animPose.index = 20;
     animPose.blendFactor = 0.0f;
     m_animator->m_state.poses.push_back(animPose);
 
@@ -543,7 +549,7 @@ void Character::setRunTimer(float time)
     m_animator->m_timers[14] = time;
 }
 
-void Character::activateRagdoll(glm::vec3 impulse)
+void Character::activateRagdoll()
 {
     inactivateCollider();
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position);
@@ -551,7 +557,20 @@ void Character::activateRagdoll(glm::vec3 impulse)
     m_ragdoll->unFreezeBodies();
     m_ragdoll->changeState(RagdollState::fetal);
     m_ragdollActive = true;
+}
 
+void Character::applyImpulseFullRagdoll(glm::vec3 impulse)
+{
+    btVector3 imp = BulletGLM::getBulletVec3(impulse * (1.f / BODYPART_COUNT));
+    for (int i = 0; i < BODYPART_COUNT; i++)
+    {
+        btRigidBody *rb = m_ragdoll->m_bodies[i];
+        rb->applyCentralImpulse(imp);
+    }
+}
+
+void Character::applyImpulseChest(glm::vec3 impulse)
+{
     btRigidBody *pelvis = m_ragdoll->m_bodies[BODYPART_PELVIS];
     btRigidBody *spine = m_ragdoll->m_bodies[BODYPART_SPINE];
 
@@ -589,7 +608,8 @@ void Character::checkPhysicsStateChange()
     float force = totalForce.length();
     if (force > m_ragdolActivateThreshold)
     {
-        activateRagdoll(-BulletGLM::getGLMVec3(totalForce) * m_ragdolActivateFactor);
+        activateRagdoll();
+        applyImpulseFullRagdoll(-BulletGLM::getGLMVec3(totalForce) * m_ragdolActivateFactor);
     }
 }
 

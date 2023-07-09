@@ -138,7 +138,9 @@ public:
     void setRunPlaybackSpeed(float animSpeed);
     void setWalkTimer(float time);
     void setRunTimer(float time);
-    void activateRagdoll(glm::vec3 impulse);
+    void activateRagdoll();
+    void applyImpulseFullRagdoll(glm::vec3 impulse);
+    void applyImpulseChest(glm::vec3 impulse);
     void resetRagdoll();
     void activateCollider();
     void inactivateCollider();

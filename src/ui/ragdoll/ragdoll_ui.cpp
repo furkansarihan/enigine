@@ -10,7 +10,7 @@ void RagdollUI::render()
     Ragdoll *ragdoll = m_character->m_ragdoll;
     if (ImGui::Button("Activate Ragdoll"))
     {
-        m_character->activateRagdoll(glm::vec3(1.f, 0.f, 0.f));
+        m_character->activateRagdoll();
     }
     ImGui::Checkbox("floatObject", &m_floatObject);
     if (ImGui::BeginCombo("##RagdollStateCombo", stateNames[ragdoll->m_status.state]))

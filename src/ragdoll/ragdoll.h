@@ -115,7 +115,8 @@ public:
 
     glm::vec3 m_modelOffset = glm::vec3(0.0f, -1.9f, 0);
 
-    void resetTransforms(const btVector3 &positionOffset, float angleY);
+    void resetTransforms(const btVector3 &offsetPosition, btQuaternion offsetRotation);
+    void resetTransforms(const btVector3 &offsetPosition, float angleY);
     void freezeBodies();
     void unFreezeBodies();
     void update(float deltaTime);

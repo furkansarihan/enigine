@@ -5,7 +5,7 @@ EnterCar::EnterCar(Character *character, CarController *car)
       m_car(car)
 {
     m_doorOpenTime = 700.f;
-    m_doorCloseTime = 3500.f;
+    m_doorCloseTime = 3600.f;
 }
 
 EnterCar::~EnterCar()
