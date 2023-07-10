@@ -33,6 +33,8 @@ public:
     float m_radius = 12.0;
     float m_speed = 2.0;
 
+    bool m_cullFront = false;
+
     float m_deltaTime = 0.f;
 
     void render() override;

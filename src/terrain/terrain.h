@@ -56,6 +56,7 @@ public:
 
     int m_grassTileSize = 12;
     float m_grassDensity = 2;
+    glm::vec3 m_grassColorFactor = glm::vec3(1.35f, 1.11f, 1.17f);
     int m_stoneTileSize = 56;
     float m_stoneDensity = 0.02;
     float m_windIntensity = 6.0;
@@ -79,7 +80,7 @@ public:
                    glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
                    bool ortho);
-    void drawInstance(Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
+    void drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos,Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();
 
 private:

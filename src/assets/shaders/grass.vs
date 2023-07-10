@@ -6,6 +6,7 @@ layout (location = 2) in vec2 aTexCoords;
 out vec2 TexCoords;
 out float _height;
 out vec3 _normal;
+out float _n;
 
 uniform sampler2D elevationSampler;
 
@@ -16,6 +17,7 @@ uniform float scaleHoriz;
 uniform float u_time;
 uniform float mult;
 uniform float windIntensity;
+uniform vec3 playerPos;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -86,6 +88,7 @@ void main()
     vec2 worldPos = referencePos + vec2(x, z);
 
     float n = noise(worldPos);
+    _n = n;
 
     worldPos.x += n * 3;
     worldPos.y -= n * 2;
@@ -100,10 +103,29 @@ void main()
     height *= yScaleFactor;
     height += minHeight;
 
+    vec3 worldPos3 = vec3(worldPos.x, height, worldPos.y);
+    float playerDist = distance(playerPos, worldPos3);
+
+    vec3 offset = vec3(0, 0, 0);
+    if (playerDist < 1)
+        offset = playerPos - worldPos3;
+    else if (playerDist < 2) {
+        offset = playerPos - worldPos3;
+        offset *= 1 - (playerDist - 1);
+    }
+
+    if (playerDist < 0.5) {
+        offset *= playerDist * 8;
+    }
+
     vec3 localPos = aPos * vec3(0.5, 0.5 + 1 * n, 0.5);
 
     float wave = sin(localPos.z * 10.0 + u_time) * 0.1;
-    localPos.z += wave * (1 - aTexCoords.y) * n * windIntensity;
+    float move = wave * (1 - aTexCoords.y) * n * windIntensity;
+    localPos.z += move;
+    localPos.x += move;
+
+    localPos -= offset * (1 - aTexCoords.y) * 0.5;
 
     gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
     

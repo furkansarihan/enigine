@@ -715,7 +715,7 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
     }
 }
 
-void Terrain::drawInstance(Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos)
+void Terrain::drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos, Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos)
 {
     int tileSize1 = tileSize;
     int tileSize2 = tileSize * 2;
@@ -776,6 +776,8 @@ void Terrain::drawInstance(Shader instanceShader, Model *model, int tileSize, fl
     instanceShader.setFloat("maxHeight", m_maxHeight);
     instanceShader.setFloat("u_time", (float)glfwGetTime());
 
+    instanceShader.setVec3("playerPos", playerPos);
+    instanceShader.setVec3("grassColorFactor", grassColorFactor);
     instanceShader.setFloat("windIntensity", m_windIntensity);
     instanceShader.setFloat("mult", mult);
 

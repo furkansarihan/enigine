@@ -144,7 +144,7 @@ public:
             // bottom right
             1, -1,
             1.0f, 0.0f};
-        unsigned int quad_indices[] = {0, 1, 2, 1, 2, 3};
+        unsigned int quad_indices[] = {0, 2, 1, 1, 2, 3};
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);

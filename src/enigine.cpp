@@ -89,10 +89,6 @@ int main(int argc, char **argv)
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     glDepthFunc(GL_LEQUAL);
-    // Trasparency
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     task_basic_info t_info;
@@ -332,7 +328,7 @@ int main(int argc, char **argv)
         taskManager.update();
 
         // Clear window
-        glClearColor(0.46f, 0.71f, 0.98f, 1.00f);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Update projection
@@ -365,6 +361,12 @@ int main(int argc, char **argv)
             terrain.drawDepth(terrainShadow, depthViewMatrix, depthP, nearPlaneCenter);
 
             // Draw objects
+            glEnable(GL_CULL_FACE);
+            glFrontFace(GL_CCW);
+            if (tempUI.m_cullFront)
+                glCullFace(GL_FRONT);
+            else
+                glCullFace(GL_BACK);
             glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
 
             glm::vec3 position = glm::vec3(0, 2, 0);
@@ -465,36 +467,27 @@ int main(int argc, char **argv)
                 animDepthShader.setMat4("model", character->m_modelMatrix);
                 character->m_model->draw(animDepthShader);
             }
+            glDisable(GL_CULL_FACE);
         }
 
         // Render to post process texture
         postProcess.updateFramebuffer((float)screenWidth, (float)screenHeight);
         glBindFramebuffer(GL_FRAMEBUFFER, postProcess.m_framebufferObject);
         glViewport(0, 0, screenWidth, screenHeight);
-        glClearColor(0.46f, 0.71f, 0.98f, 1.00f);
+        glClearColor(1.f, 0.f, 1.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // TODO: pbr
-        // animation
-        for (int i = 0; i < characters.size(); i++)
-        {
-            Character *character = characters[i];
-            animShader.use();
-            animShader.setMat4("projection", projection);
-            animShader.setMat4("view", editorCamera.getViewMatrix());
-            animShader.setVec3("lightDir", shadowManager.m_lightPos);
-            animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
-            animShader.setFloat("lightPower", tempUI.m_lightPower);
+        // Draw skybox
+        glDepthMask(GL_FALSE);
+        cubemapShader.use();
+        cubemapShader.setMat4("projection", projection);
+        cubemapShader.setMat4("view", editorCamera.getViewMatrix());
 
-            auto transforms = character->m_animator->m_finalBoneMatrices;
-            for (int i = 0; i < transforms.size(); ++i)
-            {
-                animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
-            }
-
-            animShader.setMat4("model", character->m_modelMatrix);
-            character->m_model->draw(animShader);
-        }
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.m_skyboxTexture);
+        cube.draw(cubemapShader);
+        glDepthMask(GL_TRUE);
 
         // Render scene
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
@@ -526,9 +519,35 @@ int main(int argc, char **argv)
                           editorCamera.position, editorCamera.front,
                           frustumDistances,
                           editorCamera.projectionMode == ProjectionMode::Ortho);
+        
+        // TODO: better function call
+        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
+        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
 
-        terrain.drawInstance(grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
-        terrain.drawInstance(stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
+        glEnable(GL_CULL_FACE);
+        glFrontFace(GL_CCW);
+        glCullFace(GL_BACK);
+        // TODO: pbr
+        // animation
+        for (int i = 0; i < characters.size(); i++)
+        {
+            Character *character = characters[i];
+            animShader.use();
+            animShader.setMat4("projection", projection);
+            animShader.setMat4("view", editorCamera.getViewMatrix());
+            animShader.setVec3("lightDir", shadowManager.m_lightPos);
+            animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
+            animShader.setFloat("lightPower", tempUI.m_lightPower);
+
+            auto transforms = character->m_animator->m_finalBoneMatrices;
+            for (int i = 0; i < transforms.size(); ++i)
+            {
+                animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+            }
+
+            animShader.setMat4("model", character->m_modelMatrix);
+            character->m_model->draw(animShader);
+        }
 
         // Draw objects
         {
@@ -737,6 +756,7 @@ int main(int argc, char **argv)
                 sphere.draw(simpleShader);
             }
         }
+        glDisable(GL_CULL_FACE);
 
         // Draw light source
         glm::mat4 mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
@@ -759,24 +779,14 @@ int main(int argc, char **argv)
         // terrain debug
         terrainUI.drawHeightCells(simpleShader, cube, projection * editorCamera.getViewMatrix());
 
-        // Draw skybox
-        glDepthMask(GL_FALSE);
-        cubemapShader.use();
-        cubemapShader.setMat4("projection", projection);
-        cubemapShader.setMat4("view", editorCamera.getViewMatrix());
-
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.m_skyboxTexture);
-
-        cube.draw(cubemapShader);
-        glDepthMask(GL_TRUE);
-
         // Draw particles
         // TODO: ParticleManager
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         character.m_smokeParticle->drawParticles(smokeShader, quad, projection * editorCamera.getViewMatrix());
         character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, projection * editorCamera.getViewMatrix());
         car.m_exhausParticle->drawParticles(exhaustShader, quad, projection * editorCamera.getViewMatrix());
+        glDisable(GL_BLEND);
 
         // Post process
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

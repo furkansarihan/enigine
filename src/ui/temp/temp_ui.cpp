@@ -39,4 +39,5 @@ void TempUI::render()
     ImGui::ColorEdit3("lightColor", m_lightColor);
     ImGui::ColorEdit3("ambientColor", m_ambientColor);
     ImGui::ColorEdit3("specularColor", m_specularColor);
+    ImGui::Checkbox("m_cullFront", &m_cullFront);
 }

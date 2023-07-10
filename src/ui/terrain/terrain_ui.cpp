@@ -34,6 +34,7 @@ void TerrainUI::render()
     ImGui::DragFloat("uvOffset-Y", &m_terrain->uvOffset.y, 0.001);
     ImGui::DragInt("grassTileSize", &m_terrain->m_grassTileSize, 1, 0, 128);
     ImGui::DragFloat("grassDensity", &m_terrain->m_grassDensity, 0.01, 0, 10);
+    VectorUI::renderVec3("m_grassColorFactor", m_terrain->m_grassColorFactor, 0.01f);
     ImGui::DragInt("stoneTileSize", &m_terrain->m_stoneTileSize, 1, 0, 128);
     ImGui::DragFloat("stoneDensity", &m_terrain->m_stoneDensity, 0.01, 0, 10);
     ImGui::DragFloat("windIntensity", &m_terrain->m_windIntensity, 0.2, 0, 50);
