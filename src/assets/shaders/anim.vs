@@ -18,6 +18,7 @@ uniform mat4 finalBonesMatrices[MAX_BONES];
 
 out vec2 TexCoords;
 out vec3 WorldPos;
+out vec3 ModelPos;
 out vec3 Normal;
 out vec3 Tangent;
 out vec3 Bitangent;
@@ -44,12 +45,12 @@ void main()
         localBitangent += mat3(finalBonesMatrices[boneIds[i]]) * bitangent;
     }
 
-    mat4 viewModel = view * model;
-    gl_Position =  projection * viewModel * totalPosition;
-
     TexCoords = tex;
-    WorldPos = totalPosition.xyz;
+    WorldPos = vec3(model * totalPosition);
+    ModelPos = totalPosition.xyz;
     Normal = mat3(transpose(inverse(model))) * normalize(localNormal);
     Tangent = mat3(transpose(inverse(model))) * normalize(localTangent);
     Bitangent = mat3(transpose(inverse(model))) * normalize(localBitangent);
+
+    gl_Position = projection * view * vec4(WorldPos, 1);
 }

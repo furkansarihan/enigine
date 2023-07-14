@@ -68,7 +68,7 @@ void ShadowmapManager::bindFramebuffer()
 
 void ShadowmapManager::bindTextureArray(int index)
 {
-    glBindTexture(GL_TEXTURE_2D, m_textureArray);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_textureArray);
 
     // TODO: better way?
     // Create an array of floating-point depth values

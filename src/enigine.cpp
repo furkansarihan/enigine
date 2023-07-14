@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, texture2Shader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader, exhaustShader;
+    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader, exhaustShader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
@@ -133,7 +133,6 @@ int main(int argc, char **argv)
     shaderManager.addShader(ShaderDynamic(&grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
     shaderManager.addShader(ShaderDynamic(&stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
     shaderManager.addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
-    shaderManager.addShader(ShaderDynamic(&texture2Shader, "../src/assets/shaders/texture-2.vs", "../src/assets/shaders/anim.fs"));
     shaderManager.addShader(ShaderDynamic(&smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
     shaderManager.addShader(ShaderDynamic(&muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
     shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
@@ -214,8 +213,10 @@ int main(int argc, char **argv)
 
     // Shadowmap
     std::vector<unsigned int> shaderIds;
-    shaderIds.push_back(simpleShadow.id);
-    shaderIds.push_back(terrainShadow.id);
+    shaderIds.push_back(terrainShader.id);
+    shaderIds.push_back(terrainPBRShader.id);
+    shaderIds.push_back(pbrShader.id);
+    shaderIds.push_back(animShader.id);
 
     ShadowManager shadowManager(&editorCamera, shaderIds);
     ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
@@ -367,48 +368,7 @@ int main(int argc, char **argv)
                 glCullFace(GL_FRONT);
             else
                 glCullFace(GL_BACK);
-            glm::vec4 objectColor(0.6f, 0.6f, 0.6f, 1.0f);
-
-            glm::vec3 position = glm::vec3(0, 2, 0);
-            glm::vec3 scale = glm::vec3(4, 4, 4);
-            glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
             depthShader.use();
-            depthShader.setMat4("MVP", depthVP * objectModel);
-            suzanne.draw(depthShader);
-
-            // wall
-            position = glm::vec3(0, 1.25, -9);
-            scale = glm::vec3(10.0f, 4.0f, 1.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            depthShader.setMat4("MVP", depthVP * objectModel);
-            cube.draw(depthShader);
-
-            // ground
-            position = glm::vec3(0, 0, 0.75);
-            scale = glm::vec3(20.0f, 2.0f, 100.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            depthShader.setMat4("MVP", depthVP * objectModel);
-            cube.draw(depthShader);
-
-            // ball
-            for (int i = 2; i < 30; i++)
-            {
-                position = glm::vec3(0, 2, 3 * i);
-                scale = glm::vec3(2.0f, 2.0f, 2.0f);
-                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                depthShader.setMat4("MVP", depthVP * objectModel);
-                sphere.draw(depthShader);
-            }
-
-            // ball
-            for (int i = 2; i < 30; i++)
-            {
-                position = glm::vec3(-20, 2, 3 * i);
-                scale = glm::vec3(2.0f, 2.0f, 2.0f);
-                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                depthShader.setMat4("MVP", depthVP * objectModel);
-                sphere.draw(depthShader);
-            }
 
             // vehicle
             glm::mat4 model = vehicle.m_chassisModel;
@@ -519,7 +479,7 @@ int main(int argc, char **argv)
                           editorCamera.position, editorCamera.front,
                           frustumDistances,
                           editorCamera.projectionMode == ProjectionMode::Ortho);
-        
+
         // TODO: better function call
         terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
         terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
@@ -529,15 +489,24 @@ int main(int argc, char **argv)
         glCullFace(GL_BACK);
         // TODO: pbr
         // animation
+        animShader.use();
+        animShader.setMat4("projection", projection);
+        animShader.setMat4("view", editorCamera.getViewMatrix());
+        animShader.setVec3("lightDir", shadowManager.m_lightPos);
+        animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
+        animShader.setFloat("lightPower", tempUI.m_lightPower);
+        animShader.setVec3("camPos", editorCamera.position);
+        animShader.setVec3("CamView", shadowManager.m_camera->front);
+        animShader.setVec4("FrustumDistances", frustumDistances);
+        animShader.setVec3("Bias", terrain.shadowBias);
+
+        glActiveTexture(GL_TEXTURE0 + 7);
+        glUniform1i(glGetUniformLocation(animShader.id, "ShadowMap"), 7);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
+
         for (int i = 0; i < characters.size(); i++)
         {
             Character *character = characters[i];
-            animShader.use();
-            animShader.setMat4("projection", projection);
-            animShader.setMat4("view", editorCamera.getViewMatrix());
-            animShader.setVec3("lightDir", shadowManager.m_lightPos);
-            animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
-            animShader.setFloat("lightPower", tempUI.m_lightPower);
 
             auto transforms = character->m_animator->m_finalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
@@ -548,88 +517,6 @@ int main(int argc, char **argv)
             animShader.setMat4("model", character->m_modelMatrix);
             character->m_model->draw(animShader);
         }
-
-        // Draw objects
-        {
-            glm::vec3 objectColor(0.6f, 0.6f, 0.6f);
-
-            simpleShadow.use();
-            simpleShadow.setFloat("biasMult", shadowManager.m_bias);
-            simpleShadow.setVec3("AmbientColor", glm::vec3(tempUI.m_ambientColor[0], tempUI.m_ambientColor[1], tempUI.m_ambientColor[2]));
-            simpleShadow.setVec3("DiffuseColor", objectColor);
-            simpleShadow.setVec3("SpecularColor", glm::vec3(tempUI.m_specularColor[0], tempUI.m_specularColor[1], tempUI.m_specularColor[2]));
-            simpleShadow.setVec3("LightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
-            simpleShadow.setFloat("LightPower", tempUI.m_lightPower);
-            simpleShadow.setVec3("CamPos", shadowManager.m_camera->position);
-            simpleShadow.setVec3("CamView", shadowManager.m_camera->front);
-            simpleShadow.setVec4("FrustumDistances", frustumDistances);
-            simpleShadow.setBool("ShowCascade", terrain.showCascade);
-
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(glGetUniformLocation(simpleShadow.id, "ShadowMap"), 0);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-            // suzanne
-            glm::vec3 position = glm::vec3(0, 2, 0);
-            glm::vec3 scale = glm::vec3(4, 4, 4);
-            glm::mat4 objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-            simpleShadow.setMat4("M", objectModel);
-            simpleShadow.setVec3("LightInvDirection_worldspace", shadowManager.m_lightPos);
-            suzanne.draw(simpleShadow);
-
-            // wall
-            position = glm::vec3(0, 1.25, -9);
-            scale = glm::vec3(10.0f, 4.0f, 1.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-            simpleShadow.setMat4("M", objectModel);
-            simpleShadow.setVec3("LightInvDirection_worldspace", shadowManager.m_lightPos);
-            cube.draw(simpleShadow);
-
-            // ground
-            position = glm::vec3(0, 0, 0.75);
-            scale = glm::vec3(20.0f, 2.0f, 100.0f);
-            objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-            simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-            simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-            simpleShadow.setMat4("M", objectModel);
-            simpleShadow.setVec3("LightInvDirection_worldspace", shadowManager.m_lightPos);
-            cube.draw(simpleShadow);
-
-            // ball
-            for (int i = 2; i < 30; i++)
-            {
-                position = glm::vec3(0, 2, 3 * i);
-                scale = glm::vec3(2.0f, 2.0f, 2.0f);
-                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-                simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-                simpleShadow.setMat4("M", objectModel);
-                simpleShadow.setVec3("LightInvDirection_worldspace", shadowManager.m_lightPos);
-                sphere.draw(simpleShadow);
-            }
-
-            // ball
-            for (int i = 2; i < 30; i++)
-            {
-                position = glm::vec3(-20, 2, 3 * i);
-                scale = glm::vec3(2.0f, 2.0f, 2.0f);
-                objectModel = glm::translate(glm::scale(glm::mat4(1.0f), scale), position);
-                simpleShadow.setMat4("MVP", projection * editorCamera.getViewMatrix() * objectModel);
-                simpleShadow.setMat4("V", editorCamera.getViewMatrix());
-                simpleShadow.setMat4("M", objectModel);
-                simpleShadow.setVec3("LightInvDirection_worldspace", shadowManager.m_lightPos);
-                sphere.draw(simpleShadow);
-            }
-        }
-
-        // animate light source
-        lightPositions[0].x = tempUI.m_radius * glm::sin(currentFrame * tempUI.m_speed);
-        lightPositions[0].y = tempUI.m_radius * glm::sin(currentFrame * (tempUI.m_speed / 6)) + 20;
-        lightPositions[0].z = tempUI.m_radius * glm::cos(currentFrame * tempUI.m_speed) + 6;
 
         // draw pbr
         // TODO: toggle
@@ -643,6 +530,9 @@ int main(int argc, char **argv)
             pbrShader.setFloat("ao", ao);
             pbrShader.setVec3("lightDirection", shadowManager.m_lightPos);
             pbrShader.setVec3("lightColor", tempUI.m_sunColor * tempUI.m_sunIntensity);
+            pbrShader.setVec3("CamView", shadowManager.m_camera->front);
+            pbrShader.setVec4("FrustumDistances", frustumDistances);
+            pbrShader.setVec3("Bias", terrain.shadowBias);
 
             for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
             {
@@ -662,32 +552,11 @@ int main(int argc, char **argv)
             glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 9);
             glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
 
-            float nrRows = 16;
-            float nrColumns = 4;
-            float spacing = 5;
+            glActiveTexture(GL_TEXTURE0 + 10);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 10);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
 
-            glm::mat4 model = glm::mat4(1.0f);
-            for (int row = 10; row < nrRows; ++row)
-            {
-                pbrShader.setFloat("metallic", (float)row / (float)nrRows);
-                for (int col = 0; col < nrColumns; ++col)
-                {
-                    // we clamp the roughness to 0.05 - 1.0 as perfectly smooth surfaces (roughness of 0.0) tend to look a bit off
-                    // on direct lighting.
-                    pbrShader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
-
-                    model = glm::mat4(1.0f);
-                    glm::vec3 position(
-                        (col - (nrColumns / 2)) * spacing + spacing / 2,
-                        (row - (nrRows / 2)) * spacing,
-                        6);
-                    model = glm::translate(model, position);
-                    model = glm::scale(model, glm::vec3(2));
-                    pbrShader.setMat4("model", model);
-                    pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-                    // spherePBR.draw(pbrShader);
-                }
-            }
+            glm::mat4 model;
 
             // draw pistol
             pbrShader.setMat4("model", character.m_pistolModel);

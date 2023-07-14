@@ -16,8 +16,6 @@ ShadowManager::~ShadowManager()
 // Shadowmap lookup matrices
 void ShadowManager::setupUBO()
 {
-    glGenBuffers(1, &m_ubo);
-
     for (int i = 0; i < m_shaderIds.size(); i++)
     {
         unsigned int shaderId = m_shaderIds.at(i);
@@ -25,8 +23,10 @@ void ShadowManager::setupUBO()
         glUniformBlockBinding(shaderId, uniformBlockIndex, 0);
     }
 
+    glGenBuffers(1, &m_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, m_ubo);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_splitCount, NULL, GL_STREAM_DRAW);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_ubo, 0, sizeof(glm::mat4) * m_splitCount);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
@@ -196,7 +196,6 @@ void ShadowManager::setup(float screenWidth, float screenHeight)
 void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
 {
     glm::mat4 depthBiasVPMatrices[m_splitCount];
-    glm::mat4 camViewMatrix = m_camera->getViewMatrix();
 
     for (int i = 0; i < m_splitCount; i++)
     {
@@ -205,7 +204,7 @@ void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
 
     glBindBuffer(GL_UNIFORM_BUFFER, m_ubo);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_splitCount, depthBiasVPMatrices, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 glm::mat4 ShadowManager::getDepthViewMatrix()
