@@ -110,6 +110,8 @@ add_executable( enigine
                 src/ui/vehicle/vehicle_ui.cpp
                 src/ui/particle/particle_ui.h
                 src/ui/particle/particle_ui.cpp
+                src/ui/resource/resource_ui.h
+                src/ui/resource/resource_ui.cpp
                 src/ui/common/vector_ui.h
                 src/ui/common/physics_ui.h
                 # external

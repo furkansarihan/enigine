@@ -17,10 +17,10 @@ Model::~Model()
     // delete m_importer;
 }
 
-void Model::draw(Shader shader)
+void Model::draw(Shader shader, bool drawOpaque)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].draw(shader);
+        meshes[i].draw(shader, drawOpaque);
 }
 
 void Model::drawInstanced(Shader shader, int instanceCount)
@@ -134,6 +134,40 @@ Mesh Model::processMesh(aiMesh *mesh)
 
     // TODO: merge detection for metal-rough-ao
 
+    // material properties
+    std::vector<MaterialProperty> properties;
+    for (unsigned int i = 0; i < material->mNumProperties; i++)
+    {
+        const aiMaterialProperty *property = material->mProperties[i];
+        std::string propertyName = property->mKey.C_Str();
+        std::string type = propertyName.substr(1, 3);
+        // TODO: check other properties
+        if (type != "mat")
+            continue;
+
+        // TODO: depends on assimp - don't
+        propertyName = propertyName.substr(5);
+        std::replace(propertyName.begin(), propertyName.end(), '.', '_');
+        std::string propertyValue;
+
+        if (property->mType == aiPTI_Float)
+        {
+            float value = *reinterpret_cast<float *>(property->mData);
+            propertyValue = std::to_string(value);
+        }
+        else if (property->mType == aiPTI_Integer)
+        {
+            int value = *reinterpret_cast<int *>(property->mData);
+            propertyValue = std::to_string(value);
+        }
+        else
+        {
+            propertyValue = "unknown-type";
+        }
+
+        properties.push_back(MaterialProperty(propertyName, property->mType, propertyValue));
+    }
+
     // 1. diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
@@ -163,7 +197,7 @@ Mesh Model::processMesh(aiMesh *mesh)
     extractBoneWeightForVertices(vertices, mesh);
 
     // return a mesh object created from the extracted mesh data
-    return Mesh(vertices, indices, textures);
+    return Mesh(mesh->mName.C_Str(), vertices, indices, Material(material->GetName().C_Str(), textures, properties));
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)

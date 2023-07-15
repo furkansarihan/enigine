@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include <glm/gtx/string_cast.hpp>
+#include <assimp/scene.h>
 
 #include "../shader/shader.h"
 
@@ -29,25 +30,50 @@ struct Texture
     std::string type;
 };
 
+struct MaterialProperty
+{
+    std::string name;
+    int type;
+    std::string value;
+
+    MaterialProperty(const std::string &name, int type, const std::string &value)
+        : name(name), type(type), value(value) {}
+};
+
+struct Material
+{
+    std::string name;
+    std::vector<Texture> textures;
+    std::vector<MaterialProperty> properties;
+
+    Material(const std::string &name, std::vector<Texture> &textures, std::vector<MaterialProperty> &properties)
+        : name(name), textures(textures), properties(properties) {}
+};
+
 class Mesh
 {
 public:
     // Constructors
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+    Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material material);
     ~Mesh();
     // Attributes
+    std::string name;
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<Texture> textures;
+    Material material;
+    bool opaque = true;
     unsigned int VAO;
     // Functions
-    void draw(Shader shader);
+    void draw(Shader shader, bool drawOpaque);
     void drawInstanced(Shader shader, int instanceCount);
 
 private:
     unsigned int VBO, EBO;
     void setupMesh();
+    void updateTransmission();
     void bindTextures(Shader shader);
+    void bindProperties(Shader shader);
+    void bindDefaultProperties(Shader shader);
 };
 
 #endif /* mesh_hpp */

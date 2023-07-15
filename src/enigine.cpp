@@ -269,6 +269,7 @@ int main(int argc, char **argv)
     particleUI.m_particleEngines.push_back(character.m_smokeParticle);
     particleUI.m_particleEngines.push_back(character.m_muzzleFlash);
     particleUI.m_particleEngines.push_back(car.m_exhausParticle);
+    ResourceUI resourceUI(&resourceManager);
     TempUI tempUI(&postProcess, &physicsWorld, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
@@ -280,6 +281,7 @@ int main(int argc, char **argv)
     rootUI.m_uiList.push_back(&cameraUI);
     rootUI.m_uiList.push_back(&terrainUI);
     rootUI.m_uiList.push_back(&particleUI);
+    rootUI.m_uiList.push_back(&resourceUI);
     rootUI.m_uiList.push_back(&tempUI);
 
     while (!glfwWindowShouldClose(window))
@@ -335,6 +337,8 @@ int main(int argc, char **argv)
         // Update projection
         glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
         glm::mat4 projection = editorCamera.getProjectionMatrix((float)screenWidth, (float)screenHeight);
+        glm::mat4 view = editorCamera.getViewMatrix();
+        glm::mat4 viewProjection = projection * view;
 
         // Shadowmap
         shadowManager.setup((float)screenWidth, (float)screenHeight);
@@ -441,7 +445,7 @@ int main(int argc, char **argv)
         glDepthMask(GL_FALSE);
         cubemapShader.use();
         cubemapShader.setMat4("projection", projection);
-        cubemapShader.setMat4("view", editorCamera.getViewMatrix());
+        cubemapShader.setMat4("view", view);
 
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
@@ -453,7 +457,7 @@ int main(int argc, char **argv)
         glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
 
         glm::mat4 cullProjection = projection;
-        glm::mat4 cullView = editorCamera.getViewMatrix();
+        glm::mat4 cullView = view;
         glm::vec3 cullViewPos = editorCamera.position;
 
         // TODO: move where?
@@ -473,7 +477,7 @@ int main(int argc, char **argv)
 
         terrain.drawColor(terrainPBRShader, shadowManager.m_lightPos, tempUI.m_sunColor * tempUI.m_sunIntensity,
                           tempUI.m_lightPower,
-                          editorCamera.getViewMatrix(), projection, editorCamera.position,
+                          view, projection, editorCamera.position,
                           cullView, cullProjection, cullViewPos,
                           shadowmapManager.m_textureArray,
                           editorCamera.position, editorCamera.front,
@@ -481,8 +485,8 @@ int main(int argc, char **argv)
                           editorCamera.projectionMode == ProjectionMode::Ortho);
 
         // TODO: better function call
-        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
-        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, editorCamera.getViewMatrix(), editorCamera.position);
+        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, view, editorCamera.position);
+        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, view, editorCamera.position);
 
         glEnable(GL_CULL_FACE);
         glFrontFace(GL_CCW);
@@ -491,7 +495,7 @@ int main(int argc, char **argv)
         // animation
         animShader.use();
         animShader.setMat4("projection", projection);
-        animShader.setMat4("view", editorCamera.getViewMatrix());
+        animShader.setMat4("view", view);
         animShader.setVec3("lightDir", shadowManager.m_lightPos);
         animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
         animShader.setFloat("lightPower", tempUI.m_lightPower);
@@ -522,7 +526,6 @@ int main(int argc, char **argv)
         // TODO: toggle
         {
             pbrShader.use();
-            glm::mat4 view = editorCamera.getViewMatrix();
             pbrShader.setMat4("view", view);
             pbrShader.setMat4("projection", projection);
             pbrShader.setVec3("camPos", editorCamera.position);
@@ -611,31 +614,24 @@ int main(int argc, char **argv)
                 pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
                 wheels[i]->draw(pbrShader);
             }
-
-            // light sources
-            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-            {
-                model = glm::mat4(1.0f);
-                model = glm::translate(model, lightPositions[i]);
-                model = glm::scale(model, glm::vec3(0.2f));
-
-                simpleShader.use();
-                simpleShader.setMat4("MVP", projection * editorCamera.getViewMatrix() * model);
-                simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
-                sphere.draw(simpleShader);
-            }
         }
         glDisable(GL_CULL_FACE);
 
-        // Draw light source
-        glm::mat4 mvp = projection * editorCamera.getViewMatrix() * glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f, 0.2f, 0.2f)), shadowManager.m_lightPos);
-        simpleShader.use();
-        simpleShader.setMat4("MVP", mvp);
-        simpleShader.setVec4("DiffuseColor", glm::vec4(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2], 1.0f));
-        sphere.draw(simpleShader);
+        // light sources
+        for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, lightPositions[i]);
+            model = glm::scale(model, glm::vec3(0.2f));
+
+            simpleShader.use();
+            simpleShader.setMat4("MVP", viewProjection * model);
+            simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
+            sphere.draw(simpleShader);
+        }
 
         // Draw physics debug lines
-        mvp = projection * editorCamera.getViewMatrix();
+        glm::mat4 mvp = viewProjection;
         debugDrawer.drawLines(lineShader, mvp, vbo, vao, ebo);
 
         // Shadowmap debug
@@ -643,18 +639,18 @@ int main(int argc, char **argv)
         shadowmapUI.drawLightAABB(simpleShader, mvp, inverseDepthViewMatrix, vbo, vao, ebo);
 
         // character debug
-        characterUI.drawArmatureBones(character, simpleShader, cube, projection * editorCamera.getViewMatrix());
+        characterUI.drawArmatureBones(character, simpleShader, cube, viewProjection);
 
         // terrain debug
-        terrainUI.drawHeightCells(simpleShader, cube, projection * editorCamera.getViewMatrix());
+        terrainUI.drawHeightCells(simpleShader, cube, viewProjection);
 
         // Draw particles
         // TODO: ParticleManager
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        character.m_smokeParticle->drawParticles(smokeShader, quad, projection * editorCamera.getViewMatrix());
-        character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, projection * editorCamera.getViewMatrix());
-        car.m_exhausParticle->drawParticles(exhaustShader, quad, projection * editorCamera.getViewMatrix());
+        character.m_smokeParticle->drawParticles(smokeShader, quad, viewProjection);
+        character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, viewProjection);
+        car.m_exhausParticle->drawParticles(exhaustShader, quad, viewProjection);
         glDisable(GL_BLEND);
 
         // Post process

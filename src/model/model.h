@@ -35,7 +35,7 @@ class Model
 public:
     Model(ResourceManager *resourceManager, std::string const &path);
     ~Model();
-    void draw(Shader shader);
+    void draw(Shader shader, bool drawOpaque = true);
     void drawInstanced(Shader shader, int instanceCount);
     std::vector<Mesh> meshes;
     std::string m_path;

@@ -1,26 +1,37 @@
 #include "mesh.h"
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
+Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material material)
+    : name(name),
+      vertices(vertices),
+      indices(indices),
+      material(material)
 {
-    this->vertices = vertices;
-    this->indices = indices;
-    this->textures = textures;
-
-    // now that we have all the required data, set the vertex buffers and its attribute pointers.
     setupMesh();
+    updateTransmission();
 }
 
 Mesh::~Mesh()
 {
 }
 
-void Mesh::draw(Shader shader)
+// TODO: renderer
+void Mesh::draw(Shader shader, bool drawOpaque)
 {
+    // TODO:
+    if (drawOpaque && !opaque)
+        return;
+
+    if (!drawOpaque && opaque)
+        return;
+
     bindTextures(shader);
+    bindProperties(shader);
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+
+    bindDefaultProperties(shader);
 
     // always good practice to set everything back to defaults once configured.
     glActiveTexture(GL_TEXTURE0);
@@ -29,16 +40,18 @@ void Mesh::draw(Shader shader)
 void Mesh::drawInstanced(Shader shader, int instanceCount)
 {
     bindTextures(shader);
+    bindProperties(shader);
 
     glBindVertexArray(VAO);
     glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
     glBindVertexArray(0);
 
+    bindDefaultProperties(shader);
+
     // always good practice to set everything back to defaults once configured.
     glActiveTexture(GL_TEXTURE0);
 }
 
-// render the mesh
 void Mesh::bindTextures(Shader shader)
 {
     // bind appropriate textures
@@ -50,12 +63,12 @@ void Mesh::bindTextures(Shader shader)
     unsigned int aoNr = 1;
     unsigned int metalNr = 1;
     unsigned int unknownNr = 1;
-    for (unsigned int i = 0; i < textures.size(); i++)
+    for (unsigned int i = 0; i < material.textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
         // retrieve texture number (the N in diffuse_textureN)
         std::string number;
-        std::string name = textures[i].type;
+        std::string name = material.textures[i].type;
         if (name == "texture_diffuse")
             number = std::to_string(diffuseNr++);
         else if (name == "texture_specular")
@@ -76,7 +89,40 @@ void Mesh::bindTextures(Shader shader)
         // now set the sampler to the correct texture unit
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
         // and finally bind the texture
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+        glBindTexture(GL_TEXTURE_2D, material.textures[i].id);
+    }
+}
+
+void Mesh::bindProperties(Shader shader)
+{
+    for (int i = 0; i < material.properties.size(); i++)
+    {
+        MaterialProperty &property = material.properties[i];
+
+        // TODO: better way without casting?
+        if (property.type == aiPTI_Float)
+        {
+            float value = std::stof(property.value);
+            shader.setFloat(property.name, value);
+        }
+        else if (property.type == aiPTI_Integer)
+        {
+            int value = std::stoi(property.value);
+            shader.setInt(property.name, value);
+        }
+    }
+}
+
+void Mesh::bindDefaultProperties(Shader shader)
+{
+    for (int i = 0; i < material.properties.size(); i++)
+    {
+        MaterialProperty &property = material.properties[i];
+
+        if (property.type == aiPTI_Float)
+            shader.setFloat(property.name, 0.f);
+        else if (property.type == aiPTI_Integer)
+            shader.setInt(property.name, 0);
     }
 }
 
@@ -122,4 +168,21 @@ void Mesh::setupMesh()
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, weights));
 
     glBindVertexArray(0);
+}
+
+void Mesh::updateTransmission()
+{
+    for (int i = 0; i < material.properties.size(); i++)
+    {
+        MaterialProperty &property = material.properties[i];
+        if (property.name == "transmission_factor")
+        {
+            float value = std::stof(property.value);
+            if (value > 0.f)
+            {
+                opaque = false;
+                return;
+            }
+        }
+    }
 }

@@ -17,6 +17,7 @@
 #include "terrain/terrain_ui.h"
 #include "vehicle/vehicle_ui.h"
 #include "particle/particle_ui.h"
+#include "resource/resource_ui.h"
 
 class RootUI
 {
