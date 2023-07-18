@@ -11,26 +11,32 @@ Model::Model(ResourceManager *resourceManager, std::string const &path)
 
 Model::~Model()
 {
-    // TODO: destruction
-    m_importer->FreeScene();
-    // TODO: seg fault
-    // delete m_importer;
+    delete m_importer;
+
+    for (int i = 0; i < meshes.size(); i++)
+        delete meshes[i];
 }
 
 void Model::draw(Shader shader, bool drawOpaque)
 {
-    for (unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].draw(shader, drawOpaque);
+    if (drawOpaque)
+    {
+        for (unsigned int i = 0; i < opaqueMeshes.size(); i++)
+            opaqueMeshes[i]->draw(shader);
+    }
+    else
+    {
+        for (unsigned int i = 0; i < transmissionMeshes.size(); i++)
+            transmissionMeshes[i]->draw(shader);
+    }
 }
 
 void Model::drawInstanced(Shader shader, int instanceCount)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].drawInstanced(shader, instanceCount);
+        meshes[i]->drawInstanced(shader, instanceCount);
 }
 
-/*  Functions   */
-// loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
 void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
@@ -54,25 +60,26 @@ void Model::loadModel(std::string const &path)
     processNode(m_scene->mRootNode);
 }
 
-// processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
 void Model::processNode(aiNode *node)
 {
-    // process each mesh located at the current node
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
-        // the node object only contains indices to index the actual objects in the scene.
-        // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
-        aiMesh *mesh = m_scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(processMesh(mesh));
+        aiMesh *assimpMesh = m_scene->mMeshes[node->mMeshes[i]];
+
+        Mesh *mesh = processMesh(assimpMesh);
+        meshes.push_back(mesh);
+
+        if (mesh->opaque)
+            opaqueMeshes.push_back(mesh);
+        else
+            transmissionMeshes.push_back(mesh);
     }
-    // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
+
     for (unsigned int i = 0; i < node->mNumChildren; i++)
-    {
         processNode(node->mChildren[i]);
-    }
 }
 
-Mesh Model::processMesh(aiMesh *mesh)
+Mesh *Model::processMesh(aiMesh *mesh)
 {
     // data to fill
     std::vector<Vertex> vertices;
@@ -196,8 +203,7 @@ Mesh Model::processMesh(aiMesh *mesh)
     // animation
     extractBoneWeightForVertices(vertices, mesh);
 
-    // return a mesh object created from the extracted mesh data
-    return Mesh(mesh->mName.C_Str(), vertices, indices, Material(material->GetName().C_Str(), textures, properties));
+    return new Mesh(mesh->mName.C_Str(), vertices, indices, Material(material->GetName().C_Str(), textures, properties));
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)

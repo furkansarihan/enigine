@@ -37,7 +37,9 @@ public:
     ~Model();
     void draw(Shader shader, bool drawOpaque = true);
     void drawInstanced(Shader shader, int instanceCount);
-    std::vector<Mesh> meshes;
+    std::vector<Mesh *> meshes;
+    std::vector<Mesh *> opaqueMeshes;
+    std::vector<Mesh *> transmissionMeshes;
     std::string m_path;
     std::string directory;
     bool gammaCorrection;
@@ -52,7 +54,7 @@ public:
 private:
     void loadModel(std::string const &path);
     void processNode(aiNode *node);
-    Mesh processMesh(aiMesh *mesh);
+    Mesh *processMesh(aiMesh *mesh);
     std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);
     void setVertexBoneDataToDefault(Vertex &vertex);
     void setVertexBoneData(Vertex &vertex, int boneID, float weight);

@@ -12,7 +12,7 @@ void ResourceUI::render()
         {
             for (int i = 0; i < model->meshes.size(); i++)
             {
-                Mesh &mesh = model->meshes[i];
+                Mesh &mesh = *model->meshes[i];
 
                 if (ImGui::TreeNode(std::string(mesh.name + ":" + mesh.material.name).c_str()))
                 {

@@ -37,9 +37,9 @@ public:
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
     };
 
-    void setupCubemap(Model cube, Shader hdrToCubemapShader);
-    void setupIrradianceMap(Model cube, Shader irradianceShader);
-    void setupPrefilterMap(Model cube, Shader prefilterShader);
+    void setupCubemap(Model *cube, Shader hdrToCubemapShader);
+    void setupIrradianceMap(Model *cube, Shader irradianceShader);
+    void setupPrefilterMap(Model *cube, Shader prefilterShader);
     void setupBrdfLUTTexture(unsigned int quadVAO, Shader brdfShader);
 };
 

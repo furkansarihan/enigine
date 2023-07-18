@@ -64,7 +64,7 @@ public:
     bool opaque = true;
     unsigned int VAO;
     // Functions
-    void draw(Shader shader, bool drawOpaque);
+    void draw(Shader shader);
     void drawInstanced(Shader shader, int instanceCount);
 
 private:

@@ -11,7 +11,7 @@ PbrManager::~PbrManager()
     // TODO: destruction
 }
 
-void PbrManager::setupCubemap(Model cube, Shader hdrToCubemapShader)
+void PbrManager::setupCubemap(Model *cube, Shader hdrToCubemapShader)
 {
     stbi_set_flip_vertically_on_load(true);
     int faceSize = 512;
@@ -78,12 +78,12 @@ void PbrManager::setupCubemap(Model cube, Shader hdrToCubemapShader)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        cube.draw(hdrToCubemapShader);
+        cube->draw(hdrToCubemapShader);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void PbrManager::setupIrradianceMap(Model cube, Shader irradianceShader)
+void PbrManager::setupIrradianceMap(Model *cube, Shader irradianceShader)
 {
     int irradianceSize = 32;
     glGenTextures(1, &irradianceMap);
@@ -121,12 +121,12 @@ void PbrManager::setupIrradianceMap(Model cube, Shader irradianceShader)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        cube.draw(irradianceShader);
+        cube->draw(irradianceShader);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void PbrManager::setupPrefilterMap(Model cube, Shader prefilterShader)
+void PbrManager::setupPrefilterMap(Model *cube, Shader prefilterShader)
 {
     int prefilterSize = 1024;
     glGenTextures(1, &prefilterMap);
@@ -174,7 +174,7 @@ void PbrManager::setupPrefilterMap(Model cube, Shader prefilterShader)
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            cube.draw(prefilterShader);
+            cube->draw(prefilterShader);
         }
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

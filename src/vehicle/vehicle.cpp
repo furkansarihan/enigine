@@ -117,7 +117,7 @@ void Vehicle::setupCollider()
 
     for (int i = 0; i < m_collider->meshes.size(); i++)
     {
-        Mesh &mesh = m_collider->meshes[i];
+        Mesh &mesh = *m_collider->meshes[i];
 
         btConvexHullShape *shape = getBodyShape(mesh);
 

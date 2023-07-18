@@ -6,12 +6,23 @@ in vec3 WorldPos;
 in vec3 ModelPos;
 in vec3 Normal;
 
-// material parameters
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+// material properties
 uniform vec3 albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
 uniform bool mergedPBRTextures;
+//
+uniform float opacity;
+uniform float transmission_factor;
+
+// transmission
+uniform sampler2D u_TransmissionFramebufferSampler;
+uniform vec2 u_TransmissionFramebufferSize;
 
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_metal1;
@@ -40,7 +51,6 @@ uniform sampler2DArray ShadowMap;
 uniform vec4 FrustumDistances;
 uniform vec3 CamView;
 uniform vec3 Bias;
-uniform mat4 model;
 
 layout (std140) uniform matrices {
     mat4 DepthBiasVP[3];
@@ -166,6 +176,127 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+// Source of the pbr functions below - https://github.com/KhronosGroup/glTF-Sample-Viewer
+// ----------------------------------------------------------------------------
+float clampedDot(vec3 x, vec3 y)
+{
+    return clamp(dot(x, y), 0.0, 1.0);
+}
+// ----------------------------------------------------------------------------
+vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior, mat4 modelMatrix)
+{
+    // Direction of refracted light.
+    vec3 refractionVector = refract(-v, normalize(n), 1.0 / ior);
+
+    // Compute rotation-independant scaling of the model matrix.
+    vec3 modelScale;
+    modelScale.x = length(vec3(modelMatrix[0].xyz));
+    modelScale.y = length(vec3(modelMatrix[1].xyz));
+    modelScale.z = length(vec3(modelMatrix[2].xyz));
+
+    // The thickness is specified in local space.
+    return normalize(refractionVector) * thickness * modelScale;
+}
+// ----------------------------------------------------------------------------
+float applyIorToRoughness(float roughness, float ior)
+{
+    // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and
+    // an IOR of 1.5 results in the default amount of microfacet refraction.
+    return roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
+}
+// ----------------------------------------------------------------------------
+float V_GGX(float NdotL, float NdotV, float alphaRoughness)
+{
+    float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+
+    float GGXV = NdotL * sqrt(NdotV * NdotV * (1.0 - alphaRoughnessSq) + alphaRoughnessSq);
+    float GGXL = NdotV * sqrt(NdotL * NdotL * (1.0 - alphaRoughnessSq) + alphaRoughnessSq);
+
+    float GGX = GGXV + GGXL;
+    if (GGX > 0.0)
+    {
+        return 0.5 / GGX;
+    }
+    return 0.0;
+}
+// ----------------------------------------------------------------------------
+vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness,
+    vec3 f0, vec3 f90, vec3 baseColor, float ior)
+{
+    float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
+
+    vec3 n = normalize(normal);           // Outward direction of surface point
+    vec3 v = normalize(view);             // Direction from surface point to view
+    vec3 l = normalize(pointToLight);
+    vec3 l_mirror = normalize(l + 2.0*n*dot(-l, n));     // Mirror light reflection vector on surface
+    vec3 h = normalize(l_mirror + v);            // Halfway vector between transmission light vector and v
+
+    float D = DistributionGGX(n, h, transmissionRougness);
+    // TODO: what's the difference?
+    float Vis = V_GGX(clampedDot(n, l_mirror), clampedDot(n, v), transmissionRougness);
+    // float Vis = GeometrySmith(n, v, l_mirror, transmissionRougness);
+
+    vec3 F = fresnelSchlick(clampedDot(v, h), f0);
+
+    // Transmission BTDF
+    return (1.0 - F) * baseColor * D * Vis;
+}
+// ----------------------------------------------------------------------------
+vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance)
+{
+    if (attenuationDistance == 0.0)
+    {
+        // Attenuation distance is +∞ (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
+        return radiance;
+    }
+    else
+    {
+        // Compute light attenuation using Beer's law.
+        vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
+        vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance); // Beer's law
+        return transmittance * radiance;
+    }
+}
+// ----------------------------------------------------------------------------
+vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior)
+{
+    // return textureLod(u_TransmissionFramebufferSampler, fragCoord.xy, 4).rgb;
+    // return texture(u_TransmissionFramebufferSampler, fragCoord.xy).rgb;
+    float framebufferLod = log2(float(u_TransmissionFramebufferSize.x)) * applyIorToRoughness(roughness, ior);
+    vec3 transmittedLight = textureLod(u_TransmissionFramebufferSampler, fragCoord.xy, framebufferLod).rgb;
+    return transmittedLight;
+}
+// ----------------------------------------------------------------------------
+vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 f0, vec3 f90,
+    vec3 position, mat4 modelMatrix, mat4 viewMatrix, mat4 projMatrix, float ior, float thickness, 
+    vec3 attenuationColor, float attenuationDistance)
+{
+    vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior, modelMatrix);
+    vec3 refractedRayExit = position + transmissionRay;
+
+    // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
+    vec4 ndcPos = projMatrix * viewMatrix * vec4(refractedRayExit, 1.0);
+    vec2 refractionCoords = ndcPos.xy / ndcPos.w;
+    refractionCoords += 1.0;
+    refractionCoords /= 2.0;
+
+    // Sample framebuffer to get pixel the refracted ray hits.
+    vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+
+    // return transmittedLight;
+
+    vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
+
+    // Sample GGX LUT to get the specular component.
+    float NdotV = clampedDot(n, v);
+    vec2 brdfSamplePoint = clamp(vec2(NdotV, perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
+    vec2 brdf = texture(brdfLUT, brdfSamplePoint).rg;
+    vec3 specularColor = f0 * brdf.x + f90 * brdf.y;
+
+    return (1.0 - specularColor) * attenuatedColor * baseColor;
+}
+// ----------------------------------------------------------------------------
+
 void main()
 {
     vec3 albedo     = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
@@ -186,6 +317,16 @@ void main()
 
     // TODO: variable ao-rough-metal
 
+    // TODO: correct? - variable material properties
+// #ifdef MATERIAL_TRANSMISSION
+    if (transmission_factor > 0) {
+        albedo = vec3(0);
+        metallic = 0;
+        roughness = 0;
+        ao = 1;
+    }
+// #endif
+
     // vec3 N = normalize(Normal);
     vec3 N = getNormalFromMap();
     vec3 V = normalize(camPos - WorldPos);
@@ -194,6 +335,11 @@ void main()
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
+
+    // NOTE: texture filtering - mipmapping affects this lookup
+    vec3 irradiance     = texture(irradianceMap, N).rgb;
+    vec3 diffuse        = irradiance * albedo;
+    vec3 f_transmission = vec3(0);
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
@@ -236,8 +382,62 @@ void main()
 
         // add to outgoing radiance Lo
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
-    }   
-    
+
+        // transmission
+        // TODO: preprocessor
+// #ifdef MATERIAL_TRANSMISSION
+    if (transmission_factor > 0) {
+        // If the light ray travels through the geometry, use the point it exits the geometry again.
+        // That will change the angle to the light source, if the material refracts the light ray.
+        vec3 n = N;
+        vec3 v = V;
+
+        vec3 pointToLight = normalize(lightDirection);
+        vec3 light = lightColor;
+
+        float alphaRoughness = 0.9;
+        vec3 f0 = F0;
+        vec3 f90 = vec3(1.0);
+        vec3 c_diff = vec3(0.4);
+        float thickness = 0.0;
+        float ior = 1.45;
+
+        float perceptualRoughness = 0.05;
+        vec3 attenuationColor = vec3(1.0);
+        float attenuationDistance = 1.0;
+
+        //
+        f_transmission += getIBLVolumeRefraction(
+            n, v,
+            perceptualRoughness,
+            c_diff, f0, f90,
+            WorldPos, model, view, projection,
+            ior, thickness, attenuationColor, attenuationDistance);
+
+        vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior, model);
+        pointToLight -= transmissionRay;
+        vec3 l = normalize(pointToLight);
+
+        // vec3 intensity = getLighIntensity(light, pointToLight);
+        vec3 intensity = lightColor * 0.2;
+        vec3 transmittedLight = intensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, 
+                                                f0, f90, c_diff, ior);
+
+// #ifdef MATERIAL_VOLUME
+        transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
+// #endif
+
+        f_transmission += transmittedLight;
+    }
+    }
+// #endif
+
+// #ifdef MATERIAL_TRANSMISSION
+    if (transmission_factor > 0) {
+        diffuse = mix(diffuse, f_transmission, transmission_factor);
+    }
+// #endif
+
     // ambient lighting (note that the next IBL tutorial will replace 
     // this ambient lighting with environment lighting).
     // vec3 ambient = vec3(0.03) * albedo * ao;
@@ -249,11 +449,7 @@ void main()
     vec3 kS = F;
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
-    
-    // NOTE: texture filtering - mipmapping affects this lookup
-    vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse    = irradiance * albedo;
-    
+
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;   
     vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
@@ -271,7 +467,14 @@ void main()
 
     vec3 color = ambient + Lo;
 
-    FragColor = vec4(color * getVisibility(), 1.0);
+// #ifdef MATERIAL_TRANSMISSION
+    if (transmission_factor > 0) {
+        FragColor = vec4(color , 1.0);
+    }
+// #else
+    else {
+        FragColor = vec4(color * getVisibility(), 1.0);
+    }
 
     // FragColor = vec4(WorldPos, 1.0);
     // FragColor = vec4(vec3(albedo), 1.0);

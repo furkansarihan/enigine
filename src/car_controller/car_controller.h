@@ -38,6 +38,23 @@ struct Follow
     float angularSpeedRange = 50.f;
 };
 
+struct Models
+{
+    Model *carBody;
+    Model *carHood;
+    Model *carTrunk;
+    Model *carWheelFL;
+    Model *carWheelFR;
+    Model *carWheelRL;
+    Model *carWheelRR;
+    Model *wheelModels[4];
+    Model *carDoorFL;
+    Model *carDoorFR;
+    Model *carDoorRL;
+    Model *carDoorRR;
+    Model *doorModels[4];
+};
+
 class CarController
 {
 public:
@@ -47,6 +64,7 @@ public:
     Vehicle *m_vehicle;
     Camera *m_followCamera;
     ParticleEngine *m_exhausParticle;
+    Models m_models;
 
     float m_scale = 0.028f;
     float m_wheelScale = 0.028f;
@@ -80,6 +98,7 @@ public:
 
     void update(GLFWwindow *window, float deltaTime);
     void updateExhaust(GLFWwindow *window, float deltaTime);
+    void render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque = true, bool setNormal = false);
     glm::mat4 translateOffset(glm::vec3 offset);
     glm::mat4 getDoorModel(int door);
     void updateModels();

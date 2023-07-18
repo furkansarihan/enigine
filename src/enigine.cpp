@@ -154,21 +154,6 @@ int main(int argc, char **argv)
     Model &stone = *resourceManager.getModel("../src/assets/terrain/stone.obj");
     Model &pistol = *resourceManager.getModel("../src/assets/gltf/colt3.glb");
 
-    // car
-    Model &carBody = *resourceManager.getModel("../src/assets/car/body.gltf");
-    Model &carHood = *resourceManager.getModel("../src/assets/car/hood.gltf");
-    Model &carTrunk = *resourceManager.getModel("../src/assets/car/trunk.gltf");
-    Model &carWheelFL = *resourceManager.getModel("../src/assets/car/wheel-fl.gltf");
-    Model &carWheelFR = *resourceManager.getModel("../src/assets/car/wheel-fr.gltf");
-    Model &carWheelRL = *resourceManager.getModel("../src/assets/car/wheel-rl.gltf");
-    Model &carWheelRR = *resourceManager.getModel("../src/assets/car/wheel-rr.gltf");
-    Model *wheels[4] = {&carWheelFL, &carWheelFR, &carWheelRL, &carWheelRR};
-    Model &carDoorFL = *resourceManager.getModel("../src/assets/car/door-fl.gltf");
-    Model &carDoorFR = *resourceManager.getModel("../src/assets/car/door-fr.gltf");
-    Model &carDoorRL = *resourceManager.getModel("../src/assets/car/door-rl.gltf");
-    Model &carDoorRR = *resourceManager.getModel("../src/assets/car/door-rr.gltf");
-    Model *doors[4] = {&carDoorFL, &carDoorFR, &carDoorRL, &carDoorRR};
-
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -236,9 +221,9 @@ int main(int argc, char **argv)
 
     // PBR
     PbrManager pbrManager;
-    pbrManager.setupCubemap(cube, hdrToCubemapShader);
-    pbrManager.setupIrradianceMap(cube, irradianceShader);
-    pbrManager.setupPrefilterMap(cube, prefilterShader);
+    pbrManager.setupCubemap(&cube, hdrToCubemapShader);
+    pbrManager.setupIrradianceMap(&cube, irradianceShader);
+    pbrManager.setupPrefilterMap(&cube, prefilterShader);
     pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
 
     float albedo[3] = {0.5f, 0.0f, 0.0f};
@@ -375,45 +360,7 @@ int main(int argc, char **argv)
             depthShader.use();
 
             // vehicle
-            glm::mat4 model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_bodyOffset);
-            model = model * car.m_carModel;
-            depthShader.setMat4("MVP", depthVP * model);
-            carBody.draw(depthShader);
-
-            for (int i = 0; i < 4; i++)
-            {
-                glm::mat4 model;
-                vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
-                model = glm::translate(model, car.m_wheelOffset);
-                model = glm::rotate(model, car.m_rotation.x, glm::vec3(1, 0, 0));
-                model = glm::rotate(model, car.m_rotation.y, glm::vec3(0, 1, 0));
-                model = glm::rotate(model, car.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(car.m_wheelScale));
-                depthShader.setMat4("MVP", depthVP * model);
-                wheels[i]->draw(depthShader);
-            }
-
-            // hood
-            model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_hoodOffset);
-            model = model * car.m_carModel;
-            depthShader.setMat4("MVP", depthVP * model);
-            carHood.draw(depthShader);
-
-            // trunk
-            model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_trunkOffset);
-            model = model * car.m_carModel;
-            depthShader.setMat4("MVP", depthVP * model);
-            carTrunk.draw(depthShader);
-
-            // doors
-            for (int i = 0; i < 4; i++)
-            {
-                depthShader.setMat4("MVP", depthVP * car.m_doorModels[i]);
-                doors[i]->draw(depthShader);
-            }
+            car.render(depthShader, depthVP, "MVP");
 
             // characters
             animDepthShader.use();
@@ -504,8 +451,8 @@ int main(int argc, char **argv)
         animShader.setVec4("FrustumDistances", frustumDistances);
         animShader.setVec3("Bias", terrain.shadowBias);
 
-        glActiveTexture(GL_TEXTURE0 + 7);
-        glUniform1i(glGetUniformLocation(animShader.id, "ShadowMap"), 7);
+        glActiveTexture(GL_TEXTURE0 + 8);
+        glUniform1i(glGetUniformLocation(animShader.id, "ShadowMap"), 8);
         glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
 
         for (int i = 0; i < characters.size(); i++)
@@ -543,20 +490,20 @@ int main(int argc, char **argv)
                 pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
             }
 
-            glActiveTexture(GL_TEXTURE0 + 7);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 7);
+            glActiveTexture(GL_TEXTURE0 + 8);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
             glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.irradianceMap);
 
-            glActiveTexture(GL_TEXTURE0 + 8);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 8);
+            glActiveTexture(GL_TEXTURE0 + 9);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
             glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.prefilterMap);
 
-            glActiveTexture(GL_TEXTURE0 + 9);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 9);
+            glActiveTexture(GL_TEXTURE0 + 10);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
             glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
 
-            glActiveTexture(GL_TEXTURE0 + 10);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 10);
+            glActiveTexture(GL_TEXTURE0 + 11);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
             glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
 
             glm::mat4 model;
@@ -568,52 +515,7 @@ int main(int argc, char **argv)
             pistol.draw(pbrShader);
 
             // draw vehicle
-            // body
-            model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_bodyOffset);
-            model = model * car.m_carModel;
-            pbrShader.setMat4("model", model);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-            carBody.draw(pbrShader);
-
-            // hood
-            model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_hoodOffset);
-            model = model * car.m_carModel;
-            pbrShader.setMat4("model", model);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-            carHood.draw(pbrShader);
-
-            // trunk
-            model = vehicle.m_chassisModel;
-            model = glm::translate(model, car.m_trunkOffset);
-            model = model * car.m_carModel;
-            pbrShader.setMat4("model", model);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-            carTrunk.draw(pbrShader);
-
-            // doors
-            for (int i = 0; i < 4; i++)
-            {
-                pbrShader.setMat4("model", car.m_doorModels[i]);
-                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(car.m_doorModels[i]))));
-                doors[i]->draw(pbrShader);
-            }
-
-            // wheels
-            for (int i = 0; i < 4; i++)
-            {
-                glm::mat4 model;
-                vehicle.m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix((btScalar *)&model);
-                model = glm::translate(model, car.m_wheelOffset);
-                model = glm::rotate(model, car.m_rotation.x, glm::vec3(1, 0, 0));
-                model = glm::rotate(model, car.m_rotation.y, glm::vec3(0, 1, 0));
-                model = glm::rotate(model, car.m_rotation.z, glm::vec3(0, 0, 1));
-                model = glm::scale(model, glm::vec3(car.m_wheelScale));
-                pbrShader.setMat4("model", model);
-                pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-                wheels[i]->draw(pbrShader);
-            }
+            car.render(pbrShader, glm::mat4(1), "model", true, true);
         }
         glDisable(GL_CULL_FACE);
 
@@ -653,9 +555,72 @@ int main(int argc, char **argv)
         car.m_exhausParticle->drawParticles(exhaustShader, quad, viewProjection);
         glDisable(GL_BLEND);
 
+        // pbr - transmission pass
+        {
+            // create mipmap
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, screenWidth, screenHeight);
+
+            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, postProcess.m_framebufferObject);
+            glViewport(0, 0, screenWidth, screenHeight);
+
+            // render transmission
+            pbrShader.use();
+            pbrShader.setMat4("view", view);
+            pbrShader.setMat4("projection", projection);
+            pbrShader.setVec3("camPos", editorCamera.position);
+            pbrShader.setVec3("lightDirection", shadowManager.m_lightPos);
+            pbrShader.setVec3("lightColor", tempUI.m_sunColor * tempUI.m_sunIntensity);
+            pbrShader.setVec3("CamView", shadowManager.m_camera->front);
+            pbrShader.setVec4("FrustumDistances", frustumDistances);
+            pbrShader.setVec3("Bias", terrain.shadowBias);
+            pbrShader.setVec2("u_TransmissionFramebufferSize", glm::vec2(screenWidth, screenHeight));
+
+            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
+            {
+                pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
+                pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
+            }
+
+            glActiveTexture(GL_TEXTURE0 + 8);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.irradianceMap);
+
+            glActiveTexture(GL_TEXTURE0 + 9);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.prefilterMap);
+
+            glActiveTexture(GL_TEXTURE0 + 10);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
+            glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
+
+            glActiveTexture(GL_TEXTURE0 + 11);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
+
+            glActiveTexture(GL_TEXTURE0 + 12);
+            glUniform1i(glGetUniformLocation(pbrShader.id, "u_TransmissionFramebufferSampler"), 12);
+            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
+
+            // render transmission meshes
+            car.render(pbrShader, glm::mat4(1), "model", false, true);
+        }
+
         // Post process
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, screenWidth, screenHeight);
+
+        // remove mipmaps
+        // TODO: only if mipmaps created
+        glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glGenerateMipmap(GL_TEXTURE_2D);
 
         {
             postProcessShader.use();

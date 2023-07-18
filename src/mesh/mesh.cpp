@@ -14,16 +14,8 @@ Mesh::~Mesh()
 {
 }
 
-// TODO: renderer
-void Mesh::draw(Shader shader, bool drawOpaque)
+void Mesh::draw(Shader shader)
 {
-    // TODO:
-    if (drawOpaque && !opaque)
-        return;
-
-    if (!drawOpaque && opaque)
-        return;
-
     bindTextures(shader);
     bindProperties(shader);
 
