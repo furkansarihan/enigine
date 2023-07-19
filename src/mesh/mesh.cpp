@@ -23,10 +23,8 @@ void Mesh::draw(Shader shader)
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
-    bindDefaultProperties(shader);
-
-    // always good practice to set everything back to defaults once configured.
-    glActiveTexture(GL_TEXTURE0);
+    unbindTextures(shader);
+    unbindProperties(shader);
 }
 
 void Mesh::drawInstanced(Shader shader, int instanceCount)
@@ -38,10 +36,8 @@ void Mesh::drawInstanced(Shader shader, int instanceCount)
     glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
     glBindVertexArray(0);
 
-    bindDefaultProperties(shader);
-
-    // always good practice to set everything back to defaults once configured.
-    glActiveTexture(GL_TEXTURE0);
+    unbindTextures(shader);
+    unbindProperties(shader);
 }
 
 void Mesh::bindTextures(Shader shader)
@@ -57,31 +53,38 @@ void Mesh::bindTextures(Shader shader)
     unsigned int unknownNr = 1;
     for (unsigned int i = 0; i < material.textures.size(); i++)
     {
-        glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
-        // retrieve texture number (the N in diffuse_textureN)
+        glActiveTexture(GL_TEXTURE0 + i);
+
         std::string number;
         std::string name = material.textures[i].type;
         if (name == "texture_diffuse")
             number = std::to_string(diffuseNr++);
         else if (name == "texture_specular")
-            number = std::to_string(specularNr++); // transfer unsigned int to stream
+            number = std::to_string(specularNr++);
         else if (name == "texture_normal")
-            number = std::to_string(normalNr++); // transfer unsigned int to stream
+            number = std::to_string(normalNr++);
         else if (name == "texture_height")
-            number = std::to_string(heightNr++); // transfer unsigned int to stream
+            number = std::to_string(heightNr++);
         else if (name == "texture_rough")
-            number = std::to_string(roughNr++); // transfer unsigned int to stream
+            number = std::to_string(roughNr++);
         else if (name == "texture_ao")
-            number = std::to_string(aoNr++); // transfer unsigned int to stream
+            number = std::to_string(aoNr++);
         else if (name == "texture_metal")
-            number = std::to_string(metalNr++); // transfer unsigned int to stream
+            number = std::to_string(metalNr++);
         else if (name == "texture_unknown")
-            number = std::to_string(unknownNr++); // transfer unsigned int to stream
+            number = std::to_string(unknownNr++);
 
-        // now set the sampler to the correct texture unit
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
-        // and finally bind the texture
         glBindTexture(GL_TEXTURE_2D, material.textures[i].id);
+    }
+}
+
+void Mesh::unbindTextures(Shader shader)
+{
+    for (unsigned int i = 0; i < material.textures.size(); i++)
+    {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
@@ -105,7 +108,7 @@ void Mesh::bindProperties(Shader shader)
     }
 }
 
-void Mesh::bindDefaultProperties(Shader shader)
+void Mesh::unbindProperties(Shader shader)
 {
     for (int i = 0; i < material.properties.size(); i++)
     {

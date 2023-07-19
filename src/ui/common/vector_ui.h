@@ -49,6 +49,22 @@ public:
         ImGui::DragFloat((std::string(header) + "Z").c_str(), &quat[3], dragSpeed);
     }
 
+    static void renderQuatEuler(const char *header, glm::quat &quat, float dragSpeed)
+    {
+        if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+            return;
+
+        glm::vec3 euler = glm::eulerAngles(quat);
+        euler = glm::degrees(euler);
+
+        ImGui::DragFloat((std::string(header) + "X").c_str(), &euler.x, dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Y").c_str(), &euler.y, dragSpeed);
+        ImGui::DragFloat((std::string(header) + "Z").c_str(), &euler.z, dragSpeed);
+
+        euler = glm::radians(euler);
+        quat = glm::quat(euler);
+    }
+
     static void renderNormalizedQuat(const char *header, glm::quat &quat, float dragSpeed)
     {
         if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))

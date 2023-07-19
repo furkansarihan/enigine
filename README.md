@@ -13,6 +13,7 @@ enigine uses `CMake` (build system) and `conan` (package manager).
 
 ## Showcase
 
+![4](src/assets/showcase/4.jpg)
 ![1](src/assets/showcase/1.jpg)
 ![2](src/assets/showcase/2.jpg)
 ![3](src/assets/showcase/3.jpg)

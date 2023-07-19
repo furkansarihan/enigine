@@ -154,6 +154,9 @@ int main(int argc, char **argv)
     Model &stone = *resourceManager.getModel("../src/assets/terrain/stone.obj");
     Model &pistol = *resourceManager.getModel("../src/assets/gltf/colt3.glb");
 
+    Model &shelter = *resourceManager.getModel("../src/assets/gltf/shelter.glb");
+    Model &tower = *resourceManager.getModel("../src/assets/gltf/old-water-tower.glb");
+
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -297,6 +300,11 @@ int main(int argc, char **argv)
         character.update(window, deltaTime);
         npc1.update(window, deltaTime);
 
+        // TODO: transform manager
+        // update transforms
+        tempUI.m_shelterTransform.updateModelMatrix();
+        tempUI.m_towerTransform.updateModelMatrix();
+
         // Update Debug Drawer
         debugDrawer.getLines().clear();
         physicsWorld.m_dynamicsWorld->debugDrawWorld();
@@ -361,6 +369,12 @@ int main(int argc, char **argv)
 
             // vehicle
             car.render(depthShader, depthVP, "MVP");
+
+            depthShader.setMat4("MVP", depthVP * tempUI.m_shelterTransform.m_model);
+            shelter.draw(depthShader);
+            
+            depthShader.setMat4("MVP", depthVP * tempUI.m_towerTransform.m_model);
+            tower.draw(depthShader);
 
             // characters
             animDepthShader.use();
@@ -516,6 +530,16 @@ int main(int argc, char **argv)
 
             // draw vehicle
             car.render(pbrShader, glm::mat4(1), "model", true, true);
+
+            model = tempUI.m_shelterTransform.m_model;
+            pbrShader.setMat4("model", model);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            shelter.draw(pbrShader);
+
+            model = tempUI.m_towerTransform.m_model;
+            pbrShader.setMat4("model", model);
+            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            tower.draw(pbrShader);
         }
         glDisable(GL_CULL_FACE);
 
@@ -608,6 +632,7 @@ int main(int argc, char **argv)
             glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
 
             // render transmission meshes
+            pbrShader.setBool("mergedPBRTextures", true);
             car.render(pbrShader, glm::mat4(1), "model", false, true);
         }
 

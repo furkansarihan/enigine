@@ -299,6 +299,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 void main()
 {
+    // TODO: preprocessor texture read - material properties
     vec3 albedo     = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
     float metallic, roughness, ao;
 
@@ -317,6 +318,9 @@ void main()
 
     // TODO: variable ao-rough-metal
 
+    vec3 N;
+    vec3 V = normalize(camPos - WorldPos);
+
     // TODO: correct? - variable material properties
 // #ifdef MATERIAL_TRANSMISSION
     if (transmission_factor > 0) {
@@ -324,12 +328,13 @@ void main()
         metallic = 0;
         roughness = 0;
         ao = 1;
-    }
-// #endif
 
-    // vec3 N = normalize(Normal);
-    vec3 N = getNormalFromMap();
-    vec3 V = normalize(camPos - WorldPos);
+        N = normalize(Normal);
+    }
+// #else
+    else {
+        N = getNormalFromMap();
+    }
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    

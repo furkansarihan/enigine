@@ -84,6 +84,8 @@ add_executable( enigine
                 src/character_task/enter_car.cpp
                 src/character_task/exit_car.h
                 src/character_task/exit_car.cpp
+                src/transform/transform.h
+                src/transform/transform.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp

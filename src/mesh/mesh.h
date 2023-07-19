@@ -72,8 +72,9 @@ private:
     void setupMesh();
     void updateTransmission();
     void bindTextures(Shader shader);
+    void unbindTextures(Shader shader);
     void bindProperties(Shader shader);
-    void bindDefaultProperties(Shader shader);
+    void unbindProperties(Shader shader);
 };
 
 #endif /* mesh_hpp */
