@@ -98,7 +98,7 @@ public:
 
     void update(GLFWwindow *window, float deltaTime);
     void updateExhaust(GLFWwindow *window, float deltaTime);
-    void render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque = true, bool setNormal = false);
+    void render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque = true);
     glm::mat4 translateOffset(glm::vec3 offset);
     glm::mat4 getDoorModel(int door);
     void updateModels();

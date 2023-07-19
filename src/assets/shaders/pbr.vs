@@ -7,18 +7,20 @@ out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 ModelPos;
 out vec3 Normal;
+out mat4 TransformedModel;
 
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
-uniform mat3 normalMatrix;
+uniform mat4 u_meshOffset;
 
 void main()
 {
     TexCoords = aTexCoords * vec2(1.0, 1.0);
-    WorldPos = vec3(model * vec4(aPos, 1.0));
+    TransformedModel = model * u_meshOffset;
+    WorldPos = vec3(TransformedModel * vec4(aPos, 1.0));
     ModelPos = aPos;
-    Normal = mat3(normalMatrix) * aNormal;
+    Normal = mat3(transpose(inverse(TransformedModel))) * aNormal;
 
     gl_Position = projection * view * vec4(WorldPos, 1.0);
 }

@@ -6,7 +6,7 @@ in vec3 WorldPos;
 in vec3 ModelPos;
 in vec3 Normal;
 
-uniform mat4 model;
+in mat4 TransformedModel;
 uniform mat4 view;
 uniform mat4 projection;
 
@@ -94,7 +94,7 @@ float getVisibility()
         index = 2;
     }
 
-    mat4 DepthBiasMVP = DepthBiasVP[index] * model;
+    mat4 DepthBiasMVP = DepthBiasVP[index] * TransformedModel;
     vec4 ShadowCoord = DepthBiasMVP * vec4(ModelPos, 1);
 
     float visibility = 1.0;
@@ -416,10 +416,10 @@ void main()
             n, v,
             perceptualRoughness,
             c_diff, f0, f90,
-            WorldPos, model, view, projection,
+            WorldPos, TransformedModel, view, projection,
             ior, thickness, attenuationColor, attenuationDistance);
 
-        vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior, model);
+        vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior, TransformedModel);
         pointToLight -= transmissionRay;
         vec3 l = normalize(pointToLight);
 

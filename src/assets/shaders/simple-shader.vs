@@ -5,8 +5,9 @@ layout (location = 1) in vec3 vertexNormal;
 layout (location = 2) in vec2 vertexUV;
 
 uniform mat4 MVP;
+uniform mat4 u_meshOffset;
 
 void main()
 {
-    gl_Position = MVP * vec4(vertexPosition_modelspace, 1.0);
+    gl_Position = MVP * u_meshOffset * vec4(vertexPosition_modelspace, 1.0);
 }

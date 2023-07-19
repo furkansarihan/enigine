@@ -1,8 +1,9 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path)
+Model::Model(ResourceManager *resourceManager, std::string const &path, bool useOffset)
     : m_resourceManager(resourceManager),
-      m_path(path)
+      m_path(path),
+      m_useOffset(useOffset)
 {
     m_importer = new Assimp::Importer();
 
@@ -22,19 +23,28 @@ void Model::draw(Shader shader, bool drawOpaque)
     if (drawOpaque)
     {
         for (unsigned int i = 0; i < opaqueMeshes.size(); i++)
+        {
+            shader.setMat4("u_meshOffset", opaqueMeshes[i]->offset);
             opaqueMeshes[i]->draw(shader);
+        }
     }
     else
     {
         for (unsigned int i = 0; i < transmissionMeshes.size(); i++)
+        {
+            shader.setMat4("u_meshOffset", transmissionMeshes[i]->offset);
             transmissionMeshes[i]->draw(shader);
+        }
     }
 }
 
 void Model::drawInstanced(Shader shader, int instanceCount)
 {
     for (unsigned int i = 0; i < meshes.size(); i++)
+    {
+        shader.setMat4("u_meshOffset", meshes[i]->offset);
         meshes[i]->drawInstanced(shader, instanceCount);
+    }
 }
 
 void Model::loadModel(std::string const &path)
@@ -67,8 +77,10 @@ void Model::processNode(aiNode *node)
         aiMesh *assimpMesh = m_scene->mMeshes[node->mMeshes[i]];
 
         Mesh *mesh = processMesh(assimpMesh);
-        meshes.push_back(mesh);
+        if (m_useOffset)
+            mesh->offset = AssimpToGLM::getGLMMat4(node->mTransformation);
 
+        meshes.push_back(mesh);
         if (mesh->opaque)
             opaqueMeshes.push_back(mesh);
         else

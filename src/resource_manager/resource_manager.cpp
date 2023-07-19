@@ -19,7 +19,7 @@ ResourceManager::~ResourceManager()
     m_textures.clear();
 }
 
-Model *ResourceManager::getModel(const std::string &path)
+Model *ResourceManager::getModel(const std::string &path, bool useOffset)
 {
     // TODO: sharing same model object is safe?
     if (m_models.find(path) != m_models.end())
@@ -28,7 +28,7 @@ Model *ResourceManager::getModel(const std::string &path)
         return m_models[path];
     }
 
-    Model *model = new Model(this, path);
+    Model *model = new Model(this, path, useOffset);
     m_models[path] = model;
 
     return model;

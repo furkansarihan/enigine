@@ -16,17 +16,17 @@ CarController::CarController(PhysicsWorld *physicsWorld, ResourceManager *resour
     m_exhausParticle->m_particleScale = 0.1f;
 
     // models
-    m_models.carBody = resourceManager->getModel("../src/assets/car/body.gltf");
-    m_models.carHood = resourceManager->getModel("../src/assets/car/hood.gltf");
-    m_models.carTrunk = resourceManager->getModel("../src/assets/car/trunk.gltf");
-    m_models.wheelModels[0] = m_models.carWheelFL = resourceManager->getModel("../src/assets/car/wheel-fl.gltf");
-    m_models.wheelModels[1] = m_models.carWheelFR = resourceManager->getModel("../src/assets/car/wheel-fr.gltf");
-    m_models.wheelModels[2] = m_models.carWheelRL = resourceManager->getModel("../src/assets/car/wheel-rl.gltf");
-    m_models.wheelModels[3] = m_models.carWheelRR = resourceManager->getModel("../src/assets/car/wheel-rr.gltf");
-    m_models.doorModels[0] = m_models.carDoorFL = resourceManager->getModel("../src/assets/car/door-fl.gltf");
-    m_models.doorModels[1] = m_models.carDoorFR = resourceManager->getModel("../src/assets/car/door-fr.gltf");
-    m_models.doorModels[2] = m_models.carDoorRL = resourceManager->getModel("../src/assets/car/door-rl.gltf");
-    m_models.doorModels[3] = m_models.carDoorRR = resourceManager->getModel("../src/assets/car/door-rr.gltf");
+    m_models.carBody = resourceManager->getModel("../src/assets/car/body.gltf", false);
+    m_models.carHood = resourceManager->getModel("../src/assets/car/hood.gltf", false);
+    m_models.carTrunk = resourceManager->getModel("../src/assets/car/trunk.gltf", false);
+    m_models.wheelModels[0] = m_models.carWheelFL = resourceManager->getModel("../src/assets/car/wheel-fl.gltf", false);
+    m_models.wheelModels[1] = m_models.carWheelFR = resourceManager->getModel("../src/assets/car/wheel-fr.gltf", false);
+    m_models.wheelModels[2] = m_models.carWheelRL = resourceManager->getModel("../src/assets/car/wheel-rl.gltf", false);
+    m_models.wheelModels[3] = m_models.carWheelRR = resourceManager->getModel("../src/assets/car/wheel-rr.gltf", false);
+    m_models.doorModels[0] = m_models.carDoorFL = resourceManager->getModel("../src/assets/car/door-fl.gltf", false);
+    m_models.doorModels[1] = m_models.carDoorFR = resourceManager->getModel("../src/assets/car/door-fr.gltf", false);
+    m_models.doorModels[2] = m_models.carDoorRL = resourceManager->getModel("../src/assets/car/door-rl.gltf", false);
+    m_models.doorModels[3] = m_models.carDoorRR = resourceManager->getModel("../src/assets/car/door-rr.gltf", false);
 }
 
 CarController::~CarController()
@@ -190,14 +190,12 @@ glm::mat4 CarController::getDoorModel(int i)
 }
 
 // TODO: renderer
-void CarController::render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque, bool setNormal)
+void CarController::render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque)
 {
     glm::mat4 model = m_vehicle->m_chassisModel;
     model = glm::translate(model, m_bodyOffset);
     model = model * m_carModel;
     shader.setMat4(uniformName, viewProjection * model);
-    if (setNormal)
-        shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m_models.carBody->draw(shader, drawOpaque);
 
     for (int i = 0; i < 4; i++)
@@ -210,8 +208,6 @@ void CarController::render(Shader shader, glm::mat4 viewProjection, const std::s
         model = glm::rotate(model, m_rotation.z, glm::vec3(0, 0, 1));
         model = glm::scale(model, glm::vec3(m_wheelScale));
         shader.setMat4(uniformName, viewProjection * model);
-        if (setNormal)
-            shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
         m_models.wheelModels[i]->draw(shader, drawOpaque);
     }
 
@@ -220,8 +216,6 @@ void CarController::render(Shader shader, glm::mat4 viewProjection, const std::s
     model = glm::translate(model, m_hoodOffset);
     model = model * m_carModel;
     shader.setMat4(uniformName, viewProjection * model);
-    if (setNormal)
-        shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m_models.carHood->draw(shader, drawOpaque);
 
     // trunk
@@ -229,16 +223,12 @@ void CarController::render(Shader shader, glm::mat4 viewProjection, const std::s
     model = glm::translate(model, m_trunkOffset);
     model = model * m_carModel;
     shader.setMat4(uniformName, viewProjection * model);
-    if (setNormal)
-        shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m_models.carTrunk->draw(shader, drawOpaque);
 
     // doors
     for (int i = 0; i < 4; i++)
     {
         shader.setMat4(uniformName, viewProjection * m_doorModels[i]);
-        if (setNormal)
-            shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(m_doorModels[i]))));
         m_models.doorModels[i]->draw(shader, drawOpaque);
     }
 }

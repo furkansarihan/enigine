@@ -18,7 +18,7 @@ public:
     std::unordered_map<std::string, Model *> m_models;
     std::unordered_map<std::string, Texture> m_textures;
 
-    Model *getModel(const std::string &path);
+    Model *getModel(const std::string &path, bool useOffset = true);
     Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
     unsigned int textureFromMemory(const aiTexture *embeddedTexture);
     unsigned int textureFromFile(const char *path, const std::string &directory);

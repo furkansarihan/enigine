@@ -154,8 +154,8 @@ int main(int argc, char **argv)
     Model &stone = *resourceManager.getModel("../src/assets/terrain/stone.obj");
     Model &pistol = *resourceManager.getModel("../src/assets/gltf/colt3.glb");
 
-    Model &shelter = *resourceManager.getModel("../src/assets/gltf/shelter.glb");
-    Model &tower = *resourceManager.getModel("../src/assets/gltf/old-water-tower.glb");
+    Model &shelter = *resourceManager.getModel("../src/assets/gltf/shelter1.glb");
+    Model &tower = *resourceManager.getModel("../src/assets/gltf/old-water-tower.glb", false);
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -524,21 +524,18 @@ int main(int argc, char **argv)
 
             // draw pistol
             pbrShader.setMat4("model", character.m_pistolModel);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(character.m_pistolModel))));
             pbrShader.setBool("mergedPBRTextures", true);
             pistol.draw(pbrShader);
 
             // draw vehicle
-            car.render(pbrShader, glm::mat4(1), "model", true, true);
+            car.render(pbrShader, glm::mat4(1), "model", true);
 
             model = tempUI.m_shelterTransform.m_model;
             pbrShader.setMat4("model", model);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             shelter.draw(pbrShader);
 
             model = tempUI.m_towerTransform.m_model;
             pbrShader.setMat4("model", model);
-            pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             tower.draw(pbrShader);
         }
         glDisable(GL_CULL_FACE);
@@ -633,7 +630,7 @@ int main(int argc, char **argv)
 
             // render transmission meshes
             pbrShader.setBool("mergedPBRTextures", true);
-            car.render(pbrShader, glm::mat4(1), "model", false, true);
+            car.render(pbrShader, glm::mat4(1), "model", false);
         }
 
         // Post process

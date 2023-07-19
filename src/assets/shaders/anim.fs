@@ -24,7 +24,7 @@ uniform vec4 FrustumDistances;
 uniform vec3 camPos;
 uniform vec3 CamView;
 uniform vec3 Bias;
-uniform mat4 model;
+in mat4 TransformedModel;
 
 layout (std140) uniform matrices {
     mat4 DepthBiasVP[3];
@@ -65,7 +65,7 @@ float getVisibility()
         index = 2;
     }
 
-    mat4 DepthBiasMVP = DepthBiasVP[index] * model;
+    mat4 DepthBiasMVP = DepthBiasVP[index] * TransformedModel;
     vec4 ShadowCoord = DepthBiasMVP * vec4(ModelPos, 1);
 
     float visibility = 1.0;

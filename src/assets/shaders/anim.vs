@@ -11,6 +11,7 @@ layout(location = 6) in vec4 weights;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
+uniform mat4 u_meshOffset;
 
 const int MAX_BONES = 200;
 const int MAX_BONE_PER_VERTEX = 4;
@@ -22,6 +23,7 @@ out vec3 ModelPos;
 out vec3 Normal;
 out vec3 Tangent;
 out vec3 Bitangent;
+out mat4 TransformedModel;
 
 void main()
 {
@@ -46,11 +48,13 @@ void main()
     }
 
     TexCoords = tex;
-    WorldPos = vec3(model * totalPosition);
+    TransformedModel = model * u_meshOffset;
+    WorldPos = vec3(TransformedModel * totalPosition);
     ModelPos = totalPosition.xyz;
-    Normal = mat3(transpose(inverse(model))) * normalize(localNormal);
-    Tangent = mat3(transpose(inverse(model))) * normalize(localTangent);
-    Bitangent = mat3(transpose(inverse(model))) * normalize(localBitangent);
+    mat3 invTrModel = mat3(transpose(inverse(TransformedModel)));
+    Normal = invTrModel * normalize(localNormal);
+    Tangent = invTrModel * normalize(localTangent);
+    Bitangent = invTrModel * normalize(localBitangent);
 
     gl_Position = projection * view * vec4(WorldPos, 1);
 }

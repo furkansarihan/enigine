@@ -61,6 +61,7 @@ public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     Material material;
+    glm::mat4 offset = glm::mat4(1.0f);
     bool opaque = true;
     unsigned int VAO;
     // Functions

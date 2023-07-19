@@ -33,7 +33,7 @@ struct BoneInfo
 class Model
 {
 public:
-    Model(ResourceManager *resourceManager, std::string const &path);
+    Model(ResourceManager *resourceManager, std::string const &path, bool useOffset = true);
     ~Model();
     void draw(Shader shader, bool drawOpaque = true);
     void drawInstanced(Shader shader, int instanceCount);
@@ -43,6 +43,7 @@ public:
     std::string m_path;
     std::string directory;
     bool gammaCorrection;
+    bool m_useOffset;
 
     std::map<std::string, BoneInfo> m_boneInfoMap;
     int m_boneCounter = 0;
