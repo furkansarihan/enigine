@@ -3,12 +3,25 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
-    : m_pbrManager(pbrManager),
+Terrain::Terrain(ResourceManager *resourceManager, PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
+    : m_resourceManager(resourceManager),
+      m_pbrManager(pbrManager),
+      m_physicsWorld(physicsWorld),
+      m_heightmapFilename(heightmapFilename),
       m_minHeight(minHeight),
       m_maxHeight(maxHeight),
       m_scaleHoriz(scaleHoriz),
       m_PBR(PBR)
+{
+    init();
+}
+
+Terrain::~Terrain()
+{
+    stbi_image_free(data);
+}
+
+void Terrain::init()
 {
     // TODO: keep track initialization state
 
@@ -42,7 +55,7 @@ Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::
     // buffer elevationSampler texture
     glGenTextures(1, &textureID);
     int nrComponents;
-    data = stbi_loadf(filename.c_str(), &heightmapWidth, &heightmapHeight, &nrComponents, 1);
+    data = stbi_loadf(m_heightmapFilename.c_str(), &heightmapWidth, &heightmapHeight, &nrComponents, 1);
     if (data == nullptr)
     {
         fprintf(stderr, "Failed to read heightmap\n");
@@ -69,7 +82,7 @@ Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Physics
-    terrainBody = physicsWorld->createTerrain(
+    terrainBody = m_physicsWorld->createTerrain(
         heightmapWidth,
         heightmapHeight,
         data,
@@ -104,124 +117,29 @@ Terrain::Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::
         };
         for (int i = 0; i < 5; i++)
         {
-            PBRTextureArrayIds[i] = 0;
-            std::string texturePaths[6] = {
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i],
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i],
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i],
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i],
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i],
-                "../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i],
-            };
-            initTextureArray(PBRTextureArrayIds[i], texturePaths);
+            std::vector<std::string> texturePaths;
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i]);
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i]);
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i]);
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i]);
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i]);
+            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i]);
+
+            PBRTextureArrayIds[i] = m_resourceManager->textureArrayFromFile(texturePaths, true);
         }
     }
     else
     {
-        std::string texturePaths[6] = {
-            "../src/assets/images/water-1.jpg",
-            "../src/assets/images/sand-1.jpg",
-            "../src/assets/images/stone-1.jpg",
-            "../src/assets/images/grass-1.jpg",
-            "../src/assets/images/rock-1.jpg",
-            "../src/assets/images/snow-1.jpg",
-        };
-        initTextureArray(normalTextureArrayId, texturePaths);
+        std::vector<std::string> texturePaths;
+        texturePaths.push_back("../src/assets/images/water-1.jpg");
+        texturePaths.push_back("../src/assets/images/sand-1.jpg");
+        texturePaths.push_back("../src/assets/images/stone-1.jpg");
+        texturePaths.push_back("../src/assets/images/grass-1.jpg");
+        texturePaths.push_back("../src/assets/images/rock-1.jpg");
+        texturePaths.push_back("../src/assets/images/snow-1.jpg");
+
+        normalTextureArrayId = m_resourceManager->textureArrayFromFile(texturePaths, true);
     }
-}
-
-Terrain::~Terrain()
-{
-    stbi_image_free(data);
-}
-
-void Terrain::initTextureArray(unsigned int &textureArrayId, std::string *texturePaths)
-{
-    glGenTextures(1, &textureArrayId);
-    int twidth[6];
-    int theight[6];
-    int tnrComponents[6];
-    int nrTextures = 6;
-
-    unsigned char *tdata0 = stbi_load(texturePaths[0].c_str(), &twidth[0], &theight[0], &tnrComponents[0], 0);
-    unsigned char *tdata1 = stbi_load(texturePaths[1].c_str(), &twidth[1], &theight[1], &tnrComponents[1], 0);
-    unsigned char *tdata2 = stbi_load(texturePaths[2].c_str(), &twidth[2], &theight[2], &tnrComponents[2], 0);
-    unsigned char *tdata3 = stbi_load(texturePaths[3].c_str(), &twidth[3], &theight[3], &tnrComponents[3], 0);
-    unsigned char *tdata4 = stbi_load(texturePaths[4].c_str(), &twidth[4], &theight[4], &tnrComponents[4], 0);
-    unsigned char *tdata5 = stbi_load(texturePaths[5].c_str(), &twidth[5], &theight[5], &tnrComponents[5], 0);
-
-    if (tdata0 == nullptr || tdata1 == nullptr || tdata2 == nullptr || tdata3 == nullptr || tdata4 == nullptr || tdata5 == nullptr)
-    {
-        fprintf(stderr, "Failed to read textures\n");
-        return;
-    }
-
-    for (int i = 0; i < 6; i++)
-        std::cout << "path: " << texturePaths[i] << ", w: " << twidth[i] << ", h: " << theight[i] << ", comp: " << tnrComponents[i] << std::endl;
-
-    float tWidth = twidth[0];
-    float tHeight = theight[0];
-
-    GLenum iformat;
-    GLenum tformat;
-    if (tnrComponents[0] == 1)
-    {
-        iformat = GL_R8;
-        tformat = GL_RED;
-    }
-    else if (tnrComponents[0] == 3)
-    {
-        iformat = GL_RGB8;
-        tformat = GL_RGB;
-    }
-    else if (tnrComponents[0] == 4)
-    {
-        iformat = GL_RGBA16F;
-        tformat = GL_RGBA;
-    }
-
-    glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId);
-
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, iformat, tWidth, tHeight, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata0);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 1, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata1);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 2, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata2);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 3, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata3);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 4, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata4);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 5, tWidth, tHeight, 1, tformat, GL_UNSIGNED_BYTE, tdata5);
-
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-
-    setupAnisotropicFiltering();
-
-    stbi_image_free(tdata0);
-    stbi_image_free(tdata1);
-    stbi_image_free(tdata2);
-    stbi_image_free(tdata3);
-    stbi_image_free(tdata4);
-    stbi_image_free(tdata5);
-}
-
-void Terrain::setupAnisotropicFiltering()
-{
-    if (!glewIsSupported("GL_EXT_texture_filter_anisotropic"))
-    {
-        std::cerr << "Anisotropic filtering is not supported" << std::endl;
-        return;
-    }
-
-    GLfloat maxAnisotropy;
-    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
-    std::cout << "Max anisotropy supported: " << maxAnisotropy << std::endl;
-
-    float amount = std::min(4.0f, maxAnisotropy);
-
-    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
 }
 
 // https://stackoverflow.com/a/9194117/11601515

@@ -9,6 +9,20 @@
 class Model;
 #include "../model/model.h"
 
+struct TextureLoadParams
+{
+    std::vector<void *> data;
+    int width, height, nrComponents;
+    bool anisotropicFiltering;
+
+    TextureLoadParams(std::vector<void *> data, int width, int height, int nrComponents, bool anisotropicFiltering)
+        : data(data),
+          width(width),
+          height(height),
+          nrComponents(nrComponents),
+          anisotropicFiltering(anisotropicFiltering) {}
+};
+
 class ResourceManager
 {
 public:
@@ -22,7 +36,12 @@ public:
     Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
     unsigned int textureFromMemory(const aiTexture *embeddedTexture);
     unsigned int textureFromFile(const char *path, const std::string &directory);
-    unsigned int loadTexture(void *image_data, int width, int height, int nrComponents);
+    unsigned int textureArrayFromFile(std::vector<std::string> texturePaths, bool anisotropicFiltering = false);
+    unsigned int loadTexture(TextureLoadParams params);
+    unsigned int loadTextureArray(TextureLoadParams params);
+
+private:
+    void setupAnisotropicFiltering();
 };
 
 #endif /* resource_manager_hpp */

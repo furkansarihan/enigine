@@ -32,10 +32,13 @@ struct HeightCell
 class Terrain
 {
 public:
-    Terrain(PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &filename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
+    Terrain(ResourceManager *m_resourceManager, PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
     ~Terrain();
 
+    ResourceManager *m_resourceManager;
     PbrManager *m_pbrManager;
+    PhysicsWorld *m_physicsWorld;
+    std::string m_heightmapFilename;
     int heightmapWidth, heightmapHeight;
     float width, height;
     float w, h;
@@ -80,7 +83,7 @@ public:
                    glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
                    GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
                    bool ortho);
-    void drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos,Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
+    void drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos, Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();
 
 private:
@@ -90,8 +93,7 @@ private:
     unsigned int PBRTextureArrayIds[5];
     float *data;
 
-    void initTextureArray(unsigned int &textureArrayId, std::string *texturePaths);
-    void setupAnisotropicFiltering();
+    void init();
     int roundUp(int numToRound, int multiple);
     float roundUpf(float numToRound, float multiple);
     void createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, unsigned int &ebo);
