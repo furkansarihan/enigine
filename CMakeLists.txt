@@ -86,6 +86,15 @@ add_executable( enigine
                 src/character_task/exit_car.cpp
                 src/transform/transform.h
                 src/transform/transform.cpp
+                src/render_manager/render_manager.h
+                src/render_manager/render_manager.cpp
+                src/transform_link/transform_link.h
+                src/transform_link/link_rigidbody.h
+                src/transform_link/link_rigidbody.cpp
+                src/car_controller/link_wheel.h
+                src/car_controller/link_wheel.cpp
+                src/car_controller/link_door.h
+                src/car_controller/link_door.cpp
                 # ui
                 src/ui/root_ui.h
                 src/ui/root_ui.cpp
@@ -114,6 +123,8 @@ add_executable( enigine
                 src/ui/particle/particle_ui.cpp
                 src/ui/resource/resource_ui.h
                 src/ui/resource/resource_ui.cpp
+                src/ui/render/render_ui.h
+                src/ui/render/render_ui.cpp
                 src/ui/common/vector_ui.h
                 src/ui/common/physics_ui.h
                 # external

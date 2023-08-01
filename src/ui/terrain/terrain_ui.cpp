@@ -54,9 +54,6 @@ void TerrainUI::render()
         m_terrain->terrainBody->setContactStiffnessAndDamping(contactStiffness, contactDamping);
     }
     ImGui::Checkbox("showCascade", &m_terrain->showCascade);
-    ImGui::DragFloat("terrainBias0", &m_terrain->shadowBias.x, 0.001f);
-    ImGui::DragFloat("terrainBias1", &m_terrain->shadowBias.y, 0.001f);
-    ImGui::DragFloat("terrainBias2", &m_terrain->shadowBias.z, 0.001f);
 
     // ImGui::Text("left plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[0].x, terrain->m_planes[0].y, terrain->m_planes[0].z, terrain->m_planes[0].w);
     // ImGui::Text("right plane: (%.3f, %.3f, %.3f, %.3f)", terrain->m_planes[1].x, terrain->m_planes[1].y, terrain->m_planes[1].z, terrain->m_planes[1].w);

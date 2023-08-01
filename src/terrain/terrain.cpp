@@ -3,9 +3,9 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(ResourceManager *resourceManager, PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
+Terrain::Terrain(ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
     : m_resourceManager(resourceManager),
-      m_pbrManager(pbrManager),
+      m_shaderManager(shaderManager),
       m_physicsWorld(physicsWorld),
       m_heightmapFilename(heightmapFilename),
       m_minHeight(minHeight),
@@ -140,6 +140,12 @@ void Terrain::init()
 
         normalTextureArrayId = m_resourceManager->textureArrayFromFile(texturePaths, true);
     }
+
+    m_grass = m_resourceManager->getModel("../src/assets/terrain/grass.obj");
+    m_stone = m_resourceManager->getModel("../src/assets/terrain/stone.obj");
+
+    m_shaderManager->addShader(ShaderDynamic(&m_grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
+    m_shaderManager->addShader(ShaderDynamic(&m_stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
 }
 
 // https://stackoverflow.com/a/9194117/11601515
@@ -322,10 +328,10 @@ void Terrain::createMesh(int m, int n, unsigned int &vbo, unsigned int &vao, uns
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
+void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
                         glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos,
                         glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
-                        GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
+                        GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances, glm::vec3 shadowBias,
                         bool ortho)
 {
     calculatePlanes(cullProjection, cullView);
@@ -384,15 +390,15 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
 
         glActiveTexture(GL_TEXTURE0 + 7);
         glUniform1i(glGetUniformLocation(terrainShader.id, "irradianceMap"), 7);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->irradianceMap);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->irradianceMap);
 
         glActiveTexture(GL_TEXTURE0 + 8);
         glUniform1i(glGetUniformLocation(terrainShader.id, "prefilterMap"), 8);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->prefilterMap);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->prefilterMap);
 
         glActiveTexture(GL_TEXTURE0 + 9);
         glUniform1i(glGetUniformLocation(terrainShader.id, "brdfLUT"), 9);
-        glBindTexture(GL_TEXTURE_2D, m_pbrManager->brdfLUTTexture);
+        glBindTexture(GL_TEXTURE_2D, pbrManager->brdfLUTTexture);
     }
     else
     {
@@ -402,6 +408,10 @@ void Terrain::drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3
     }
 
     this->draw(terrainShader, cullViewPos, ortho);
+
+    // TODO:
+    drawInstance(m_grassColorFactor, m_playerPos, m_grassShader, m_grass, m_grassTileSize, m_grassDensity, projection, view, viewPos);
+    drawInstance(m_grassColorFactor, m_playerPos, m_stoneShader, m_stone, m_stoneTileSize, m_stoneDensity, projection, view, viewPos);
 }
 
 void Terrain::updateHorizontalScale()

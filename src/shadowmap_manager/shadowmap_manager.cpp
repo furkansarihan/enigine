@@ -48,7 +48,7 @@ void ShadowmapManager::createTextureArray()
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
         // TODO: exception
-        fprintf(stderr, "Framebuffer creation error!\n");
+        fprintf(stderr, "ShadowmapManager: Framebuffer creation error!\n");
         return;
     }
 

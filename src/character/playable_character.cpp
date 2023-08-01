@@ -1,7 +1,7 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(taskManager, resourceManager, physicsWorld, followCamera),
+PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(renderManager, taskManager, resourceManager, physicsWorld, followCamera),
       m_soundEngine(soundEngine)
 {
     try
@@ -37,6 +37,24 @@ PCharacter::PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, Resou
     m_muzzleFlash->m_minDuration = 0.2f;
     m_muzzleFlash->m_maxDuration = 0.6f;
     m_muzzleFlash->m_particleScale = 0.15f;
+
+    // TODO: share across instances
+    shaderManager->addShader(ShaderDynamic(&m_smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
+
+    m_smokeSource = new RenderParticleSource(&m_smokeShader, m_smokeParticle);
+    renderManager->addParticleSource(m_smokeSource);
+
+    m_muzzleSource = new RenderParticleSource(&m_muzzleFlashShader, m_muzzleFlash);
+    renderManager->addParticleSource(m_muzzleSource);
+
+    m_pistolModel = resourceManager->getModel("../src/assets/gltf/colt3.glb");
+
+    m_pistolSource = RenderSourceBuilder(ShaderType::pbr)
+                       .setModel(m_pistolModel)
+                       .setMergedPBRTextures(true)
+                       .build();
+    renderManager->addSource(m_pistolSource);
 
     m_controlCharacter = true;
     m_followCharacter = true;
@@ -165,6 +183,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
         m_controller->m_aimLocked = false;
 }
 
+// TODO: transform link skeleton
 void PCharacter::updatePistolModelMatrix()
 {
     int index = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:RightHand"].id;
@@ -179,7 +198,8 @@ void PCharacter::updatePistolModelMatrix()
     model2 = model2 * glm::mat4_cast(m_pistolOrientation);
     model2 = glm::scale(model2, glm::vec3(m_pistolScale));
 
-    m_pistolModel = model2;
+    m_pistolModelMatrix = model2;
+    m_pistolSource->transform.setModelMatrix(m_pistolModelMatrix);
 
     // muzzle
     model3 = glm::translate(model3, m_pistolOffset + m_muzzleOffset);
@@ -187,7 +207,7 @@ void PCharacter::updatePistolModelMatrix()
     model3 = glm::scale(model3, glm::vec3(m_pistolScale));
 
     m_muzzlePosition = CommonUtil::positionFromModel(model3);
-    m_muzzleDirection = glm::normalize(glm::mat3(m_pistolModel) * glm::vec3(0.f, 0.f, 1.f));
+    m_muzzleDirection = glm::normalize(glm::mat3(m_pistolModelMatrix) * glm::vec3(0.f, 0.f, 1.f));
 }
 
 void PCharacter::fireWeapon()

@@ -1,7 +1,8 @@
 #include "character.h"
 
-Character::Character(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : m_taskManager(taskManager),
+Character::Character(RenderManager *renderManager, TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : m_renderManager(renderManager),
+      m_taskManager(taskManager),
       m_resourceManager(resourceManager),
       m_physicsWorld(physicsWorld),
       m_followCamera(followCamera),
@@ -204,6 +205,15 @@ void Character::init()
 
     m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
     m_ragdoll = new Ragdoll(m_physicsWorld, animationRagdoll, BulletGLM::getBulletVec3(m_position), 2.0f);
+
+    eTransform transform;
+    transform.setScale(glm::vec3(2.f, 2.f, 2.f));
+    m_renderSource = RenderSourceBuilder(ShaderType::basic)
+                         .setTransform(transform)
+                         .setModel(m_model)
+                         .setAnimator(m_animator)
+                         .build();
+    m_renderManager->addSource(m_renderSource);
 }
 
 Character::~Character()
@@ -433,6 +443,10 @@ void Character::updateModelMatrix()
     }
 
     m_modelMatrix = model;
+
+    m_renderSource->transform.setTransform(CommonUtil::positionFromModel(model),
+                                           glm::quat_cast(glm::scale(model, glm::vec3(1.f / m_scale))),
+                                           glm::vec3(m_scale));
 }
 
 void Character::interpolateBlendTargets()

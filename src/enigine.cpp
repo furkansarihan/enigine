@@ -38,6 +38,8 @@
 #include "resource_manager/resource_manager.h"
 #include "car_controller/car_controller.h"
 #include "task_manager/task_manager.h"
+#include "render_manager/render_manager.h"
+#include "transform/transform.h"
 
 int main(int argc, char **argv)
 {
@@ -80,10 +82,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    int screenWidth, screenHeight;
-    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-    glViewport(0, 0, screenWidth, screenHeight);
-
+    // TODO: move to RenderManager
     // Enable depth test, z-buffer
     glEnable(GL_DEPTH_TEST);
     // Accept fragment if it closer to the camera than the former one
@@ -113,60 +112,44 @@ int main(int argc, char **argv)
 
     // Shaders
     ShaderManager shaderManager;
-    Shader normalShader, simpleShader, depthShader, simpleShadow, terrainShader, terrainShadow, lineShader, textureShader, textureArrayShader, postProcessShader, hdrToCubemapShader, cubemapShader, irradianceShader, pbrShader, prefilterShader, brdfShader, grassShader, stoneShader, animShader, smokeShader, muzzleFlashShader, terrainPBRShader, animDepthShader, exhaustShader;
+    Shader normalShader, simpleShader, simpleShadow, lineShader, textureShader, textureArrayShader;
     shaderManager.addShader(ShaderDynamic(&normalShader, "../src/assets/shaders/normal-shader.vs", "../src/assets/shaders/normal-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/simple-shader.fs"));
-    shaderManager.addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&simpleShadow, "../src/assets/shaders/simple-shadow.vs", "../src/assets/shaders/simple-shadow.fs"));
-    shaderManager.addShader(ShaderDynamic(&terrainShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-shader.fs"));
-    shaderManager.addShader(ShaderDynamic(&terrainShadow, "../src/assets/shaders/terrain-shadow.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&lineShader, "../src/assets/shaders/line-shader.vs", "../src/assets/shaders/line-shader.fs"));
     shaderManager.addShader(ShaderDynamic(&textureShader, "../src/assets/shaders/simple-texture.vs", "../src/assets/shaders/simple-texture.fs"));
     shaderManager.addShader(ShaderDynamic(&textureArrayShader, "../src/assets/shaders/simple-texture.vs", "../src/assets/shaders/texture-array.fs"));
-    shaderManager.addShader(ShaderDynamic(&postProcessShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/post-process.fs"));
-    shaderManager.addShader(ShaderDynamic(&hdrToCubemapShader, "../src/assets/shaders/hdr-to-cubemap.vs", "../src/assets/shaders/hdr-to-cubemap.fs"));
-    shaderManager.addShader(ShaderDynamic(&cubemapShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/cubemap.fs"));
-    shaderManager.addShader(ShaderDynamic(&irradianceShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/irradiance.fs"));
-    shaderManager.addShader(ShaderDynamic(&pbrShader, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
-    shaderManager.addShader(ShaderDynamic(&prefilterShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/prefilter.fs"));
-    shaderManager.addShader(ShaderDynamic(&brdfShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/brdf.fs"));
-    shaderManager.addShader(ShaderDynamic(&grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
-    shaderManager.addShader(ShaderDynamic(&stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
-    shaderManager.addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
-    shaderManager.addShader(ShaderDynamic(&smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
-    shaderManager.addShader(ShaderDynamic(&muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
-    shaderManager.addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
-    shaderManager.addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
-    shaderManager.addShader(ShaderDynamic(&exhaustShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/exhaust.fs"));
-    shaderManager.initShaders();
 
     // Create geometries
     ResourceManager resourceManager;
 
     Model &cube = *resourceManager.getModel("../src/assets/models/cube.obj");
-    Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
+    // Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
     Model &quad = *resourceManager.getModel("../src/assets/models/quad.obj");
-    Model &wheel = *resourceManager.getModel("../src/assets/models/wheel.obj");
-    Model &cylinder = *resourceManager.getModel("../src/assets/models/cylinder.obj");
-    Model &suzanne = *resourceManager.getModel("../src/assets/models/suzanne.obj");
-    // Model &spherePBR = *resourceManager.getModel("../src/assets/spaceship/sphere.obj");
-    Model &grass = *resourceManager.getModel("../src/assets/terrain/grass.obj");
-    Model &stone = *resourceManager.getModel("../src/assets/terrain/stone.obj");
-    Model &pistol = *resourceManager.getModel("../src/assets/gltf/colt3.glb");
-
+    // Model &wheel = *resourceManager.getModel("../src/assets/models/wheel.obj");
+    // Model &cylinder = *resourceManager.getModel("../src/assets/models/cylinder.obj");
+    // Model &suzanne = *resourceManager.getModel("../src/assets/models/suzanne.obj");
+    Model &spherePBR = *resourceManager.getModel("../src/assets/spaceship/sphere.obj");
     Model &shelter = *resourceManager.getModel("../src/assets/gltf/shelter1.glb");
     Model &tower = *resourceManager.getModel("../src/assets/gltf/old-water-tower.glb", false);
+
+    // Shadowmap display quad
+    unsigned int q_vbo, q_vao, q_ebo;
+    CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // Render manager
+    RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, q_vao);
+
     // Task manager
     TaskManager taskManager;
 
     // Characters
-    NPCharacter npc1(&taskManager, &resourceManager, &physicsWorld, &editorCamera);
-    PCharacter character(&taskManager, &soundEngine, &resourceManager, &physicsWorld, &editorCamera);
+    NPCharacter npc1(&renderManager, &taskManager, &resourceManager, &physicsWorld, &editorCamera);
+    PCharacter character(&shaderManager, &renderManager, &taskManager, &soundEngine, &resourceManager, &physicsWorld, &editorCamera);
 
     editorCamera.position = npc1.m_position + glm::vec3(0.f, -1.f, 10.f);
 
@@ -194,24 +177,10 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Vehicle
-    CarController car(&physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(10.f, 5.f, 10.f));
+    CarController car(&shaderManager, &renderManager, &physicsWorld, &resourceManager, &editorCamera, character.m_position + glm::vec3(10.f, 5.f, 10.f));
     Vehicle &vehicle = *car.m_vehicle;
     glfwSetWindowUserPointer(window, &car);
     glfwSetKeyCallback(window, car.staticKeyCallback);
-
-    // Shadowmap
-    std::vector<unsigned int> shaderIds;
-    shaderIds.push_back(terrainShader.id);
-    shaderIds.push_back(terrainPBRShader.id);
-    shaderIds.push_back(pbrShader.id);
-    shaderIds.push_back(animShader.id);
-
-    ShadowManager shadowManager(&editorCamera, shaderIds);
-    ShadowmapManager shadowmapManager(shadowManager.m_splitCount, 1024);
-
-    // Shadowmap display quad
-    unsigned int q_vbo, q_vao, q_ebo;
-    CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
 
     // Debug draw objects
     unsigned int vbo, vao, ebo;
@@ -219,28 +188,13 @@ int main(int argc, char **argv)
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
 
-    // Post process
-    PostProcess postProcess((float)screenWidth, (float)screenHeight);
-
-    // PBR
-    PbrManager pbrManager;
-    pbrManager.setupCubemap(&cube, hdrToCubemapShader);
-    pbrManager.setupIrradianceMap(&cube, irradianceShader);
-    pbrManager.setupPrefilterMap(&cube, prefilterShader);
-    pbrManager.setupBrdfLUTTexture(q_vao, brdfShader);
-
-    float albedo[3] = {0.5f, 0.0f, 0.0f};
-    float ao = 1.0;
-    glm::vec3 lightPositions[] = {glm::vec3(0.0f, 0.0f, 10.0f)};
-    glm::vec3 lightColors[] = {glm::vec3(350.0f, 410.0f, 458.0f)};
-
     // Terrain
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-1.png", -2.0f, 517.0f, 6.0f, true);
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f, true);
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f, true);
-    // Terrain terrain(&pbrManager, &physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f, true);
-    Terrain terrain(&resourceManager, &pbrManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
+    // Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/4096x4096.png", 0.0f, 798.0f, 2.0f, true);
+    // Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/height-1.png", -2.0f, 517.0f, 6.0f, true);
+    // Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/height-2.png", 0.0f, 428.0f, 8.0f, true);
+    // Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/height-3.png", 0.0f, 105.0f, 1.0f, true);
+    // Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/height-4.png", 0.0f, 508.0f, 1.0f, true);
+    Terrain terrain(&resourceManager, &shaderManager, &physicsWorld, "../src/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
 
     // UI
     RootUI rootUI;
@@ -248,7 +202,7 @@ int main(int argc, char **argv)
     CharacterUI characterUI(&character, character.m_controller, character.m_rigidbody);
     RagdollUI ragdollUI(&npc1, &editorCamera);
     AnimationUI animationUI(character.m_animator);
-    ShadowmapUI shadowmapUI(&shadowManager, &shadowmapManager);
+    ShadowmapUI shadowmapUI(renderManager.m_shadowManager, renderManager.m_shadowmapManager);
     SoundUI soundUI(&soundEngine, &character);
     VehicleUI vehicleUI(&car, &vehicle);
     CameraUI cameraUI(&editorCamera);
@@ -258,7 +212,8 @@ int main(int argc, char **argv)
     particleUI.m_particleEngines.push_back(character.m_muzzleFlash);
     particleUI.m_particleEngines.push_back(car.m_exhausParticle);
     ResourceUI resourceUI(&resourceManager);
-    TempUI tempUI(&postProcess, &physicsWorld, &debugDrawer, &shaderManager);
+    RenderUI renderUI(&renderManager);
+    TempUI tempUI(renderManager.m_postProcess, &physicsWorld, &debugDrawer, &shaderManager);
     rootUI.m_uiList.push_back(&systemMonitorUI);
     rootUI.m_uiList.push_back(&characterUI);
     rootUI.m_uiList.push_back(&ragdollUI);
@@ -270,7 +225,33 @@ int main(int argc, char **argv)
     rootUI.m_uiList.push_back(&terrainUI);
     rootUI.m_uiList.push_back(&particleUI);
     rootUI.m_uiList.push_back(&resourceUI);
+    rootUI.m_uiList.push_back(&renderUI);
     rootUI.m_uiList.push_back(&tempUI);
+
+    // Scene
+    eTransform transform(glm::vec3(5.f, 5.f, 5.f), glm::quat(1.f, 0.f, 0.f, 0.f), glm::vec3(5.f, 5.f, 5.f));
+    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+                                .setTransform(transform)
+                                .setModel(&spherePBR)
+                                .build());
+
+    transform = eTransform();
+    renderManager.addTerrainSource(ShaderType::pbr, transform, &terrain);
+
+    transform.setPosition(glm::vec3(103.f, 1.8f, 260.f));
+    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+                                .setTransform(transform)
+                                .setMergedPBRTextures(true)
+                                .setModel(&shelter)
+                                .build());
+
+    transform.setPosition(glm::vec3(112.f, 18.2f, 233.f));
+    transform.setScale(glm::vec3(.1f, .1f, .1f));
+    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+                                .setTransform(transform)
+                                .setMergedPBRTextures(true)
+                                .setModel(&tower)
+                                .build());
 
     while (!glfwWindowShouldClose(window))
     {
@@ -281,7 +262,7 @@ int main(int argc, char **argv)
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        tempUI.m_deltaTime = deltaTime;
+        // tempUI.m_deltaTime = deltaTime;
 
         // Poll events
         glfwPollEvents();
@@ -298,16 +279,9 @@ int main(int argc, char **argv)
 
         // Update character
         character.update(window, deltaTime);
+        // TODO: move
+        terrain.m_playerPos = character.m_position;
         npc1.update(window, deltaTime);
-
-        // TODO: transform manager
-        // update transforms
-        tempUI.m_shelterTransform.updateModelMatrix();
-        tempUI.m_towerTransform.updateModelMatrix();
-
-        // Update Debug Drawer
-        debugDrawer.getLines().clear();
-        physicsWorld.m_dynamicsWorld->debugDrawWorld();
 
         // Update audio listener
         soundEngine.setListenerPosition(editorCamera.position.x, editorCamera.position.y, editorCamera.position.z);
@@ -323,344 +297,37 @@ int main(int argc, char **argv)
         // Update tasks - should called at last
         taskManager.update();
 
-        // Clear window
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderManager.setupFrame(window);
+        // TODO: transform manager?
+        renderManager.updateTransforms();
+        renderManager.renderDepth();
+        renderManager.renderOpaque();
+        renderManager.renderBlend();
+        renderManager.renderTransmission();
 
-        // Update projection
-        glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-        glm::mat4 projection = editorCamera.getProjectionMatrix((float)screenWidth, (float)screenHeight);
-        glm::mat4 view = editorCamera.getViewMatrix();
-        glm::mat4 viewProjection = projection * view;
-
-        // Shadowmap
-        shadowManager.setup((float)screenWidth, (float)screenHeight);
-        glm::mat4 depthViewMatrix = shadowManager.getDepthViewMatrix();
-        glm::mat4 inverseDepthViewMatrix = glm::inverse(depthViewMatrix);
-
-        shadowmapManager.bindFramebuffer();
-        for (int i = 0; i < shadowManager.m_splitCount; i++)
-        {
-            shadowmapManager.bindTextureArray(i);
-            glm::mat4 depthP = shadowManager.m_depthPMatrices[i];
-            glm::mat4 depthVP = depthP * depthViewMatrix;
-
-            // Draw terrain
-            glm::vec3 nearPlaneEdges[4];
-            for (int j = 0; j < 4; j++)
-            {
-                glm::vec4 worldPoint = inverseDepthViewMatrix * glm::vec4(shadowManager.m_frustums[i].lightAABB[j], 1.0f);
-                glm::vec3 worldPoint3 = glm::vec3(worldPoint) / worldPoint.w;
-                nearPlaneEdges[j] = worldPoint3;
-            }
-            glm::vec3 nearPlaneCenter = (nearPlaneEdges[0] + nearPlaneEdges[1] + nearPlaneEdges[2] + nearPlaneEdges[3]) / 4.0f;
-
-            // TODO: terrain only cascade - covers all area - last one
-            terrain.drawDepth(terrainShadow, depthViewMatrix, depthP, nearPlaneCenter);
-
-            // Draw objects
-            glEnable(GL_CULL_FACE);
-            glFrontFace(GL_CCW);
-            if (tempUI.m_cullFront)
-                glCullFace(GL_FRONT);
-            else
-                glCullFace(GL_BACK);
-            depthShader.use();
-
-            // vehicle
-            car.render(depthShader, depthVP, "MVP");
-
-            depthShader.setMat4("MVP", depthVP * tempUI.m_shelterTransform.m_model);
-            shelter.draw(depthShader);
-            
-            depthShader.setMat4("MVP", depthVP * tempUI.m_towerTransform.m_model);
-            tower.draw(depthShader);
-
-            // characters
-            animDepthShader.use();
-            animDepthShader.setMat4("projection", depthP);
-            animDepthShader.setMat4("view", depthViewMatrix);
-
-            for (int i = 0; i < characters.size(); i++)
-            {
-                Character *character = characters[i];
-
-                auto transforms = character->m_animator->m_finalBoneMatrices;
-                for (int j = 0; j < transforms.size(); ++j)
-                    animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(j) + "]", transforms[j]);
-
-                animDepthShader.setMat4("model", character->m_modelMatrix);
-                character->m_model->draw(animDepthShader);
-            }
-            glDisable(GL_CULL_FACE);
-        }
-
-        // Render to post process texture
-        postProcess.updateFramebuffer((float)screenWidth, (float)screenHeight);
-        glBindFramebuffer(GL_FRAMEBUFFER, postProcess.m_framebufferObject);
-        glViewport(0, 0, screenWidth, screenHeight);
-        glClearColor(1.f, 0.f, 1.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Draw skybox
-        glDepthMask(GL_FALSE);
-        cubemapShader.use();
-        cubemapShader.setMat4("projection", projection);
-        cubemapShader.setMat4("view", view);
-
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.m_skyboxTexture);
-        cube.draw(cubemapShader);
-        glDepthMask(GL_TRUE);
-
-        // Render scene
-        glm::vec4 frustumDistances = shadowManager.getFrustumDistances();
-
-        glm::mat4 cullProjection = projection;
-        glm::mat4 cullView = view;
-        glm::vec3 cullViewPos = editorCamera.position;
-
-        // TODO: move where?
-        if (terrainUI.m_debugCulling)
-        {
-            cullProjection = debugCamera.getProjectionMatrix(screenWidth, screenHeight);
-            cullView = debugCamera.getViewMatrix();
-            cullViewPos = debugCamera.position;
-        }
-        else
-        {
-            debugCamera.position = editorCamera.position;
-            debugCamera.front = editorCamera.front;
-            debugCamera.right = editorCamera.right;
-            debugCamera.up = editorCamera.up;
-        }
-
-        terrain.drawColor(terrainPBRShader, shadowManager.m_lightPos, tempUI.m_sunColor * tempUI.m_sunIntensity,
-                          tempUI.m_lightPower,
-                          view, projection, editorCamera.position,
-                          cullView, cullProjection, cullViewPos,
-                          shadowmapManager.m_textureArray,
-                          editorCamera.position, editorCamera.front,
-                          frustumDistances,
-                          editorCamera.projectionMode == ProjectionMode::Ortho);
-
-        // TODO: better function call
-        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, grassShader, &grass, terrain.m_grassTileSize, terrain.m_grassDensity, projection, view, editorCamera.position);
-        terrain.drawInstance(terrain.m_grassColorFactor, character.m_position, stoneShader, &stone, terrain.m_stoneTileSize, terrain.m_stoneDensity, projection, view, editorCamera.position);
-
-        glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CCW);
-        glCullFace(GL_BACK);
-        // TODO: pbr
-        // animation
-        animShader.use();
-        animShader.setMat4("projection", projection);
-        animShader.setMat4("view", view);
-        animShader.setVec3("lightDir", shadowManager.m_lightPos);
-        animShader.setVec3("lightColor", glm::vec3(tempUI.m_lightColor[0], tempUI.m_lightColor[1], tempUI.m_lightColor[2]));
-        animShader.setFloat("lightPower", tempUI.m_lightPower);
-        animShader.setVec3("camPos", editorCamera.position);
-        animShader.setVec3("CamView", shadowManager.m_camera->front);
-        animShader.setVec4("FrustumDistances", frustumDistances);
-        animShader.setVec3("Bias", terrain.shadowBias);
-
-        glActiveTexture(GL_TEXTURE0 + 8);
-        glUniform1i(glGetUniformLocation(animShader.id, "ShadowMap"), 8);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-        for (int i = 0; i < characters.size(); i++)
-        {
-            Character *character = characters[i];
-
-            auto transforms = character->m_animator->m_finalBoneMatrices;
-            for (int i = 0; i < transforms.size(); ++i)
-            {
-                animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
-            }
-
-            animShader.setMat4("model", character->m_modelMatrix);
-            character->m_model->draw(animShader);
-        }
-
-        // draw pbr
-        // TODO: toggle
-        {
-            pbrShader.use();
-            pbrShader.setMat4("view", view);
-            pbrShader.setMat4("projection", projection);
-            pbrShader.setVec3("camPos", editorCamera.position);
-            pbrShader.setVec3("albedo", albedo[0], albedo[1], albedo[2]);
-            pbrShader.setFloat("ao", ao);
-            pbrShader.setVec3("lightDirection", shadowManager.m_lightPos);
-            pbrShader.setVec3("lightColor", tempUI.m_sunColor * tempUI.m_sunIntensity);
-            pbrShader.setVec3("CamView", shadowManager.m_camera->front);
-            pbrShader.setVec4("FrustumDistances", frustumDistances);
-            pbrShader.setVec3("Bias", terrain.shadowBias);
-
-            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-            {
-                pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
-                pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-            }
-
-            glActiveTexture(GL_TEXTURE0 + 8);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.irradianceMap);
-
-            glActiveTexture(GL_TEXTURE0 + 9);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.prefilterMap);
-
-            glActiveTexture(GL_TEXTURE0 + 10);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
-            glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
-
-            glActiveTexture(GL_TEXTURE0 + 11);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-            glm::mat4 model;
-
-            // draw pistol
-            pbrShader.setMat4("model", character.m_pistolModel);
-            pbrShader.setBool("mergedPBRTextures", true);
-            pistol.draw(pbrShader);
-
-            // draw vehicle
-            car.render(pbrShader, glm::mat4(1), "model", true);
-
-            model = tempUI.m_shelterTransform.m_model;
-            pbrShader.setMat4("model", model);
-            shelter.draw(pbrShader);
-
-            model = tempUI.m_towerTransform.m_model;
-            pbrShader.setMat4("model", model);
-            tower.draw(pbrShader);
-        }
-        glDisable(GL_CULL_FACE);
-
-        // light sources
-        for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, lightPositions[i]);
-            model = glm::scale(model, glm::vec3(0.2f));
-
-            simpleShader.use();
-            simpleShader.setMat4("MVP", viewProjection * model);
-            simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 1.0, 1.0, 1.0f));
-            sphere.draw(simpleShader);
-        }
+        // Update Debug Drawer
+        debugDrawer.getLines().clear();
+        physicsWorld.m_dynamicsWorld->debugDrawWorld();
 
         // Draw physics debug lines
-        glm::mat4 mvp = viewProjection;
+        glm::mat4 mvp = renderManager.m_viewProjection;
         debugDrawer.drawLines(lineShader, mvp, vbo, vao, ebo);
 
         // Shadowmap debug
         shadowmapUI.drawFrustum(simpleShader, mvp, vbo, vao, ebo);
-        shadowmapUI.drawLightAABB(simpleShader, mvp, inverseDepthViewMatrix, vbo, vao, ebo);
+        shadowmapUI.drawLightAABB(simpleShader, mvp, renderManager.m_inverseDepthViewMatrix, vbo, vao, ebo);
 
         // character debug
-        characterUI.drawArmatureBones(character, simpleShader, cube, viewProjection);
+        characterUI.drawArmatureBones(character, simpleShader, cube, mvp);
 
         // terrain debug
-        terrainUI.drawHeightCells(simpleShader, cube, viewProjection);
-
-        // Draw particles
-        // TODO: ParticleManager
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        character.m_smokeParticle->drawParticles(smokeShader, quad, viewProjection);
-        character.m_muzzleFlash->drawParticles(muzzleFlashShader, quad, viewProjection);
-        car.m_exhausParticle->drawParticles(exhaustShader, quad, viewProjection);
-        glDisable(GL_BLEND);
-
-        // pbr - transmission pass
-        {
-            // create mipmap
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glViewport(0, 0, screenWidth, screenHeight);
-
-            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, postProcess.m_framebufferObject);
-            glViewport(0, 0, screenWidth, screenHeight);
-
-            // render transmission
-            pbrShader.use();
-            pbrShader.setMat4("view", view);
-            pbrShader.setMat4("projection", projection);
-            pbrShader.setVec3("camPos", editorCamera.position);
-            pbrShader.setVec3("lightDirection", shadowManager.m_lightPos);
-            pbrShader.setVec3("lightColor", tempUI.m_sunColor * tempUI.m_sunIntensity);
-            pbrShader.setVec3("CamView", shadowManager.m_camera->front);
-            pbrShader.setVec4("FrustumDistances", frustumDistances);
-            pbrShader.setVec3("Bias", terrain.shadowBias);
-            pbrShader.setVec2("u_TransmissionFramebufferSize", glm::vec2(screenWidth, screenHeight));
-
-            for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-            {
-                pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
-                pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-            }
-
-            glActiveTexture(GL_TEXTURE0 + 8);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.irradianceMap);
-
-            glActiveTexture(GL_TEXTURE0 + 9);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager.prefilterMap);
-
-            glActiveTexture(GL_TEXTURE0 + 10);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
-            glBindTexture(GL_TEXTURE_2D, pbrManager.brdfLUTTexture);
-
-            glActiveTexture(GL_TEXTURE0 + 11);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapManager.m_textureArray);
-
-            glActiveTexture(GL_TEXTURE0 + 12);
-            glUniform1i(glGetUniformLocation(pbrShader.id, "u_TransmissionFramebufferSampler"), 12);
-            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
-
-            // render transmission meshes
-            pbrShader.setBool("mergedPBRTextures", true);
-            car.render(pbrShader, glm::mat4(1), "model", false);
-        }
+        terrainUI.drawHeightCells(simpleShader, cube, mvp);
 
         // Post process
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, screenWidth, screenHeight);
-
-        // remove mipmaps
-        // TODO: only if mipmaps created
-        glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        {
-            postProcessShader.use();
-            postProcessShader.setVec2("screenSize", glm::vec2((float)screenWidth, (float)screenHeight));
-            // postProcessShader.setFloat("blurOffset", blurOffset);
-            postProcessShader.setFloat("exposure", postProcess.m_exposure);
-
-            glActiveTexture(GL_TEXTURE0);
-            glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);
-            glBindTexture(GL_TEXTURE_2D, postProcess.m_texture);
-
-            glBindVertexArray(q_vao);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
-        }
+        renderManager.renderPostProcess();
 
         // Shadowmap debug - should be called after post process
-        shadowmapUI.drawShadowmap(textureArrayShader, screenWidth, screenHeight, q_vao);
+        shadowmapUI.drawShadowmap(textureArrayShader, renderManager.m_screenW, renderManager.m_screenH, q_vao);
 
         // Render UI
         rootUI.render();

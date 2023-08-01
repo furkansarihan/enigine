@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 
+#include <glm/glm.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include "btBulletDynamicsCommon.h"
 
@@ -32,6 +33,7 @@ class TaskManager;
 #include "../character_task/follow_path.h"
 #include "../character_task/enter_car.h"
 #include "../character_task/exit_car.h"
+#include "../render_manager/render_manager.h"
 
 struct PathResult
 {
@@ -63,6 +65,8 @@ struct PassengerInfo
 class Character
 {
 public:
+    RenderManager *m_renderManager;
+    RenderSource *m_renderSource;
     TaskManager *m_taskManager;
     ResourceManager *m_resourceManager;
     ShaderManager *m_shaderManager;
@@ -77,7 +81,7 @@ public:
     PassengerInfo m_passengerInfo;
     bool m_syncPositionFromPhysics = true;
 
-    // TODO: transformation struct
+    RenderSource *m_transform;
     glm::mat4 m_modelMatrix;
     glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -127,7 +131,7 @@ public:
     bool m_controlCharacter = false;
     bool m_followCharacter = false;
 
-    Character(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    Character(RenderManager *renderManager, TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);

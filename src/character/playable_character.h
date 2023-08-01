@@ -7,11 +7,12 @@
 #include "../sound_engine/sound_engine.h"
 #include "../particle_engine/particle_engine.h"
 #include "../utils/common.h"
+#include "../shader_manager/shader_manager.h"
 
 class PCharacter : public Character
 {
 public:
-    PCharacter(TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
     TaskManager *m_taskManager;
@@ -28,7 +29,7 @@ public:
     glm::vec3 m_followOffsetTarget = glm::vec3(0.0f, 3.f, -8.f);
     float m_followOffsetFactor = 0.1f;
 
-    glm::mat4 m_pistolModel = glm::mat4(1.f);
+    glm::mat4 m_pistolModelMatrix = glm::mat4(1.f);
     // TODO: bound to pistol model
     glm::vec3 m_pistolOffset = glm::vec3(1.1f, 16.2f, 3.4f);
     glm::quat m_pistolOrientation = glm::quat(0.563f, -0.432f, -0.447f, -0.545f); // 0, -76, -88
@@ -40,6 +41,13 @@ public:
 
     ParticleEngine *m_smokeParticle;
     ParticleEngine *m_muzzleFlash;
+    RenderParticleSource *m_smokeSource;
+    RenderParticleSource *m_muzzleSource;
+    Shader m_smokeShader;
+    Shader m_muzzleFlashShader;
+
+    Model *m_pistolModel;
+    RenderSource * m_pistolSource;
 
     float m_lastFire = 0.f;
     glm::vec3 m_lastFireHit = glm::vec3(0.f);

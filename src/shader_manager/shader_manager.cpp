@@ -10,6 +10,7 @@ ShaderManager::~ShaderManager()
 
 void ShaderManager::addShader(const ShaderDynamic &shaderDynamic)
 {
+    shaderDynamic.m_shader->init(FileManager::read(shaderDynamic.m_vsPath), FileManager::read(shaderDynamic.m_fsPath));
     m_shaderList.push_back(shaderDynamic);
 }
 

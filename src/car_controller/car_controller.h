@@ -16,6 +16,12 @@
 #include "../utils/bullet_glm.h"
 #include "../particle_engine/particle_engine.h"
 #include "../camera/camera.h"
+#include "../render_manager/render_manager.h"
+#include "../shader_manager/shader_manager.h"
+#include "../transform_link/link_rigidbody.h"
+
+#include "link_wheel.h"
+#include "link_door.h"
 
 struct Follow
 {
@@ -58,28 +64,16 @@ struct Models
 class CarController
 {
 public:
-    CarController(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
+    CarController(ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
     ~CarController();
 
     Vehicle *m_vehicle;
     Camera *m_followCamera;
     ParticleEngine *m_exhausParticle;
     Models m_models;
+    Shader m_exhaustShader;
 
-    float m_scale = 0.028f;
-    float m_wheelScale = 0.028f;
-    glm::vec3 m_bodyOffset = glm::vec3(0.f, 2.07f, -0.14f);
-    glm::vec3 m_wheelOffset = glm::vec3(0.f, 0.f, 0.f);
     glm::vec3 m_rotation = glm::vec3(0.f, -M_PI_2, 0.f);
-    glm::vec3 m_wheelRotation = glm::vec3(0.f, -M_PI_2, 0.f);
-    glm::vec3 m_bodyRotation = glm::vec3(0.f, 0.f, -0.020f);
-    glm::vec3 m_doorRotation = glm::vec3(M_PI_2, 0.f, 0.f);
-
-    glm::vec3 m_hoodOffset = glm::vec3(0.f, 1.87f, 3.12f);
-    glm::vec3 m_trunkOffset = glm::vec3(0.f, 2.15f, -3.89f);
-
-    glm::vec3 m_exhaustOffset = glm::vec3(0.98f, 0.93f, -4.34f);
-    glm::vec3 m_exhaustRotation = glm::vec3(-0.9f, -2.25f, 0.f);
 
     // enter-car pathfind
     glm::vec2 m_safeSize = glm::vec2(1.f, 3.f);
@@ -93,15 +87,16 @@ public:
     glm::vec3 m_pos = glm::vec3(0.0f, 2.5f, 0.0f);
     Follow m_follow;
 
-    glm::mat4 m_carModel;
-    glm::mat4 m_doorModels[4];
+    RenderSource *m_bodySource;
+    RenderSource *m_bodyHood;
+    RenderSource *m_bodyTrunk;
+    RenderSource *m_wheelSources[4];
+    RenderSource *m_doorSources[4];
+    RenderParticleSource *m_exhaustSource;
 
     void update(GLFWwindow *window, float deltaTime);
     void updateExhaust(GLFWwindow *window, float deltaTime);
-    void render(Shader shader, glm::mat4 viewProjection, const std::string &uniformName, bool drawOpaque = true);
     glm::mat4 translateOffset(glm::vec3 offset);
-    glm::mat4 getDoorModel(int door);
-    void updateModels();
     void followCar();
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
     static void staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);

@@ -25,23 +25,6 @@ void TempUI::render()
     }
     int lines = m_debugDrawer->getLines().size();
     ImGui::DragInt("lines", &lines);
-    if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        VectorUI::renderVec3("m_sunColor", m_sunColor, 1.f);
-        ImGui::DragFloat("m_sunIntensity", &m_sunIntensity, 0.1f);
-    }
-    if (ImGui::CollapsingHeader("Shelter", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        VectorUI::renderVec3("m_shelterPos", m_shelterTransform.m_position, 0.1f);
-        VectorUI::renderQuatEuler("m_shelterRot", m_shelterTransform.m_rotation, 1.0f);
-        VectorUI::renderVec3("m_shelterScale", m_shelterTransform.m_scale, 0.1f);
-    }
-    if (ImGui::CollapsingHeader("Tower", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        VectorUI::renderVec3("m_towerPos", m_towerTransform.m_position, 0.1f);
-        VectorUI::renderQuatEuler("m_towerRot", m_towerTransform.m_rotation, 1.0f);
-        VectorUI::renderVec3("m_towerScale", m_towerTransform.m_scale, 0.1f);
-    }
     ImGui::Text("Light");
     ImGui::DragFloat("power", &m_lightPower, 0.1);
     ImGui::DragFloat("radius", &m_radius, 0.1);

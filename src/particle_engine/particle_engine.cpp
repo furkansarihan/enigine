@@ -73,13 +73,13 @@ void ParticleEngine::emitParticles(float deltaTime)
 }
 
 // TODO: instancing - compute shaders
-void ParticleEngine::drawParticles(Shader &shader, Model &quad, glm::mat4 viewProjection)
+void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection)
 {
     if (m_particles.empty())
         return;
 
-    shader.use();
-    shader.setFloat("particleScale", m_particleScale);
+    shader->use();
+    shader->setFloat("particleScale", m_particleScale);
     for (int i = 0; i < m_particles.size(); i++)
     {
         glm::mat4 model(1.0f);
@@ -96,10 +96,10 @@ void ParticleEngine::drawParticles(Shader &shader, Model &quad, glm::mat4 viewPr
 
         model = glm::scale(model, glm::vec3(m_particleScale));
 
-        shader.setFloat("emitDistance", glm::distance(m_particles[i].position, m_particles[i].emitPosition));
-        shader.setFloat("duration", m_particles[i].duration);
-        shader.setMat4("MVP", viewProjection * model);
-        quad.draw(shader);
+        shader->setFloat("emitDistance", glm::distance(m_particles[i].position, m_particles[i].emitPosition));
+        shader->setFloat("duration", m_particles[i].duration);
+        shader->setMat4("MVP", viewProjection * model);
+        quad->draw(*shader);
     }
 }
 

@@ -41,7 +41,7 @@ void PostProcess::createTexture()
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
-        fprintf(stderr, "Framebuffer creation error!\n");
+        fprintf(stderr, "PostProcess: Framebuffer creation error!\n");
         return;
     }
 

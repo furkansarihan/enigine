@@ -9,6 +9,7 @@
 #include "btBulletDynamicsCommon.h"
 
 #include "../../external/imgui/imgui.h"
+#include "../../transform/transform.h"
 
 class VectorUI
 {
@@ -92,6 +93,33 @@ public:
         vector.y = normalized.y;
         vector.z = normalized.z;
         vector.w = normalized.w;
+    }
+
+    static void renderTransform(const char *header, eTransform &transform, float dragPos, float dragRot, float dragScale)
+    {
+        if (!ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_NoTreePushOnOpen))
+            return;
+
+        glm::vec3 pos = transform.getPosition();
+        glm::vec3 posCopy = pos;
+        VectorUI::renderVec3((std::string(header) + ":pos").c_str(), pos, dragPos);
+        if (pos != posCopy)
+            transform.setPosition(pos);
+        ImGui::Separator();
+
+        glm::quat rot = transform.getRotation();
+        glm::quat rotCopy = rot;
+        VectorUI::renderNormalizedQuat((std::string(header) + ":rot").c_str(), rot, dragRot);
+        if (rot != rotCopy)
+            transform.setRotation(rot);
+        ImGui::Separator();
+
+        glm::vec3 scale = transform.getScale();
+        glm::vec3 scaleCopy = scale;
+        VectorUI::renderVec3((std::string(header) + ":scale").c_str(), scale, dragScale);
+        if (scale != scaleCopy)
+            transform.setScale(scale);
+        ImGui::Separator();
     }
 };
 

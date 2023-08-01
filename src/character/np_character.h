@@ -6,7 +6,7 @@
 class NPCharacter : public Character
 {
 public:
-    NPCharacter(TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    NPCharacter(RenderManager *renderManager, TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~NPCharacter();
 
     std::vector<Character *> m_avoidAimList;

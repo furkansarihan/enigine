@@ -15,7 +15,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include "../shader/shader.h"
+#include "../shader_manager/shader_manager.h"
 #include "../physics_world/physics_world.h"
 #include "../camera/camera.h"
 #include "../model/model.h"
@@ -32,11 +32,11 @@ struct HeightCell
 class Terrain
 {
 public:
-    Terrain(ResourceManager *m_resourceManager, PbrManager *pbrManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
+    Terrain(ResourceManager *m_resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
     ~Terrain();
 
     ResourceManager *m_resourceManager;
-    PbrManager *m_pbrManager;
+    ShaderManager *m_shaderManager;
     PhysicsWorld *m_physicsWorld;
     std::string m_heightmapFilename;
     int heightmapWidth, heightmapHeight;
@@ -46,16 +46,22 @@ public:
     int resolution = 128;
     float m_minHeight, m_maxHeight, m_scaleHoriz;
     bool m_PBR;
+
     glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
     int level = 9;
     float fogMaxDist = 10000.0f;
     float fogMinDist = 4500.0f;
     glm::vec4 fogColor = glm::vec4(1.f, 1.f, 1.f, 0.75f);
     glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
-    glm::vec3 shadowBias = glm::vec3(0.020, 0.023, 0.005);
     bool showCascade = false;
     bool wireframe = false;
+    bool m_debugCulling = false;
     btRigidBody *terrainBody;
+
+    Model *m_grass;
+    Model *m_stone;
+    Shader m_grassShader;
+    Shader m_stoneShader;
 
     int m_grassTileSize = 12;
     float m_grassDensity = 2;
@@ -63,6 +69,8 @@ public:
     int m_stoneTileSize = 56;
     float m_stoneDensity = 0.02;
     float m_windIntensity = 6.0;
+    // TODO: obstacle map - grass
+    glm::vec3 m_playerPos;
 
     float ambientMult = 0.5f;
     float diffuseMult = 0.7f;
@@ -78,10 +86,10 @@ public:
     bool m_drawHeightCells = false;
 
     void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
-    void drawColor(Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
+    void drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,
                    glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos,
                    glm::mat4 cullView, glm::mat4 cullProjection, glm::vec3 cullViewPos,
-                   GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances,
+                   GLuint shadowmapId, glm::vec3 camPos, glm::vec3 camView, glm::vec4 frustumDistances, glm::vec3 shadowBias,
                    bool ortho);
     void drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos, Shader instanceShader, Model *model, int tileSize, float density, glm::mat4 projection, glm::mat4 view, glm::vec3 viewPos);
     void updateHorizontalScale();

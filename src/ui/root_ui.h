@@ -18,6 +18,7 @@
 #include "vehicle/vehicle_ui.h"
 #include "particle/particle_ui.h"
 #include "resource/resource_ui.h"
+#include "render/render_ui.h"
 
 class RootUI
 {
