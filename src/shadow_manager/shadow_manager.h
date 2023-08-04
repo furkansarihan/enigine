@@ -21,6 +21,12 @@ struct frustum
     glm::vec3 lightAABB[8];
 };
 
+struct aabb
+{
+    glm::vec3 min;
+    glm::vec3 max;
+};
+
 class ShadowManager
 {
 public:
@@ -29,11 +35,11 @@ public:
 
     Camera *m_camera;
     std::vector<frustum> m_frustums;
+    aabb m_aabb;
     int m_splitCount = 3;
     float m_splitWeight = 0.75f;
     float m_near = 0.1f;
     float m_far = 200.0f;
-    float m_bias = 0.005f;
 
     std::vector<unsigned int> m_shaderIds;
 
@@ -59,6 +65,7 @@ private:
     void updateFrustumPoints(frustum &f, glm::vec3 &center, glm::vec3 &view_dir);
     glm::mat4 applyCropMatrix(frustum &f, glm::mat4 lightView);
     void setupBiasMatrices(glm::mat4 depthViewMatrix);
+    void updateFrustumAabb();
 };
 
 #endif /* shadow_manager_hpp */

@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 
     // Camera
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    Camera debugCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Render manager
     RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, q_vao);
@@ -297,13 +296,12 @@ int main(int argc, char **argv)
         // Update tasks - should called at last
         taskManager.update();
 
+        // render manager - start
         renderManager.setupFrame(window);
         // TODO: transform manager?
         renderManager.updateTransforms();
         renderManager.renderDepth();
         renderManager.renderOpaque();
-        renderManager.renderBlend();
-        renderManager.renderTransmission();
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();
@@ -312,6 +310,11 @@ int main(int argc, char **argv)
         // Draw physics debug lines
         glm::mat4 mvp = renderManager.m_viewProjection;
         debugDrawer.drawLines(lineShader, mvp, vbo, vao, ebo);
+
+        // culling debug
+        renderManager.m_cullingManager->m_debugDrawer->getLines().clear();
+        renderManager.m_cullingManager->m_collisionWorld->debugDrawWorld();
+        renderManager.m_cullingManager->m_debugDrawer->drawLines(lineShader, mvp, vbo, vao, ebo);
 
         // Shadowmap debug
         shadowmapUI.drawFrustum(simpleShader, mvp, vbo, vao, ebo);
@@ -323,7 +326,9 @@ int main(int argc, char **argv)
         // terrain debug
         terrainUI.drawHeightCells(simpleShader, cube, mvp);
 
-        // Post process
+        // render manager - end
+        renderManager.renderBlend();
+        renderManager.renderTransmission();
         renderManager.renderPostProcess();
 
         // Shadowmap debug - should be called after post process

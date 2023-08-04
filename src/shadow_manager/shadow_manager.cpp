@@ -191,6 +191,7 @@ void ShadowManager::setup(float screenWidth, float screenHeight)
     }
 
     setupBiasMatrices(depthViewMatrix);
+    updateFrustumAabb();
 }
 
 void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
@@ -205,6 +206,27 @@ void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
     glBindBuffer(GL_UNIFORM_BUFFER, m_ubo);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_splitCount, depthBiasVPMatrices, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void ShadowManager::updateFrustumAabb()
+{
+    m_aabb.min = m_frustums[0].points[0];
+    m_aabb.max = m_frustums[0].points[0];
+    for (int i = 0; i < m_splitCount; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            glm::vec3 point = m_frustums[i].points[j];
+
+            m_aabb.min.x = std::min(m_aabb.min.x, point.x);
+            m_aabb.min.y = std::min(m_aabb.min.y, point.y);
+            m_aabb.min.z = std::min(m_aabb.min.z, point.z);
+
+            m_aabb.max.x = std::max(m_aabb.max.x, point.x);
+            m_aabb.max.y = std::max(m_aabb.max.y, point.y);
+            m_aabb.max.z = std::max(m_aabb.max.z, point.z);
+        }
+    }
 }
 
 glm::mat4 ShadowManager::getDepthViewMatrix()

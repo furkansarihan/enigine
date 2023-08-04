@@ -199,7 +199,7 @@ void PCharacter::updatePistolModelMatrix()
     model2 = glm::scale(model2, glm::vec3(m_pistolScale));
 
     m_pistolModelMatrix = model2;
-    m_pistolSource->transform.setModelMatrix(m_pistolModelMatrix);
+    m_pistolSource->setModelMatrix(m_pistolModelMatrix);
 
     // muzzle
     model3 = glm::translate(model3, m_pistolOffset + m_muzzleOffset);

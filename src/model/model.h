@@ -40,6 +40,8 @@ public:
     std::vector<Mesh *> meshes;
     std::vector<Mesh *> opaqueMeshes;
     std::vector<Mesh *> transmissionMeshes;
+    glm::vec3 aabbMin;
+    glm::vec3 aabbMax;
     std::string m_path;
     std::string directory;
     bool gammaCorrection;

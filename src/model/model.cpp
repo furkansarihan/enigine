@@ -50,7 +50,11 @@ void Model::drawInstanced(Shader shader, int instanceCount)
 void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
-    m_scene = m_importer->ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    m_scene = m_importer->ReadFile(path,
+                                   aiProcess_Triangulate |
+                                       aiProcess_FlipUVs |
+                                       aiProcess_CalcTangentSpace |
+                                       aiProcess_GenBoundingBoxes);
     // check for errors
     if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) // if is Not Zero
     {
@@ -68,6 +72,17 @@ void Model::loadModel(std::string const &path)
 
     // process ASSIMP's root node recursively
     processNode(m_scene->mRootNode);
+
+    for (int i = 0; i < meshes.size(); i++)
+    {
+        aabbMin.x = std::min(aabbMin.x, meshes[i]->aabbMin.x);
+        aabbMin.y = std::min(aabbMin.y, meshes[i]->aabbMin.y);
+        aabbMin.z = std::min(aabbMin.z, meshes[i]->aabbMin.z);
+
+        aabbMax.x = std::max(aabbMax.x, meshes[i]->aabbMax.x);
+        aabbMax.y = std::max(aabbMax.y, meshes[i]->aabbMax.y);
+        aabbMax.z = std::max(aabbMax.z, meshes[i]->aabbMax.z);
+    }
 }
 
 void Model::processNode(aiNode *node)
@@ -215,7 +230,12 @@ Mesh *Model::processMesh(aiMesh *mesh)
     // animation
     extractBoneWeightForVertices(vertices, mesh);
 
-    return new Mesh(mesh->mName.C_Str(), vertices, indices, Material(material->GetName().C_Str(), textures, properties));
+    return new Mesh(mesh->mName.C_Str(),
+                    vertices,
+                    indices,
+                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMin),
+                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMax),
+                    Material(material->GetName().C_Str(), textures, properties));
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)

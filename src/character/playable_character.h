@@ -47,7 +47,7 @@ public:
     Shader m_muzzleFlashShader;
 
     Model *m_pistolModel;
-    RenderSource * m_pistolSource;
+    RenderSource *m_pistolSource;
 
     float m_lastFire = 0.f;
     glm::vec3 m_lastFireHit = glm::vec3(0.f);

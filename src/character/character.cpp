@@ -444,9 +444,9 @@ void Character::updateModelMatrix()
 
     m_modelMatrix = model;
 
-    m_renderSource->transform.setTransform(CommonUtil::positionFromModel(model),
-                                           glm::quat_cast(glm::scale(model, glm::vec3(1.f / m_scale))),
-                                           glm::vec3(m_scale));
+    m_renderSource->setTransform(CommonUtil::positionFromModel(model),
+                                 glm::quat_cast(glm::scale(model, glm::vec3(1.f / m_scale))),
+                                 glm::vec3(m_scale));
 }
 
 void Character::interpolateBlendTargets()

@@ -16,8 +16,6 @@ private:
 public:
     TerrainUI(Terrain *terrain) : m_terrain(terrain) {}
 
-    bool m_debugCulling = false;
-
     void render() override;
     void drawHeightCells(Shader &shader, Model &cube, glm::mat4 viewProjection);
 };

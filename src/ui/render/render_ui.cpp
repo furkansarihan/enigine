@@ -5,6 +5,16 @@ void RenderUI::render()
     if (!ImGui::CollapsingHeader("Render", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    int totalSourceCount = m_renderManager->m_pbrSources.size() + m_renderManager->m_basicSources.size();
+    int visibleSourceCount = m_renderManager->m_visiblePbrSources.size() + m_renderManager->m_visibleBasicSources.size();
+    ImGui::Text("total source count: %d", totalSourceCount);
+    ImGui::Text("visible source count: %d", visibleSourceCount);
+    ImGui::Checkbox("m_debugCulling", &m_renderManager->m_debugCulling);
+    if (ImGui::Checkbox("m_drawCullingAabb", &m_renderManager->m_drawCullingAabb))
+    {
+        m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
+                                                                                                        : btIDebugDraw::DBG_NoDebug);
+    }
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         VectorUI::renderVec3("m_sunColor", m_renderManager->m_sunColor, 1.f);

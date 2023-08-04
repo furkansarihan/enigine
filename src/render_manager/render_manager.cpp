@@ -25,6 +25,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&prefilterShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/prefilter.fs"));
     shaderManager->addShader(ShaderDynamic(&brdfShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/brdf.fs"));
 
+    m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
     // PBR Setup
     m_pbrManager = new PbrManager();
     // TODO: variable skybox
@@ -45,13 +47,14 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     m_shadowManager = new ShadowManager(m_camera, shaderIds);
     m_shadowmapManager = new ShadowmapManager(m_shadowManager->m_splitCount, 1024);
 
-    // Post process
+    m_cullingManager = new CullingManager();
     m_postProcess = new PostProcess(1.f, 1.f);
 }
 
 RenderManager::~RenderManager()
 {
     delete m_pbrManager;
+    delete m_debugCamera;
 
     for (int i = 0; i < m_pbrSources.size(); i++)
     {
@@ -77,7 +80,7 @@ void RenderManager::updateTransforms()
 {
     // TODO: better way?
     for (int i = 0; i < m_linkSources.size(); i++)
-        m_linkSources[i]->transform.setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
+        m_linkSources[i]->setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
 }
 
 void RenderManager::setupFrame(GLFWwindow *window)
@@ -91,23 +94,64 @@ void RenderManager::setupFrame(GLFWwindow *window)
     m_projection = m_camera->getProjectionMatrix((float)m_screenW, (float)m_screenH);
     m_view = m_camera->getViewMatrix();
     m_viewProjection = m_projection * m_view;
+
+    m_cullProjection = m_projection;
+    m_cullView = m_view;
+    m_cullViewProjection = m_viewProjection;
+    m_cullViewPos = m_camera->position;
+    if (m_debugCulling)
+    {
+        m_cullProjection = m_debugCamera->getProjectionMatrix((float)m_screenW, (float)m_screenH);
+        m_cullView = m_debugCamera->getViewMatrix();
+        m_cullViewProjection = m_cullProjection * m_cullView;
+        m_cullViewPos = m_debugCamera->position;
+    }
+    else
+    {
+        m_debugCamera->position = m_camera->position;
+        m_debugCamera->front = m_camera->front;
+        m_debugCamera->right = m_camera->right;
+        m_debugCamera->up = m_camera->up;
+    }
+
+    // setup shadowmap
+    if (m_debugCulling)
+        m_shadowManager->m_camera = m_debugCamera;
+    else
+        m_shadowManager->m_camera = m_camera;
+    m_shadowManager->setup((float)m_screenW, (float)m_screenH);
+    m_depthViewMatrix = m_shadowManager->getDepthViewMatrix();
+    m_inverseDepthViewMatrix = glm::inverse(m_depthViewMatrix);
+
+    // view frustum culling
+    m_cullingManager->setupFrame(m_cullViewProjection);
+    m_visiblePbrSources.clear();
+    m_visibleBasicSources.clear();
+
+    std::vector<void *> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
+                                                               m_shadowManager->m_aabb.max,
+                                                               m_cullViewPos);
+
+    for (int i = 0; i < objects.size(); i++)
+    {
+        RenderSource *source = static_cast<RenderSource *>(objects[i]);
+
+        if (source->type == ShaderType::pbr)
+            m_visiblePbrSources.push_back(source);
+        else
+            m_visibleBasicSources.push_back(source);
+    }
 }
 
 void RenderManager::renderDepth()
 {
-    // setup shadowmap
-    m_shadowManager->setup((float)m_screenW, (float)m_screenH);
-    glm::mat4 depthViewMatrix = m_shadowManager->getDepthViewMatrix();
-    m_inverseDepthViewMatrix = glm::inverse(depthViewMatrix);
-
-    // render depth
     m_shadowmapManager->bindFramebuffer();
     // TODO: frustum culling per split
     for (int i = 0; i < m_shadowManager->m_splitCount; i++)
     {
         m_shadowmapManager->bindTextureArray(i);
         glm::mat4 depthP = m_shadowManager->m_depthPMatrices[i];
-        glm::mat4 depthVP = depthP * depthViewMatrix;
+        glm::mat4 depthVP = depthP * m_depthViewMatrix;
 
         // Draw each terrain
         glm::vec3 nearPlaneEdges[4];
@@ -121,9 +165,9 @@ void RenderManager::renderDepth()
 
         // TODO: terrain only cascade - covers all area - last one
         for (int i = 0; i < m_pbrTerrainSources.size(); i++)
-            m_pbrTerrainSources[i]->terrain->drawDepth(terrainDepthShader, depthViewMatrix, depthP, nearPlaneCenter);
+            m_pbrTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
         for (int i = 0; i < m_basicTerrainSources.size(); i++)
-            m_basicTerrainSources[i]->terrain->drawDepth(terrainDepthShader, depthViewMatrix, depthP, nearPlaneCenter);
+            m_basicTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
 
         // Draw objects
         glEnable(GL_CULL_FACE);
@@ -134,23 +178,23 @@ void RenderManager::renderDepth()
             glCullFace(GL_BACK);
 
         // draw each object
-        for (int i = 0; i < m_pbrSources.size(); i++)
+        for (int i = 0; i < m_visiblePbrSources.size(); i++)
         {
-            RenderSource *source = m_pbrSources[i];
+            RenderSource *source = m_visiblePbrSources[i];
 
             depthShader.use();
             depthShader.setMat4("MVP", depthVP * source->transform.getModelMatrix());
             source->model->draw(depthShader, true);
         }
-        for (int i = 0; i < m_basicSources.size(); i++)
+        for (int i = 0; i < m_visibleBasicSources.size(); i++)
         {
-            RenderSource *source = m_basicSources[i];
+            RenderSource *source = m_visibleBasicSources[i];
 
             if (source->animator)
             {
                 animDepthShader.use();
                 animDepthShader.setMat4("projection", depthP);
-                animDepthShader.setMat4("view", depthViewMatrix);
+                animDepthShader.setMat4("view", m_depthViewMatrix);
 
                 // TODO: set as block
                 auto transforms = source->animator->m_finalBoneMatrices;
@@ -203,30 +247,10 @@ void RenderManager::renderOpaque()
     {
         RenderTerrainSource *source = m_pbrTerrainSources[i];
 
-        // terrain
-        glm::mat4 cullProjection = m_projection;
-        glm::mat4 cullView = m_view;
-        glm::vec3 cullViewPos = m_camera->position;
-
-        // TODO: move
-        // if (terrainUI.m_debugCulling)
-        // {
-        //     cullProjection = debugCamera.getProjectionMatrix(m_screenW, m_screenH);
-        //     cullView = debugCamera.getViewMatrix();
-        //     cullViewPos = debugCamera.position;
-        // }
-        // else
-        // {
-        //     debugCamera.position = m_camera->position;
-        //     debugCamera.front = m_camera->front;
-        //     debugCamera.right = m_camera->right;
-        //     debugCamera.up = m_camera->up;
-        // }
-
         source->terrain->drawColor(m_pbrManager, terrainPBRShader, m_shadowManager->m_lightPos,
                                    m_sunColor * m_sunIntensity, m_lightPower,
                                    m_view, m_projection, m_camera->position,
-                                   cullView, cullProjection, cullViewPos,
+                                   m_cullView, m_cullProjection, m_cullViewPos,
                                    m_shadowmapManager->m_textureArray,
                                    m_camera->position, m_camera->front,
                                    m_frustumDistances, m_shadowBias,
@@ -272,9 +296,9 @@ void RenderManager::renderOpaque()
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
     // draw each pbr
-    for (int i = 0; i < m_pbrSources.size(); i++)
+    for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
-        RenderSource *source = m_pbrSources[i];
+        RenderSource *source = m_visiblePbrSources[i];
         pbrShader.setBool("mergedPBRTextures", source->mergedPBRTextures);
         pbrShader.setMat4("model", source->transform.getModelMatrix());
         source->model->draw(pbrShader, true);
@@ -299,9 +323,9 @@ void RenderManager::renderOpaque()
 
     // render each basic
     // TODO: basic without anim
-    for (int i = 0; i < m_basicSources.size(); i++)
+    for (int i = 0; i < m_visibleBasicSources.size(); i++)
     {
-        RenderSource *source = m_basicSources[i];
+        RenderSource *source = m_visibleBasicSources[i];
 
         if (source->animator)
         {
@@ -394,9 +418,9 @@ void RenderManager::renderTransmission()
     glBindTexture(GL_TEXTURE_2D, m_postProcess->m_texture);
 
     // render each transmission mesh
-    for (int i = 0; i < m_pbrSources.size(); i++)
+    for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
-        RenderSource *source = m_pbrSources[i];
+        RenderSource *source = m_visiblePbrSources[i];
         pbrShader.setBool("mergedPBRTextures", source->mergedPBRTextures);
         pbrShader.setMat4("model", source->transform.getModelMatrix());
         source->model->draw(pbrShader, false);
@@ -431,6 +455,14 @@ void RenderManager::renderPostProcess()
 
 void RenderManager::addSource(RenderSource *source)
 {
+    if (!source->model)
+    {
+        std::cout << "RenderManager:addSource: missing model object" << std::endl;
+        return;
+    }
+
+    source->m_renderManager = this;
+
     if (source->type == ShaderType::pbr)
         m_pbrSources.push_back(source);
     else
@@ -438,6 +470,9 @@ void RenderManager::addSource(RenderSource *source)
 
     if (source->transformLink)
         m_linkSources.push_back(source);
+
+    glm::vec3 size = (source->model->aabbMax - source->model->aabbMin) / 2.0f;
+    m_cullingManager->addObject(source, size, source->transform.getModelMatrix());
 }
 
 RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain)
@@ -455,4 +490,26 @@ RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform
 void RenderManager::addParticleSource(RenderParticleSource *source)
 {
     m_particleSources.push_back(source);
+}
+
+// RenderSource
+
+void RenderSource::setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale)
+{
+    transform.setTransform(position, rotation, scale);
+
+    if (!m_renderManager->m_cullingManager)
+        return;
+
+    m_renderManager->m_cullingManager->updateObject(this, transform.getModelMatrix());
+}
+
+void RenderSource::setModelMatrix(glm::mat4 modelMatrix)
+{
+    transform.setModelMatrix(modelMatrix);
+
+    if (!m_renderManager->m_cullingManager)
+        return;
+
+    m_renderManager->m_cullingManager->updateObject(this, modelMatrix);
 }

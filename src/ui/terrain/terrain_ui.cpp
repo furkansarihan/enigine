@@ -5,7 +5,6 @@ void TerrainUI::render()
     if (!ImGui::CollapsingHeader("Terrain", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    ImGui::Checkbox("m_debugCulling", &m_debugCulling);
     ImGui::Checkbox("m_drawHeightCells", &m_terrain->m_drawHeightCells);
     ImGui::Checkbox("wirewrame", &m_terrain->wireframe);
     ImGui::DragInt("level", &m_terrain->level);

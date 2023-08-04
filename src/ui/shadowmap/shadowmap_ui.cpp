@@ -10,7 +10,6 @@ void ShadowmapUI::render()
     ImGui::Checkbox("drawAABB", &m_drawAABB);
     ImGui::DragFloat("quadScale", &m_quadScale, 0.1f);
     ImGui::DragFloat("splitWeight", &m_shadowManager->m_splitWeight, 0.01f);
-    ImGui::DragFloat("bias", &m_shadowManager->m_bias, 0.001f);
     ImGui::Separator();
     ImGui::Text("Light");
     ImGui::DragFloat("X", &m_shadowManager->m_lightPos.x, 0.01f);

@@ -54,12 +54,14 @@ class Mesh
 {
 public:
     // Constructors
-    Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material material);
+    Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material material);
     ~Mesh();
     // Attributes
     std::string name;
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
+    glm::vec3 aabbMin;
+    glm::vec3 aabbMax;
     Material material;
     glm::mat4 offset = glm::mat4(1.0f);
     bool opaque = true;

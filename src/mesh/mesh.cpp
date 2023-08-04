@@ -1,8 +1,10 @@
 #include "mesh.h"
 
-Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material material)
+Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material material)
     : name(name),
       vertices(vertices),
+      aabbMin(aabbMin),
+      aabbMax(aabbMax),
       indices(indices),
       material(material)
 {

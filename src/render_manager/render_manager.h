@@ -21,6 +21,7 @@
 #include "../post_process/post_process.h"
 #include "../transform_link/transform_link.h"
 #include "../particle_engine/particle_engine.h"
+#include "../culling_manager/culling_manager.h"
 #include "../utils/common.h"
 
 enum ShaderType
@@ -29,9 +30,11 @@ enum ShaderType
     basic
 };
 
+class RenderManager;
 class RenderSource
 {
 public:
+    RenderManager *m_renderManager = nullptr;
     ShaderType type;
     eTransform transform;
     eTransform offset;
@@ -49,6 +52,9 @@ public:
           animator(animator),
           transformLink(transformLink),
           mergedPBRTextures(mergedPBRTextures){};
+
+    void setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
+    void setModelMatrix(glm::mat4 modelMatrix);
 };
 
 class RenderTerrainSource
@@ -145,6 +151,7 @@ public:
 
     ShaderManager *m_shaderManager;
     Camera *m_camera;
+    Camera *m_debugCamera;
     // TODO: move?
     Model *cube;
     Model *quad;
@@ -153,7 +160,20 @@ public:
     PbrManager *m_pbrManager;
     ShadowManager *m_shadowManager;
     ShadowmapManager *m_shadowmapManager;
+    CullingManager *m_cullingManager;
     PostProcess *m_postProcess;
+    bool m_debugCulling = false;
+    bool m_drawCullingAabb = false;
+
+    std::vector<RenderSource *> m_visiblePbrSources;
+    std::vector<RenderSource *> m_visibleBasicSources;
+
+    std::vector<RenderSource *> m_pbrSources;
+    std::vector<RenderSource *> m_basicSources;
+    std::vector<RenderSource *> m_linkSources;
+    std::vector<RenderTerrainSource *> m_pbrTerrainSources;
+    std::vector<RenderTerrainSource *> m_basicTerrainSources;
+    std::vector<RenderParticleSource *> m_particleSources;
 
     // TODO: animation support with preprocessor - pbr, basic, depth
     Shader pbrShader;
@@ -179,8 +199,13 @@ public:
     glm::mat4 m_projection;
     glm::mat4 m_view;
     glm::mat4 m_viewProjection;
+    glm::mat4 m_depthViewMatrix;
     glm::mat4 m_inverseDepthViewMatrix;
     glm::vec4 m_frustumDistances;
+    glm::mat4 m_cullProjection;
+    glm::mat4 m_cullView;
+    glm::mat4 m_cullViewProjection;
+    glm::vec3 m_cullViewPos;
 
     // TODO: light source
     glm::vec3 m_sunColor = glm::vec3(3.5f, 4.1f, 4.5f);
@@ -201,15 +226,6 @@ public:
     void addSource(RenderSource *source);
     RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
-
-    std::vector<RenderSource *> m_pbrSources;
-    std::vector<RenderSource *> m_basicSources;
-    std::vector<RenderSource *> m_linkSources;
-
-    std::vector<RenderTerrainSource *> m_pbrTerrainSources;
-    std::vector<RenderTerrainSource *> m_basicTerrainSources;
-
-    std::vector<RenderParticleSource *> m_particleSources;
 };
 
 #endif /* render_manager_hpp */
