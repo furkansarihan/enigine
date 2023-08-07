@@ -114,7 +114,7 @@ void CullingManager::setupFrame(glm::mat4 viewProjection)
     calculatePlanes(viewProjection);
 }
 
-std::vector<void *> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos)
+std::vector<CulledObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos)
 {
     // auto start = std::chrono::high_resolution_clock::now();
 
@@ -124,7 +124,7 @@ std::vector<void *> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabb
     m_broadphase->aabbTest(BulletGLM::getBulletVec3(aabbMin), BulletGLM::getBulletVec3(aabbMax), *callback);
 
     // view frustum culling
-    std::vector<void *> visibleObjects;
+    std::vector<CulledObject> visibleObjects;
     for (int i = 0; i < aabbCallback->m_overlappingObjects->size(); i++)
     {
         btCollisionObject *object = (*aabbCallback->m_overlappingObjects)[i];
@@ -135,7 +135,11 @@ std::vector<void *> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabb
 
         if (inFrustum(BulletGLM::getGLMVec3(aabbMin), BulletGLM::getGLMVec3(aabbMax), viewPos))
         {
-            visibleObjects.push_back(object->getUserPointer());
+            CulledObject co;
+            co.userPointer = object->getUserPointer();
+            co.aabbMin = BulletGLM::getGLMVec3(aabbMin);
+            co.aabbMax = BulletGLM::getGLMVec3(aabbMax);
+            visibleObjects.push_back(co);
         }
     }
 

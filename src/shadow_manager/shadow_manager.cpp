@@ -18,7 +18,7 @@ void ShadowManager::setupUBO()
 {
     for (int i = 0; i < m_shaderIds.size(); i++)
     {
-        unsigned int shaderId = m_shaderIds.at(i);
+        unsigned int shaderId = m_shaderIds[i];
         GLuint uniformBlockIndex = glGetUniformBlockIndex(shaderId, "matrices");
         glUniformBlockBinding(shaderId, uniformBlockIndex, 0);
     }
@@ -38,16 +38,17 @@ void ShadowManager::updateSplitDist(float nd, float fd)
 {
     float lambda = m_splitWeight;
     float ratio = fd / nd;
-    m_frustums.at(0).near = nd;
+    m_frustums[0].near = nd;
 
     for (int i = 1; i < m_splitCount; i++)
     {
         float si = i / (float)m_splitCount;
 
-        m_frustums.at(i).near = lambda * (nd * powf(ratio, si)) + (1 - lambda) * (nd + (fd - nd) * si);
-        m_frustums.at(i - 1).far = m_frustums.at(i).near * 1.005f;
+        m_frustums[i].near = lambda * (nd * powf(ratio, si)) + (1 - lambda) * (nd + (fd - nd) * si);
+        m_frustums[i - 1].far = m_frustums[i].near * 1.005f;
     }
-    m_frustums.at(m_splitCount - 1).far = fd;
+    m_frustums[m_splitCount - 1].far = fd;
+    m_frustums[m_splitCount - 1].farExtend = fd;
 }
 
 // Compute the 8 corner points of the current view frustum
@@ -82,8 +83,9 @@ void ShadowManager::updateFrustumPoints(frustum &f, glm::vec3 &center, glm::vec3
 // First, it computes the appropriate z-range and sets an orthogonal projection.
 // Then, it translates and scales it, so that it exactly captures the bounding box
 // of the current frustum slice
-glm::mat4 ShadowManager::applyCropMatrix(frustum &f, glm::mat4 lightView)
+glm::mat4 ShadowManager::applyCropMatrix(int frustumIndex, glm::mat4 lightView)
 {
+    frustum &f = m_frustums[frustumIndex];
     float maxX, maxY, maxZ, minX, minY, minZ;
 
     glm::mat4 nv_mvp = lightView;
@@ -106,7 +108,7 @@ glm::mat4 ShadowManager::applyCropMatrix(frustum &f, glm::mat4 lightView)
         if (transf.z < minZ)
             minZ = transf.z;
 
-        // eliminate the perspective - for point lights
+        // eliminate the perspective - for point lights - ?
         transf.x /= transf.w;
         transf.y /= transf.w;
 
@@ -120,7 +122,43 @@ glm::mat4 ShadowManager::applyCropMatrix(frustum &f, glm::mat4 lightView)
             minY = transf.y;
     }
 
-    // TODO: extend borders with scene elements
+    // extend borders with scene objects
+    float objMinX = minX;
+    float objMaxX = maxX;
+    float objMinY = minY;
+    float objMaxY = maxY;
+    float objMinZ = minZ;
+    float objMaxZ = maxZ;
+    for (int i = 0; i < m_sceneObjects.size(); i++)
+    {
+        SceneObject &object = m_sceneObjects[i];
+        glm::vec3 &center = object.center;
+        float radius = object.radius;
+
+        if (!(center.x - radius > maxX || center.x + radius < minX) &&
+            !(center.y - radius > maxY || center.y + radius < minY) &&
+            !(center.z - radius > maxZ || center.z + radius < minZ))
+        {
+            // mark object with frustum index
+            object.frustumIndexes.push_back(frustumIndex);
+
+            objMinX = std::min(center.x - radius, objMinX);
+            objMinY = std::min(center.y - radius, objMinY);
+            objMinZ = std::min(center.z - radius, objMinZ);
+
+            objMaxX = std::max(center.x + radius, objMaxX);
+            objMaxY = std::max(center.y + radius, objMaxY);
+            objMaxZ = std::max(center.z + radius, objMaxZ);
+        }
+    }
+
+    minX = std::min(minX, objMinX);
+    minY = std::min(minY, objMinY);
+    minZ = std::min(minZ, objMinZ);
+
+    maxX = std::max(maxX, objMaxX);
+    maxY = std::max(maxY, objMaxY);
+    maxZ = std::max(maxZ, objMaxZ);
 
     f.lightAABB[0] = glm::vec3(minX, minY, maxZ);
     f.lightAABB[1] = glm::vec3(maxX, minY, maxZ);
@@ -159,9 +197,10 @@ glm::mat4 ShadowManager::applyCropMatrix(frustum &f, glm::mat4 lightView)
     return projection;
 }
 
-void ShadowManager::setup(float screenWidth, float screenHeight)
+void ShadowManager::setupFrustum(float screenWidth, float screenHeight, glm::mat4 projection)
 {
     m_frustums.clear();
+    m_frustumDistances.clear();
     m_depthPMatrices.clear();
 
     for (int i = 0; i < m_splitCount; i++)
@@ -180,18 +219,44 @@ void ShadowManager::setup(float screenWidth, float screenHeight)
 
     for (int i = 0; i < m_splitCount; i++)
     {
-        updateFrustumPoints(m_frustums.at(i), m_camera->position, m_camera->front);
+        updateFrustumPoints(m_frustums[i], m_camera->position, m_camera->front);
+
+        float dist = 0.5f * (-m_frustums[i].far * projection[2][2] + projection[3][2]) / m_frustums[i].far + 0.5f;
+        m_frustumDistances.push_back(dist);
     }
 
+    updateFrustumAabb();
+}
+
+void ShadowManager::setupLightAabb(const std::vector<aabb> &objectAabbs)
+{
     glm::mat4 depthViewMatrix = getDepthViewMatrix();
+
+    m_sceneObjects.clear();
+    for (int i = 0; i < objectAabbs.size(); i++)
+    {
+        glm::vec3 center = (objectAabbs[i].min + objectAabbs[i].max) * 0.5f;
+        // TODO: any other way?
+        float radius = glm::distance(objectAabbs[i].min, objectAabbs[i].max) * 0.5f;
+
+        glm::vec4 transf = depthViewMatrix * glm::vec4(center, 1.0f);
+        // eliminate the perspective - for point lights - ?
+        transf.x /= transf.w;
+        transf.y /= transf.w;
+
+        SceneObject sceneObject;
+        sceneObject.center = glm::vec3(transf);
+        sceneObject.radius = radius;
+        m_sceneObjects.push_back(sceneObject);
+    }
+
     for (int i = 0; i < m_splitCount; i++)
     {
-        glm::mat4 projection = applyCropMatrix(m_frustums.at(i), depthViewMatrix);
+        glm::mat4 projection = applyCropMatrix(i, depthViewMatrix);
         m_depthPMatrices.push_back(projection);
     }
 
     setupBiasMatrices(depthViewMatrix);
-    updateFrustumAabb();
 }
 
 void ShadowManager::setupBiasMatrices(glm::mat4 depthViewMatrix)
@@ -232,16 +297,4 @@ void ShadowManager::updateFrustumAabb()
 glm::mat4 ShadowManager::getDepthViewMatrix()
 {
     return glm::lookAt(m_lightPos, m_lightLookAt, glm::vec3(0, 1, 0));
-}
-
-glm::vec4 ShadowManager::getFrustumDistances()
-{
-    glm::vec4 frustumDistances;
-
-    for (int i = 0; i < m_splitCount; i++)
-    {
-        frustumDistances[i] = m_frustums[i].far;
-    }
-
-    return frustumDistances;
 }

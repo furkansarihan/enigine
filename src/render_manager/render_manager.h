@@ -43,6 +43,7 @@ public:
     TransformLink *transformLink = nullptr;
     // TODO: auto detect
     bool mergedPBRTextures = false;
+    int cullIndex = -1;
 
     RenderSource(ShaderType type, eTransform transform, eTransform offset, Model *model, Animator *animator, TransformLink *transformLink, bool mergedPBRTextures)
         : type(type),
@@ -226,6 +227,9 @@ public:
     void addSource(RenderSource *source);
     RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
+
+private:
+    bool inShadowFrustum(RenderSource *source, int frustumIndex);
 };
 
 #endif /* render_manager_hpp */

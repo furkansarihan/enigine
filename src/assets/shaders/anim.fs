@@ -52,16 +52,13 @@ vec2 poissonDisk[16] = vec2[](
 // TODO: include
 float getVisibility()
 {
-    vec3 v = WorldPos - camPos;
-    float fragToCamDist = dot(v, CamView);
-
-    int index = 4;
-    if (fragToCamDist < 0) {
-    } else if (fragToCamDist < FrustumDistances.x) {
+    int index = 2;
+    if (gl_FragCoord.z < 0) {
+    } else if (gl_FragCoord.z < FrustumDistances.x) {
         index = 0;
-    } else if (fragToCamDist < FrustumDistances.y) {
+    } else if (gl_FragCoord.z < FrustumDistances.y) {
         index = 1;
-    } else if (fragToCamDist < FrustumDistances.z) {
+    } else if (gl_FragCoord.z < FrustumDistances.z) {
         index = 2;
     }
 
@@ -121,6 +118,15 @@ void main()
 
     // Set the output color
     FragColor = vec4(finalColor * getVisibility(), 1.0);
+
+    // TODO: debug frustumIndex
+    // if (frustumIndex == 0) {
+    //     FragColor = vec3(1, 0, 0);
+    // } else if (frustumIndex == 1) {
+    //     FragColor = vec3(1, 1, 0);
+    // } else if (frustumIndex == 2) {
+    //     FragColor = vec3(1, 0, 1);
+    // }
 
     // debug
     // FragColor = vec4(vec3(diffuse), 1);

@@ -15,6 +15,7 @@ void ShadowmapUI::render()
     ImGui::DragFloat("X", &m_shadowManager->m_lightPos.x, 0.01f);
     ImGui::DragFloat("Y", &m_shadowManager->m_lightPos.y, 0.01f);
     ImGui::DragFloat("Z", &m_shadowManager->m_lightPos.z, 0.01f);
+    m_shadowManager->m_lightPos = glm::normalize(m_shadowManager->m_lightPos);
     ImGui::Text("Light - look at");
     ImGui::DragFloat("llaX", &m_shadowManager->m_lightLookAt.x, 0.01f);
     ImGui::DragFloat("llaY", &m_shadowManager->m_lightLookAt.y, 0.01);
@@ -102,16 +103,23 @@ void ShadowmapUI::drawLightAABB(Shader &simpleShader, glm::mat4 mvp, glm::mat4 i
         color[i] *= 0.7;
         simpleShader.setVec4("DiffuseColor", color);
 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         glBindVertexArray(c_vao);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        glDisable(GL_BLEND);
 
         simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 0.0, 0.0, 1.0f));
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBindVertexArray(0);
     }
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void ShadowmapUI::drawShadowmap(Shader &textureArrayShader, float screenWidth, float screenHeight, unsigned int q_vao)

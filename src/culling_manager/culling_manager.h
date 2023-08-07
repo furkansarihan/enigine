@@ -15,6 +15,13 @@
 #include "../physics_world/debug_drawer/debug_drawer.h"
 #include "../camera/camera.h"
 
+struct CulledObject
+{
+    glm::vec3 aabbMin;
+    glm::vec3 aabbMax;
+    void *userPointer;
+};
+
 class CullingManager
 {
 public:
@@ -28,7 +35,7 @@ public:
     btCollisionObject *addObject(void *userPointer, const float radius, const glm::mat4 &modelMatrix);
     btCollisionObject *addObject(void *userPointer, const glm::vec3 &size, const glm::mat4 &modelMatrix);
     void updateObject(void *userPointer, const glm::mat4 &modelMatrix);
-    std::vector<void *> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
+    std::vector<CulledObject> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
 
 private:
     btDefaultCollisionConfiguration *m_collisionConfiguration;

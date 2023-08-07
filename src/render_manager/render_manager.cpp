@@ -119,7 +119,7 @@ void RenderManager::setupFrame(GLFWwindow *window)
         m_shadowManager->m_camera = m_debugCamera;
     else
         m_shadowManager->m_camera = m_camera;
-    m_shadowManager->setup((float)m_screenW, (float)m_screenH);
+    m_shadowManager->setupFrustum((float)m_screenW, (float)m_screenH, m_cullProjection);
     m_depthViewMatrix = m_shadowManager->getDepthViewMatrix();
     m_inverseDepthViewMatrix = glm::inverse(m_depthViewMatrix);
 
@@ -128,18 +128,32 @@ void RenderManager::setupFrame(GLFWwindow *window)
     m_visiblePbrSources.clear();
     m_visibleBasicSources.clear();
 
-    std::vector<void *> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
-                                                               m_shadowManager->m_aabb.max,
-                                                               m_cullViewPos);
+    std::vector<CulledObject> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
+                                                                     m_shadowManager->m_aabb.max,
+                                                                     m_cullViewPos);
+    std::vector<aabb> objectAabbs;
 
     for (int i = 0; i < objects.size(); i++)
     {
-        RenderSource *source = static_cast<RenderSource *>(objects[i]);
+        CulledObject &object = objects[i];
+        RenderSource *source = static_cast<RenderSource *>(object.userPointer);
+
+        source->cullIndex = i;
+        objectAabbs.push_back(aabb(object.aabbMin, object.aabbMax));
 
         if (source->type == ShaderType::pbr)
             m_visiblePbrSources.push_back(source);
         else
             m_visibleBasicSources.push_back(source);
+    }
+
+    m_shadowManager->setupLightAabb(objectAabbs);
+
+    // TODO: variable size
+    std::vector<float> &frustumDistances = m_shadowManager->m_frustumDistances;
+    for (int i = 0; i < frustumDistances.size(); i++)
+    {
+        m_frustumDistances[i] = frustumDistances[i];
     }
 }
 
@@ -149,6 +163,7 @@ void RenderManager::renderDepth()
     // TODO: frustum culling per split
     for (int i = 0; i < m_shadowManager->m_splitCount; i++)
     {
+        int frustumIndex = i;
         m_shadowmapManager->bindTextureArray(i);
         glm::mat4 depthP = m_shadowManager->m_depthPMatrices[i];
         glm::mat4 depthVP = depthP * m_depthViewMatrix;
@@ -182,6 +197,9 @@ void RenderManager::renderDepth()
         {
             RenderSource *source = m_visiblePbrSources[i];
 
+            if (!inShadowFrustum(source, frustumIndex))
+                continue;
+
             depthShader.use();
             depthShader.setMat4("MVP", depthVP * source->transform.getModelMatrix());
             source->model->draw(depthShader, true);
@@ -189,6 +207,9 @@ void RenderManager::renderDepth()
         for (int i = 0; i < m_visibleBasicSources.size(); i++)
         {
             RenderSource *source = m_visibleBasicSources[i];
+
+            if (!inShadowFrustum(source, frustumIndex))
+                continue;
 
             if (source->animator)
             {
@@ -236,9 +257,6 @@ void RenderManager::renderOpaque()
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->m_skyboxTexture);
     cube->draw(cubemapShader);
     glDepthMask(GL_TRUE);
-
-    // render scene
-    m_frustumDistances = m_shadowManager->getFrustumDistances();
 
     // draw each terrain
     // TODO: m_basicTerrainSources
@@ -490,6 +508,18 @@ RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform
 void RenderManager::addParticleSource(RenderParticleSource *source)
 {
     m_particleSources.push_back(source);
+}
+
+bool RenderManager::inShadowFrustum(RenderSource *source, int frustumIndex)
+{
+    if (source->cullIndex == -1)
+        return false;
+
+    const auto &frustumIndexes = m_shadowManager->m_sceneObjects[source->cullIndex].frustumIndexes;
+    if (std::find(frustumIndexes.begin(), frustumIndexes.end(), frustumIndex) == frustumIndexes.end())
+        return false;
+
+    return true;
 }
 
 // RenderSource

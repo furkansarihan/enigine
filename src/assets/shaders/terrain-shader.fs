@@ -158,18 +158,19 @@ void main()
 {
     float specularMul = specularMult;
 
-    vec3 v = Position_worldspace - CamPos;
-    float fragToCamDist = dot(v, CamView);
-
-    int index = 4;
-    if (fragToCamDist < 0) {
-    } else if (fragToCamDist < FrustumDistances.x) {
+    int index = 2;
+    if (gl_FragCoord.z < 0) {
+    } else if (gl_FragCoord.z < FrustumDistances.x) {
         index = 0;
-    } else if (fragToCamDist < FrustumDistances.y) {
+    } else if (gl_FragCoord.z < FrustumDistances.y) {
         index = 1;
-    } else if (fragToCamDist < FrustumDistances.z) {
+    } else if (gl_FragCoord.z < FrustumDistances.z) {
         index = 2;
     }
+
+    // bias = Bias[index];
+    float fragToLight = dot(_normal, lightDirection);
+    float bias = max(0.05 * (1.0 - fragToLight), 0.005);
 
     vec4 ShadowCoord = DepthBiasVP[index] * vec4(Position_worldspace, 1);
 
@@ -221,7 +222,7 @@ void main()
     // 3. Poission sampling
     for (int i = 0; i < 8; i++) {
         // 1. simple
-        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
+        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - bias) {
             visibility -= 0.08;
         }
 

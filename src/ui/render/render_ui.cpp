@@ -10,10 +10,12 @@ void RenderUI::render()
     ImGui::Text("total source count: %d", totalSourceCount);
     ImGui::Text("visible source count: %d", visibleSourceCount);
     ImGui::Checkbox("m_debugCulling", &m_renderManager->m_debugCulling);
+    ImGui::Checkbox("m_cullFront", &m_renderManager->m_cullFront);
+    VectorUI::renderVec3("m_shadowBias", m_renderManager->m_shadowBias, 0.001f);
     if (ImGui::Checkbox("m_drawCullingAabb", &m_renderManager->m_drawCullingAabb))
     {
         m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
-                                                                                                        : btIDebugDraw::DBG_NoDebug);
+                                                                                                          : btIDebugDraw::DBG_NoDebug);
     }
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
@@ -47,6 +49,14 @@ void RenderUI::renderRenderSource(RenderSource *source)
 {
     std::stringstream ss;
     ss << source;
+    if (source->cullIndex != -1)
+    {
+        for (int i = 0; i < m_renderManager->m_shadowManager->m_sceneObjects[source->cullIndex].frustumIndexes.size(); i++)
+        {
+            ss << ", ";
+            ss << m_renderManager->m_shadowManager->m_sceneObjects[source->cullIndex].frustumIndexes[i];
+        }
+    }
 
     if (m_selectedSource == source)
     {

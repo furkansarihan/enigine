@@ -80,19 +80,19 @@ const float PI = 3.14159265359;
 // TODO: include
 float getVisibility()
 {
-    // shadow
-    vec3 v = WorldPos - camPos;
-    float fragToCamDist = dot(v, CamView);
-
-    int index = 4;
-    if (fragToCamDist < 0) {
-    } else if (fragToCamDist < FrustumDistances.x) {
+    int index = 2;
+    if (gl_FragCoord.z < 0) {
+    } else if (gl_FragCoord.z < FrustumDistances.x) {
         index = 0;
-    } else if (fragToCamDist < FrustumDistances.y) {
+    } else if (gl_FragCoord.z < FrustumDistances.y) {
         index = 1;
-    } else if (fragToCamDist < FrustumDistances.z) {
+    } else if (gl_FragCoord.z < FrustumDistances.z) {
         index = 2;
     }
+
+    // bias = Bias[index];
+    float fragToLight = dot(Normal, lightDirection);
+    float bias = max(0.05 * (1.0 - fragToLight), 0.005);  
 
     mat4 DepthBiasMVP = DepthBiasVP[index] * TransformedModel;
     vec4 ShadowCoord = DepthBiasMVP * vec4(ModelPos, 1);
@@ -102,7 +102,7 @@ float getVisibility()
     float nearestOccluderDist = texture(ShadowMap, vec3(ShadowCoord.xy, index)).x;
 
     for (int i = 0; i < 8; i++) {
-        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
+        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - bias) {
             visibility -= 0.08;
         }
     }
@@ -317,6 +317,7 @@ void main()
     }
 
     // TODO: variable ao-rough-metal
+    // TODO: default values if not exist
 
     vec3 N;
     vec3 V = normalize(camPos - WorldPos);
@@ -335,6 +336,15 @@ void main()
     else {
         N = getNormalFromMap();
     }
+
+    // TODO: debug frustumIndex
+    // if (frustumIndex == 0) {
+    //     albedo = vec3(1, 0, 0);
+    // } else if (frustumIndex == 1) {
+    //     albedo = vec3(1, 1, 0);
+    // } else if (frustumIndex == 2) {
+    //     albedo = vec3(1, 0, 1);
+    // }
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
@@ -485,6 +495,7 @@ void main()
     // FragColor = vec4(vec3(albedo), 1.0);
     // FragColor = vec4(vec3(metallic), 1.0);
     // FragColor = vec4(vec3(roughness), 1.0);
+    // FragColor = vec4(vec3(lightColor), 1.0);
     // FragColor = vec4(vec3(ao), 1.0);
     // FragColor = vec4(N, 1.0);
     // FragColor = vec4(irradiance, 1.0);

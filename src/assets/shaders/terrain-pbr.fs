@@ -21,10 +21,6 @@ uniform sampler2DArray ShadowMap;
 uniform mat4 M;
 uniform mat4 V;
 
-uniform float ambientMult;
-uniform float diffuseMult;
-uniform float specularMult;
-
 uniform vec3 CamPos;
 uniform vec3 CamView;
 uniform vec4 FrustumDistances;
@@ -54,7 +50,7 @@ struct Mixer
     float mixer;
 } heightMixer, slopeMixer1, slopeMixer2;
 
-vec4 heightSteps = vec4(-1, 0.006, 0.7, 1);
+vec4 heightSteps = vec4(-1, 0.001, 0.7, 1);
 vec4 hTransitions = vec4(0, 0.002, 0.2, 0);
 mat4 slopeStepsList = mat4(
     vec4(0, 0.1, 0.999, 1),
@@ -71,9 +67,9 @@ mat4 sTransitions = mat4(
 
 const int water = 0;
 const int sand = 1;
-const int stone = 2;
-const int grass = 3;
-const int rock = 4;
+const int stone = 4;
+const int grass = 1;
+const int rock = 5;
 const int snow = 5;
 
 // TODO: dirt
@@ -320,20 +316,19 @@ vec3 sampleTexture(vec2 hs) {
 
 void main()
 {
-    float specularMul = specularMult;
-
-    vec3 v = Position_worldspace - CamPos;
-    float fragToCamDist = dot(v, CamView);
-
-    int index = 4;
-    if (fragToCamDist < 0) {
-    } else if (fragToCamDist < FrustumDistances.x) {
+    int index = 2;
+    if (gl_FragCoord.z < 0) {
+    } else if (gl_FragCoord.z < FrustumDistances.x) {
         index = 0;
-    } else if (fragToCamDist < FrustumDistances.y) {
+    } else if (gl_FragCoord.z < FrustumDistances.y) {
         index = 1;
-    } else if (fragToCamDist < FrustumDistances.z) {
+    } else if (gl_FragCoord.z < FrustumDistances.z) {
         index = 2;
     }
+
+    // bias = Bias[index];
+    float fragToLight = dot(_normal, lightDirection);
+    float bias = max(0.05 * (1.0 - fragToLight), 0.005);
 
     vec4 ShadowCoord = DepthBiasVP[index] * vec4(Position_worldspace, 1);
 
@@ -364,7 +359,7 @@ void main()
     // 3. Poission sampling
     for (int i = 0; i < 8; i++) {
         // 1. simple
-        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
+        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - bias) {
             visibility -= 0.08;
         }
 
@@ -401,6 +396,15 @@ void main()
         vec2 hs = calculateHeightSlopeVector(slope);
         outColor = vec4(sampleTexture(hs), 1);
     }
+
+    // TODO: debug frustumIndex
+    // if (frustumIndex == 0) {
+    //     outColor = vec3(1, 0, 0);
+    // } else if (frustumIndex == 1) {
+    //     outColor = vec3(1, 1, 0);
+    // } else if (frustumIndex == 2) {
+    //     outColor = vec3(1, 0, 1);
+    // }
 
     outColor.xyz *= visibility;
 
