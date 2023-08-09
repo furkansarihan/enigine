@@ -461,6 +461,8 @@ void RenderManager::renderPostProcess()
     postProcessShader.setVec2("screenSize", glm::vec2((float)m_screenW, (float)m_screenH));
     // postProcessShader.setFloat("blurOffset", blurOffset);
     postProcessShader.setFloat("exposure", m_postProcess->m_exposure);
+    postProcessShader.setFloat("contrastBright", m_postProcess->m_contrastBright);
+    postProcessShader.setFloat("contrastDark", m_postProcess->m_contrastDark);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);

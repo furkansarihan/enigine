@@ -9,6 +9,10 @@ uniform float blurOffset;
 // hdr
 uniform float exposure;
 
+// effect
+uniform float contrastBright;
+uniform float contrastDark;
+
 in vec2 UV;
 
 out vec4 fragColor;
@@ -116,7 +120,14 @@ void main(void)
 
     // fragColor.xyz = blur(renderedTexture, UV);
     fragColor.xyz = fxaa(renderedTexture, UV);
-    
+
+    float brightness = dot(fragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float darkness = 1 - brightness;
+    if (darkness < 0) darkness = 0;
+
+    fragColor.xyz += fragColor.xyz * brightness * brightness * contrastBright;
+    fragColor.xyz -= fragColor.xyz * darkness * darkness * contrastDark;
+
     // HDR tone mapping - gamma correction
     fragColor.xyz = hdr(fragColor.xyz, exposure);
 

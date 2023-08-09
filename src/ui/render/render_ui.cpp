@@ -17,12 +17,13 @@ void RenderUI::render()
         m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
                                                                                                           : btIDebugDraw::DBG_NoDebug);
     }
+    ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
+    ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         VectorUI::renderVec3("m_sunColor", m_renderManager->m_sunColor, 1.f);
         ImGui::DragFloat("m_sunIntensity", &m_renderManager->m_sunIntensity, 0.1f);
     }
-
     // list render sources
     if (ImGui::CollapsingHeader("PBR Sources", ImGuiTreeNodeFlags_DefaultOpen))
     {
