@@ -25,6 +25,9 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&prefilterShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/prefilter.fs"));
     shaderManager->addShader(ShaderDynamic(&brdfShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/brdf.fs"));
 
+    shaderManager->addShader(ShaderDynamic(&downsampleShader, "../src/assets/shaders/sample.vs", "../src/assets/shaders/downsample.fs"));
+    shaderManager->addShader(ShaderDynamic(&upsampleShader, "../src/assets/shaders/sample.vs", "../src/assets/shaders/upsample.fs"));
+
     m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // PBR Setup
@@ -49,12 +52,15 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
 
     m_cullingManager = new CullingManager();
     m_postProcess = new PostProcess(1.f, 1.f);
+    m_bloomManager = new BloomManager(&downsampleShader, &upsampleShader, quad_vao);
 }
 
 RenderManager::~RenderManager()
 {
     delete m_pbrManager;
     delete m_debugCamera;
+    delete m_postProcess;
+    delete m_bloomManager;
 
     for (int i = 0; i < m_pbrSources.size(); i++)
     {
@@ -240,10 +246,11 @@ void RenderManager::renderDepth()
 void RenderManager::renderOpaque()
 {
     // render to post process texture
+    m_bloomManager->updateResolution(m_screenW, m_screenH);
     m_postProcess->updateFramebuffer((float)m_screenW, (float)m_screenH);
     glBindFramebuffer(GL_FRAMEBUFFER, m_postProcess->m_framebufferObject);
     glViewport(0, 0, m_screenW, m_screenH);
-    glClearColor(1.f, 0.f, 1.f, 1.f);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // draw skybox
@@ -447,6 +454,8 @@ void RenderManager::renderTransmission()
 
 void RenderManager::renderPostProcess()
 {
+    m_bloomManager->renderBloomTexture(m_postProcess->m_texture);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, m_screenW, m_screenH);
 
@@ -463,10 +472,15 @@ void RenderManager::renderPostProcess()
     postProcessShader.setFloat("exposure", m_postProcess->m_exposure);
     postProcessShader.setFloat("contrastBright", m_postProcess->m_contrastBright);
     postProcessShader.setFloat("contrastDark", m_postProcess->m_contrastDark);
+    postProcessShader.setFloat("bloomIntensity", m_postProcess->m_bloomIntensity);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);
     glBindTexture(GL_TEXTURE_2D, m_postProcess->m_texture);
+
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glUniform1i(glGetUniformLocation(postProcessShader.id, "bloomTexture"), 1);
+    glBindTexture(GL_TEXTURE_2D, m_bloomManager->bloomTexture());
 
     glBindVertexArray(quad_vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

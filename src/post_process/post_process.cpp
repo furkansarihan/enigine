@@ -1,10 +1,13 @@
 #include "post_process.h"
 
 PostProcess::PostProcess(float width, float heigth)
+    : m_width(width),
+      m_height(heigth),
+      m_exposure(1.0f),
+      m_contrastBright(0.25f),
+      m_contrastDark(0.2f),
+      m_bloomIntensity(0.06f)
 {
-    m_width = width;
-    m_height = heigth;
-
     glGenFramebuffers(1, &m_framebufferObject);
 
     this->createTexture();

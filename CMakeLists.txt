@@ -42,6 +42,8 @@ add_executable( enigine
                 src/shadow_manager/shadow_manager.h
                 src/post_process/post_process.cpp
                 src/post_process/post_process.h
+                src/post_process/bloom_manager.h
+                src/post_process/bloom_manager.cpp
                 src/pbr_manager/pbr_manager.cpp
                 src/pbr_manager/pbr_manager.h
                 src/utils/assimp_to_glm.h

@@ -1,6 +1,7 @@
 #version 410 core
 
 uniform sampler2D renderedTexture;
+uniform sampler2D bloomTexture;
 uniform vec2 screenSize;
 
 // blur
@@ -12,6 +13,7 @@ uniform float exposure;
 // effect
 uniform float contrastBright;
 uniform float contrastDark;
+uniform float bloomIntensity;
 
 in vec2 UV;
 
@@ -127,9 +129,17 @@ void main(void)
 
     fragColor.xyz += fragColor.xyz * brightness * brightness * contrastBright;
     fragColor.xyz -= fragColor.xyz * darkness * darkness * contrastDark;
+    
+    vec3 bloomColor = texture(bloomTexture, UV).rgb;
+    // fragColor.xyz += bloomColor.xyz * bloomIntensity;
+    fragColor.xyz = mix(fragColor.xyz, bloomColor.xyz, bloomIntensity);
+    
+    // debug
+    // fragColor.xyz = bloomColor.xyz;
+    // fragColor.xyz = bloomColor.xyz * bloomIntensity;
+    // fragColor.xyz = mix(vec3(0, 0, 0), bloomColor.xyz, bloomIntensity);
 
     // HDR tone mapping - gamma correction
     fragColor.xyz = hdr(fragColor.xyz, exposure);
-
     fragColor.a = 1.0;
 }

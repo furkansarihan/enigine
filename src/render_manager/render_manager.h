@@ -19,6 +19,7 @@
 #include "../shadowmap_manager/shadowmap_manager.h"
 #include "../shadow_manager/shadow_manager.h"
 #include "../post_process/post_process.h"
+#include "../post_process/bloom_manager.h"
 #include "../transform_link/transform_link.h"
 #include "../particle_engine/particle_engine.h"
 #include "../culling_manager/culling_manager.h"
@@ -163,6 +164,7 @@ public:
     ShadowmapManager *m_shadowmapManager;
     CullingManager *m_cullingManager;
     PostProcess *m_postProcess;
+    BloomManager *m_bloomManager;
     bool m_debugCulling = false;
     bool m_drawCullingAabb = false;
 
@@ -195,6 +197,9 @@ public:
     Shader irradianceShader;
     Shader prefilterShader;
     Shader brdfShader;
+
+    Shader downsampleShader;
+    Shader upsampleShader;
 
     int m_screenW, m_screenH;
     glm::mat4 m_projection;

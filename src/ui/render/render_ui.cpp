@@ -11,12 +11,19 @@ void RenderUI::render()
     ImGui::Text("visible source count: %d", visibleSourceCount);
     ImGui::Checkbox("m_debugCulling", &m_renderManager->m_debugCulling);
     ImGui::Checkbox("m_cullFront", &m_renderManager->m_cullFront);
-    VectorUI::renderVec3("m_shadowBias", m_renderManager->m_shadowBias, 0.001f);
+    // VectorUI::renderVec3("m_shadowBias", m_renderManager->m_shadowBias, 0.001f);
     if (ImGui::Checkbox("m_drawCullingAabb", &m_renderManager->m_drawCullingAabb))
     {
         m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
                                                                                                           : btIDebugDraw::DBG_NoDebug);
     }
+    ImGui::Text("Bloom");
+    ImGui::Checkbox("m_karisAverageOnDownsample", &m_renderManager->m_bloomManager->m_karisAverageOnDownsample);
+    // ImGui::DragFloat("m_threshold", &m_renderManager->m_bloomManager->m_threshold, 0.01f);
+    // ImGui::DragFloat("m_softThreshold", &m_renderManager->m_bloomManager->m_softThreshold, 0.01f);
+    ImGui::DragFloat("m_filterRadius", &m_renderManager->m_bloomManager->m_filterRadius, 0.001f);
+    ImGui::Text("Post process");
+    ImGui::DragFloat("m_bloomIntensity", &m_renderManager->m_postProcess->m_bloomIntensity, 0.01f);
     ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
     ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))

@@ -23,9 +23,10 @@ public:
     float m_width;
     float m_height;
 
-    float m_exposure = 1.0f;
-    float m_contrastBright = 1.0f;
-    float m_contrastDark = 0.25f;
+    float m_exposure;
+    float m_contrastBright;
+    float m_contrastDark;
+    float m_bloomIntensity;
 
     void updateFramebuffer(float width, float height);
 
