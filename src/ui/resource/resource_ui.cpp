@@ -33,6 +33,23 @@ void ResourceUI::render()
                         ImGui::Text("%s", property.value.c_str());
                     }
 
+                    for (const auto &texture : mesh.material.textures)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%d", texture.nrComponents);
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", texture.type.c_str());
+                        ImGui::TableNextColumn();
+
+                        float aspectRatio = texture.width / texture.height;
+                        float desiredWidth = 400.0f;
+                        float desiredHeight = desiredWidth / aspectRatio;
+                        ImVec2 size(desiredWidth, desiredHeight);
+
+                        ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(texture.id)), size);
+                    }
+
                     ImGui::EndTable();
                     ImGui::TreePop();
                 }

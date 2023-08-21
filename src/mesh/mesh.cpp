@@ -79,6 +79,11 @@ void Mesh::bindTextures(Shader shader)
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
         glBindTexture(GL_TEXTURE_2D, material.textures[i].id);
     }
+
+    shader.setBool("material.normalMap", normalNr > 1);
+    shader.setBool("material.aoMap", aoNr > 1);
+    shader.setBool("material.roughMap", roughNr > 1);
+    shader.setBool("material.metalMap", metalNr > 1);
 }
 
 void Mesh::unbindTextures(Shader shader)
@@ -88,6 +93,11 @@ void Mesh::unbindTextures(Shader shader)
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
+    shader.setBool("material.normalMap", false);
+    shader.setBool("material.aoMap", false);
+    shader.setBool("material.roughMap", false);
+    shader.setBool("material.metalMap", false);
 }
 
 void Mesh::bindProperties(Shader shader)
@@ -100,12 +110,12 @@ void Mesh::bindProperties(Shader shader)
         if (property.type == aiPTI_Float)
         {
             float value = std::stof(property.value);
-            shader.setFloat(property.name, value);
+            shader.setFloat("material." + property.name, value);
         }
         else if (property.type == aiPTI_Integer)
         {
             int value = std::stoi(property.value);
-            shader.setInt(property.name, value);
+            shader.setInt("material." + property.name, value);
         }
     }
 }
@@ -117,9 +127,9 @@ void Mesh::unbindProperties(Shader shader)
         MaterialProperty &property = material.properties[i];
 
         if (property.type == aiPTI_Float)
-            shader.setFloat(property.name, 0.f);
+            shader.setFloat("material." + property.name, 0.f);
         else if (property.type == aiPTI_Integer)
-            shader.setInt(property.name, 0);
+            shader.setInt("material." + property.name, 0);
     }
 }
 

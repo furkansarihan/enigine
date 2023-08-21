@@ -15,10 +15,15 @@ uniform vec3 albedo;
 uniform float metallic;
 uniform float roughness;
 uniform float ao;
-uniform bool mergedPBRTextures;
 //
-uniform float opacity;
-uniform float transmission_factor;
+struct Material {
+    float opacity;
+    float transmission_factor;
+    //
+    bool aoRoughMetalMap;
+};
+
+uniform Material material;
 
 // transmission
 uniform sampler2D u_TransmissionFramebufferSampler;
@@ -305,7 +310,7 @@ void main()
 
     // TODO: merge detection
     // ao-rough-metal
-    if (mergedPBRTextures) {
+    if (material.aoRoughMetalMap) {
         vec3 merged = texture(texture_unknown1, TexCoords).rgb;
         ao = merged.r;
         roughness = merged.g;
@@ -324,7 +329,7 @@ void main()
 
     // TODO: correct? - variable material properties
 // #ifdef MATERIAL_TRANSMISSION
-    if (transmission_factor > 0) {
+    if (material.transmission_factor > 0) {
         albedo = vec3(0);
         metallic = 0;
         roughness = 0;
@@ -401,7 +406,7 @@ void main()
         // transmission
         // TODO: preprocessor
 // #ifdef MATERIAL_TRANSMISSION
-    if (transmission_factor > 0) {
+    if (material.transmission_factor > 0) {
         // If the light ray travels through the geometry, use the point it exits the geometry again.
         // That will change the angle to the light source, if the material refracts the light ray.
         vec3 n = N;
@@ -448,8 +453,8 @@ void main()
 // #endif
 
 // #ifdef MATERIAL_TRANSMISSION
-    if (transmission_factor > 0) {
-        diffuse = mix(diffuse, f_transmission, transmission_factor);
+    if (material.transmission_factor > 0) {
+        diffuse = mix(diffuse, f_transmission, material.transmission_factor);
     }
 // #endif
 
@@ -483,7 +488,7 @@ void main()
     vec3 color = ambient + Lo;
 
 // #ifdef MATERIAL_TRANSMISSION
-    if (transmission_factor > 0) {
+    if (material.transmission_factor > 0) {
         FragColor = vec4(color , 1.0);
     }
 // #else

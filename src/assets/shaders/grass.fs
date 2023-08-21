@@ -1,7 +1,12 @@
 #version 410 core
 
-out vec4 FragColor;
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec4 gNormalShadow;
+layout (location = 2) out vec3 gAlbedo;
+layout (location = 3) out vec3 gAoRoughMetal;
 
+in vec3 WorldPos;
+in vec3 Normal;
 in vec2 TexCoords;
 in float _height;
 in vec3 _normal;
@@ -15,23 +20,25 @@ void main()
 {
     vec4 MaterialDiffuseColor = texture(texture_diffuse1, TexCoords);
 
-    MaterialDiffuseColor.rgb *= (1 - TexCoords.y + 0.5);
-
     MaterialDiffuseColor.r *= grassColorFactor.r * max(0.6, _n);
     MaterialDiffuseColor.g *= grassColorFactor.g * max(0.6, _n);
     MaterialDiffuseColor.b *= grassColorFactor.b * max(0.6, _n);
 
     MaterialDiffuseColor.rgb *= 1.5;
 
-    // gamma correction
-    MaterialDiffuseColor.rgb = pow(MaterialDiffuseColor.rgb, vec3(2.2));
-    FragColor = MaterialDiffuseColor;
+    gPosition = WorldPos;
+    gAlbedo = MaterialDiffuseColor.rgb;
+    // TODO: shadow
+    gNormalShadow = vec4(normalize(Normal), 1.0);
+    gAoRoughMetal.r = 1.0 - TexCoords.y;
+    gAoRoughMetal.g = 1.0;
+    gAoRoughMetal.b = 0.0;
 
     // TODO: fix texture top?
     if (TexCoords.y < 0.1)
         discard;
 
     // TODO: fix texture alpha edges
-    if(FragColor.a < 0.2)
+    if(MaterialDiffuseColor.a < 0.2)
         discard;
 }

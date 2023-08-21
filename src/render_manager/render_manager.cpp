@@ -1,22 +1,29 @@
 #include "render_manager.h"
 
-RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, unsigned int quad_vao)
+RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, Model *sphere, unsigned int quad_vao)
     : m_shaderManager(shaderManager),
       m_camera(camera),
       cube(cube),
       quad(quad),
+      sphere(sphere),
       quad_vao(quad_vao)
 {
-    shaderManager->addShader(ShaderDynamic(&pbrShader, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
-    shaderManager->addShader(ShaderDynamic(&animShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/anim.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredAfter, "../src/assets/shaders/pbr-deferred-after.vs", "../src/assets/shaders/pbr-deferred-after.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPointLight, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/pbr-deferred-point-light.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrTransmission, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
+
     shaderManager->addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&animDepthShader, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&depthShaderAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/light-volume.fs"));
+
     // terrain
-    shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr.fs"));
+    shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "../src/assets/shaders/terrain-shadow.vs", "../src/assets/shaders/depth-shader.fs"));
 
-    shaderManager->addShader(ShaderDynamic(&cubemapShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/cubemap.fs"));
+    shaderManager->addShader(ShaderDynamic(&skyboxShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/skybox.fs"));
     shaderManager->addShader(ShaderDynamic(&postProcessShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/post-process.fs"));
 
     // PBR Shaders
@@ -42,8 +49,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     // Shadowmap setup
     // TODO: why works without ids?
     std::vector<unsigned int> shaderIds;
-    shaderIds.push_back(pbrShader.id);
-    shaderIds.push_back(animShader.id);
+    shaderIds.push_back(pbrDeferredPre.id);
+    shaderIds.push_back(pbrDeferredPreAnim.id);
     shaderIds.push_back(terrainPBRShader.id);
     shaderIds.push_back(terrainBasicShader.id);
 
@@ -51,7 +58,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     m_shadowmapManager = new ShadowmapManager(m_shadowManager->m_splitCount, 1024);
 
     m_cullingManager = new CullingManager();
-    m_postProcess = new PostProcess(1.f, 1.f);
+    m_gBuffer = new GBuffer(1, 1);
+    m_postProcess = new PostProcess(1, 1);
     m_bloomManager = new BloomManager(&downsampleShader, &upsampleShader, quad_vao);
 }
 
@@ -67,13 +75,6 @@ RenderManager::~RenderManager()
         if (m_pbrSources[i]->transformLink)
             delete m_pbrSources[i]->transformLink;
         delete m_pbrSources[i];
-    }
-
-    for (int i = 0; i < m_basicSources.size(); i++)
-    {
-        if (m_basicSources[i]->transformLink)
-            delete m_basicSources[i]->transformLink;
-        delete m_basicSources[i];
     }
 
     for (int i = 0; i < m_particleSources.size(); i++)
@@ -132,7 +133,7 @@ void RenderManager::setupFrame(GLFWwindow *window)
     // view frustum culling
     m_cullingManager->setupFrame(m_cullViewProjection);
     m_visiblePbrSources.clear();
-    m_visibleBasicSources.clear();
+    m_visiblePbrAnimSources.clear();
 
     std::vector<CulledObject> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
                                                                      m_shadowManager->m_aabb.max,
@@ -147,10 +148,10 @@ void RenderManager::setupFrame(GLFWwindow *window)
         source->cullIndex = i;
         objectAabbs.push_back(aabb(object.aabbMin, object.aabbMax));
 
-        if (source->type == ShaderType::pbr)
-            m_visiblePbrSources.push_back(source);
+        if (source->animator)
+            m_visiblePbrAnimSources.push_back(source);
         else
-            m_visibleBasicSources.push_back(source);
+            m_visiblePbrSources.push_back(source);
     }
 
     m_shadowManager->setupLightAabb(objectAabbs);
@@ -210,32 +211,26 @@ void RenderManager::renderDepth()
             depthShader.setMat4("MVP", depthVP * source->transform.getModelMatrix());
             source->model->draw(depthShader, true);
         }
-        for (int i = 0; i < m_visibleBasicSources.size(); i++)
+        for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
         {
-            RenderSource *source = m_visibleBasicSources[i];
+            RenderSource *source = m_visiblePbrAnimSources[i];
 
             if (!inShadowFrustum(source, frustumIndex))
                 continue;
 
             if (source->animator)
             {
-                animDepthShader.use();
-                animDepthShader.setMat4("projection", depthP);
-                animDepthShader.setMat4("view", m_depthViewMatrix);
+                depthShaderAnim.use();
+                depthShaderAnim.setMat4("projection", depthP);
+                depthShaderAnim.setMat4("view", m_depthViewMatrix);
 
                 // TODO: set as block
                 auto transforms = source->animator->m_finalBoneMatrices;
                 for (int i = 0; i < transforms.size(); ++i)
-                    animDepthShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+                    depthShaderAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 
-                animDepthShader.setMat4("model", source->transform.getModelMatrix());
-                source->model->draw(animDepthShader, true);
-            }
-            else
-            {
-                depthShader.use();
-                depthShader.setMat4("MVP", depthVP * source->transform.getModelMatrix());
-                source->model->draw(depthShader, true);
+                depthShaderAnim.setMat4("model", source->transform.getModelMatrix());
+                source->model->draw(depthShaderAnim, true);
             }
         }
 
@@ -246,24 +241,14 @@ void RenderManager::renderDepth()
 void RenderManager::renderOpaque()
 {
     // render to post process texture
+    m_gBuffer->updateResolution(m_screenW, m_screenH);
+    m_postProcess->updateResolution(m_screenW, m_screenH);
     m_bloomManager->updateResolution(m_screenW, m_screenH);
-    m_postProcess->updateFramebuffer((float)m_screenW, (float)m_screenH);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_postProcess->m_framebufferObject);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_gBuffer->m_fbo);
     glViewport(0, 0, m_screenW, m_screenH);
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // draw skybox
-    glDepthMask(GL_FALSE);
-    cubemapShader.use();
-    cubemapShader.setMat4("projection", m_projection);
-    cubemapShader.setMat4("view", m_view);
-
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(cubemapShader.id, "environmentMap"), 0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->m_skyboxTexture);
-    cube->draw(cubemapShader);
-    glDepthMask(GL_TRUE);
 
     // draw each terrain
     // TODO: m_basicTerrainSources
@@ -287,84 +272,325 @@ void RenderManager::renderOpaque()
     glCullFace(GL_BACK);
 
     // setup pbr shader
-    pbrShader.use();
-    pbrShader.setMat4("view", m_view);
-    pbrShader.setMat4("projection", m_projection);
-    pbrShader.setVec3("camPos", m_camera->position);
-    pbrShader.setVec3("lightDirection", m_shadowManager->m_lightPos);
-    pbrShader.setVec3("lightColor", m_sunColor * m_sunIntensity);
-    pbrShader.setVec3("CamView", m_shadowManager->m_camera->front);
-    pbrShader.setVec4("FrustumDistances", m_frustumDistances);
-    pbrShader.setVec3("Bias", m_shadowBias);
-
-    // TODO: light positions
-    // for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-    // {
-    //     pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
-    //     pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-    // }
+    pbrDeferredPre.use();
+    pbrDeferredPre.setMat4("view", m_view);
+    pbrDeferredPre.setMat4("projection", m_projection);
+    pbrDeferredPre.setVec3("lightDirection", m_shadowManager->m_lightPos);
+    pbrDeferredPre.setVec4("FrustumDistances", m_frustumDistances);
+    pbrDeferredPre.setVec3("Bias", m_shadowBias);
 
     glActiveTexture(GL_TEXTURE0 + 8);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->irradianceMap);
-
-    glActiveTexture(GL_TEXTURE0 + 9);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->prefilterMap);
-
-    glActiveTexture(GL_TEXTURE0 + 10);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
-    glBindTexture(GL_TEXTURE_2D, m_pbrManager->brdfLUTTexture);
-
-    glActiveTexture(GL_TEXTURE0 + 11);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(pbrDeferredPre.id, "ShadowMap"), 8);
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
     // draw each pbr
     for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
         RenderSource *source = m_visiblePbrSources[i];
-        pbrShader.setBool("mergedPBRTextures", source->mergedPBRTextures);
-        pbrShader.setMat4("model", source->transform.getModelMatrix());
-        source->model->draw(pbrShader, true);
+        pbrDeferredPre.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
+        pbrDeferredPre.setMat4("model", source->transform.getModelMatrix());
+        source->model->draw(pbrDeferredPre, true);
     }
 
-    // setup basic shader
-    animShader.use();
-    animShader.setMat4("projection", m_projection);
-    animShader.setMat4("view", m_view);
-    animShader.setVec3("lightDir", m_shadowManager->m_lightPos);
-    // TODO: light
-    animShader.setVec3("lightColor", glm::normalize(m_sunColor));
-    animShader.setFloat("lightPower", m_sunIntensity);
-    animShader.setVec3("camPos", m_camera->position);
-    animShader.setVec3("CamView", m_shadowManager->m_camera->front);
-    animShader.setVec4("FrustumDistances", m_frustumDistances);
-    animShader.setVec3("Bias", m_shadowBias);
+    // setup pbr anim shader
+    pbrDeferredPreAnim.use();
+    pbrDeferredPreAnim.setMat4("view", m_view);
+    pbrDeferredPreAnim.setMat4("projection", m_projection);
+    pbrDeferredPreAnim.setVec3("lightDirection", m_shadowManager->m_lightPos);
+    pbrDeferredPreAnim.setVec4("FrustumDistances", m_frustumDistances);
+    pbrDeferredPreAnim.setVec3("Bias", m_shadowBias);
 
     glActiveTexture(GL_TEXTURE0 + 8);
-    glUniform1i(glGetUniformLocation(animShader.id, "ShadowMap"), 8);
+    glUniform1i(glGetUniformLocation(pbrDeferredPreAnim.id, "ShadowMap"), 8);
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
-    // render each basic
-    // TODO: basic without anim
-    for (int i = 0; i < m_visibleBasicSources.size(); i++)
+    // render each anim
+    for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
     {
-        RenderSource *source = m_visibleBasicSources[i];
+        RenderSource *source = m_visiblePbrAnimSources[i];
 
         if (source->animator)
         {
             // TODO: set as block
             auto transforms = source->animator->m_finalBoneMatrices;
             for (int i = 0; i < transforms.size(); ++i)
-                animShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+                pbrDeferredPreAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
         }
 
-        animShader.setMat4("model", source->transform.getModelMatrix());
-        source->model->draw(animShader, true);
+        pbrDeferredPreAnim.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
+        pbrDeferredPreAnim.setMat4("model", source->transform.getModelMatrix());
+        source->model->draw(pbrDeferredPreAnim, true);
     }
 
     glDisable(GL_CULL_FACE);
+}
+
+void RenderManager::renderDeferredShading()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, m_postProcess->m_framebufferObject);
+
+    glEnable(GL_STENCIL_TEST);
+
+    glViewport(0, 0, m_screenW, m_screenH);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClearStencil(0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    // save depth for skybox
+    // TODO: 230 microseconds - better way?
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_gBuffer->m_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_postProcess->m_framebufferObject);
+    glBlitFramebuffer(0, 0, m_screenW, m_screenH, 0, 0, m_screenW, m_screenH, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+    // TODO: not clearing?
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
+
+    glStencilMask(0xFF);
+    // TODO: remove
+    // fill screen with 0 with full screen quad
+    glStencilFunc(GL_ALWAYS, 0, 0xFF);
+    glStencilOp(GL_ZERO, GL_REPLACE, GL_ZERO);
+
+    // directional light and shadow pass
+    pbrDeferredAfter.use();
+    pbrDeferredAfter.setVec3("camPos", m_camera->position);
+    pbrDeferredAfter.setVec3("light.direction", m_shadowManager->m_lightPos);
+    pbrDeferredAfter.setVec3("light.color", m_sunColor * m_sunIntensity);
+
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gPosition"), 0);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gPosition);
+
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gNormalShadow"), 1);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gNormalShadow);
+
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gAlbedo"), 2);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAlbedo);
+
+    glActiveTexture(GL_TEXTURE0 + 3);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gAoRoughMetal"), 3);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
+
+    glActiveTexture(GL_TEXTURE0 + 8);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "irradianceMap"), 8);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->irradianceMap);
+
+    glActiveTexture(GL_TEXTURE0 + 9);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "prefilterMap"), 9);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->prefilterMap);
+
+    glActiveTexture(GL_TEXTURE0 + 10);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "brdfLUT"), 10);
+    glBindTexture(GL_TEXTURE_2D, m_pbrManager->brdfLUTTexture);
+
+    glDepthMask(GL_FALSE);
+    glBindVertexArray(quad_vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+    glDepthMask(GL_TRUE);
+
+    // draw skybox
+    skyboxShader.use();
+    skyboxShader.setMat4("projection", m_projection);
+    skyboxShader.setMat4("view", m_view);
+    skyboxShader.setVec3("sunDirection", m_shadowManager->m_lightPos);
+    skyboxShader.setVec3("sunColor", m_sunColor * m_sunIntensity);
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(skyboxShader.id, "environmentMap"), 0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->m_skyboxTexture);
+    cube->draw(skyboxShader);
+
+    // light mask pass
+    // TODO: frustum culling
+    // TODO: group lights by cam inside - outside volume
+    // TODO: instancing
+
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+
+    // glStencilOp(sfail, dpfail, dppass);
+    glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+    glStencilFunc(GL_ALWAYS, 0, 0xFF);
+    glStencilMask(0xFF);
+
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    // TODO: why can't use glCullFace?
+    lightVolume.use();
+    for (int i = 0; i < m_pointLights.size(); i++)
+    {
+        LightSource &light = m_pointLights[i];
+        float camDistance = glm::abs(glm::distance(m_cullViewPos, light.position));
+        // TODO: padding for camera near clip
+        light.camInsideVolume = camDistance < light.radius;
+
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, light.position);
+        model = glm::scale(model, glm::vec3(1.0f) * light.radius);
+
+        lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
+        lightVolume.setMat4("MVP", m_viewProjection * model);
+        sphere->draw(lightVolume);
+    }
+
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    // light shade pass
+    glStencilFunc(GL_LESS, 0, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilMask(0x00);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+    glBlendEquation(GL_FUNC_ADD);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
+    if (m_lightSurfaceDebug)
+    {
+        lightVolume.use();
+        for (int i = 0; i < m_pointLights.size(); i++)
+        {
+            LightSource &light = m_pointLights[i];
+
+            if (light.camInsideVolume)
+            {
+                glCullFace(GL_FRONT);
+                glDisable(GL_DEPTH_TEST);
+            }
+            else
+            {
+                glCullFace(GL_BACK);
+                glEnable(GL_DEPTH_TEST);
+            }
+
+            glm::mat4 model(1.0f);
+            model = glm::translate(model, light.position);
+            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
+
+            lightVolume.setVec3("DiffuseColor", light.color * light.intensity);
+            lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
+            lightVolume.setMat4("MVP", m_viewProjection * model);
+            sphere->draw(lightVolume);
+        }
+    }
+    else
+    {
+        pbrDeferredPointLight.use();
+        pbrDeferredPointLight.setVec3("camPos", m_camera->position);
+        pbrDeferredPointLight.setVec2("screenSize", glm::vec2(m_screenW, m_screenH));
+
+        glActiveTexture(GL_TEXTURE0 + 0);
+        glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gPosition"), 0);
+        glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gPosition);
+
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gNormalShadow"), 1);
+        glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gNormalShadow);
+
+        glActiveTexture(GL_TEXTURE0 + 2);
+        glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gAlbedo"), 2);
+        glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAlbedo);
+
+        glActiveTexture(GL_TEXTURE0 + 3);
+        glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gAoRoughMetal"), 3);
+        glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
+
+        for (int i = 0; i < m_pointLights.size(); i++)
+        {
+            LightSource &light = m_pointLights[i];
+
+            if (light.camInsideVolume)
+            {
+                glCullFace(GL_FRONT);
+                glDisable(GL_DEPTH_TEST);
+            }
+            else
+            {
+                glCullFace(GL_BACK);
+                glEnable(GL_DEPTH_TEST);
+            }
+
+            glm::mat4 model(1.0f);
+            model = glm::translate(model, light.position);
+            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
+
+            pbrDeferredPointLight.setVec3("light.position", light.position);
+            pbrDeferredPointLight.setVec3("light.color", light.color * light.intensity);
+            pbrDeferredPointLight.setFloat("light.radius", light.radius);
+            pbrDeferredPointLight.setFloat("light.linear", light.linear);
+            pbrDeferredPointLight.setFloat("light.quadratic", light.quadratic);
+
+            pbrDeferredPointLight.setMat4("u_meshOffset", glm::mat4(1.0f));
+            pbrDeferredPointLight.setMat4("MVP", m_viewProjection * model);
+
+            sphere->draw(pbrDeferredPointLight);
+        }
+    }
+
+    glCullFace(GL_BACK);
+    glEnable(GL_DEPTH_TEST);
+
+    //
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilFunc(GL_ALWAYS, 0, 0xFF);
+    glStencilMask(0xFF);
+
+    glDisable(GL_STENCIL_TEST);
+
+    if (m_lightAreaDebug)
+    {
+        lightVolume.use();
+
+        for (int i = 0; i < m_pointLights.size(); i++)
+        {
+            LightSource &light = m_pointLights[i];
+
+            if (light.camInsideVolume)
+                glCullFace(GL_FRONT);
+            else
+                glCullFace(GL_BACK);
+
+            glm::mat4 model(1.0f);
+            model = glm::translate(model, light.position);
+            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
+
+            lightVolume.setVec4("DiffuseColor", glm::vec4(light.color, 0.1));
+            lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
+            lightVolume.setMat4("MVP", m_viewProjection * model);
+            sphere->draw(lightVolume);
+        }
+        glCullFace(GL_BACK);
+    }
+
+    glDisable(GL_BLEND);
+
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_TRUE);
+
+    glDisable(GL_CULL_FACE);
+
+    // light points
+    lightVolume.use();
+    for (int i = 0; i < m_pointLights.size(); i++)
+    {
+        LightSource &light = m_pointLights[i];
+
+        lightVolume.setVec4("DiffuseColor", glm::vec4(light.color * light.intensity, 1.0f));
+
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, light.position);
+        model = glm::scale(model, glm::vec3(0.02f, 0.02f, 0.02f));
+
+        lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
+        lightVolume.setMat4("MVP", m_viewProjection * model);
+        // TODO: quad
+        sphere->draw(lightVolume);
+    }
 }
 
 void RenderManager::renderBlend()
@@ -405,50 +631,44 @@ void RenderManager::renderTransmission()
 
     // render transmission
     // TODO: reuse setup pbr
-    pbrShader.use();
-    pbrShader.setMat4("view", m_view);
-    pbrShader.setMat4("projection", m_projection);
-    pbrShader.setVec3("camPos", m_camera->position);
-    pbrShader.setVec3("lightDirection", m_shadowManager->m_lightPos);
-    pbrShader.setVec3("lightColor", m_sunColor * m_sunIntensity);
-    pbrShader.setVec3("CamView", m_shadowManager->m_camera->front);
-    pbrShader.setVec4("FrustumDistances", m_frustumDistances);
-    pbrShader.setVec3("Bias", m_shadowBias);
-    pbrShader.setVec2("u_TransmissionFramebufferSize", glm::vec2(m_screenW, m_screenH));
-
-    // for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
-    // {
-    //     pbrShader.setVec3("lightPositions[" + std::to_string(i) + "]", lightPositions[i]);
-    //     pbrShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-    // }
+    pbrTransmission.use();
+    pbrTransmission.setMat4("view", m_view);
+    pbrTransmission.setMat4("projection", m_projection);
+    pbrTransmission.setVec3("camPos", m_camera->position);
+    pbrTransmission.setVec3("lightDirection", m_shadowManager->m_lightPos);
+    pbrTransmission.setVec3("lightColor", m_sunColor * m_sunIntensity);
+    pbrTransmission.setVec3("CamView", m_shadowManager->m_camera->front);
+    pbrTransmission.setVec4("FrustumDistances", m_frustumDistances);
+    pbrTransmission.setVec3("Bias", m_shadowBias);
+    pbrTransmission.setVec2("u_TransmissionFramebufferSize", glm::vec2(m_screenW, m_screenH));
 
     glActiveTexture(GL_TEXTURE0 + 8);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "irradianceMap"), 8);
+    glUniform1i(glGetUniformLocation(pbrTransmission.id, "irradianceMap"), 8);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->irradianceMap);
 
     glActiveTexture(GL_TEXTURE0 + 9);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "prefilterMap"), 9);
+    glUniform1i(glGetUniformLocation(pbrTransmission.id, "prefilterMap"), 9);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->prefilterMap);
 
     glActiveTexture(GL_TEXTURE0 + 10);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "brdfLUT"), 10);
+    glUniform1i(glGetUniformLocation(pbrTransmission.id, "brdfLUT"), 10);
     glBindTexture(GL_TEXTURE_2D, m_pbrManager->brdfLUTTexture);
 
     glActiveTexture(GL_TEXTURE0 + 11);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "ShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(pbrTransmission.id, "ShadowMap"), 11);
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
     glActiveTexture(GL_TEXTURE0 + 12);
-    glUniform1i(glGetUniformLocation(pbrShader.id, "u_TransmissionFramebufferSampler"), 12);
+    glUniform1i(glGetUniformLocation(pbrTransmission.id, "u_TransmissionFramebufferSampler"), 12);
     glBindTexture(GL_TEXTURE_2D, m_postProcess->m_texture);
 
     // render each transmission mesh
     for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
         RenderSource *source = m_visiblePbrSources[i];
-        pbrShader.setBool("mergedPBRTextures", source->mergedPBRTextures);
-        pbrShader.setMat4("model", source->transform.getModelMatrix());
-        source->model->draw(pbrShader, false);
+        pbrTransmission.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
+        pbrTransmission.setMat4("model", source->transform.getModelMatrix());
+        source->model->draw(pbrTransmission, false);
     }
 }
 
@@ -497,10 +717,7 @@ void RenderManager::addSource(RenderSource *source)
 
     source->m_renderManager = this;
 
-    if (source->type == ShaderType::pbr)
-        m_pbrSources.push_back(source);
-    else
-        m_basicSources.push_back(source);
+    m_pbrSources.push_back(source);
 
     if (source->transformLink)
         m_linkSources.push_back(source);

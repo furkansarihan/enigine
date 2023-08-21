@@ -105,9 +105,7 @@ int main(int argc, char **argv)
     PhysicsWorld physicsWorld;
 
     DebugDrawer debugDrawer;
-    debugDrawer.setDebugMode(btIDebugDraw::DBG_DrawWireframe |
-                             btIDebugDraw::DBG_DrawConstraints |
-                             btIDebugDraw::DBG_DrawConstraintLimits);
+    debugDrawer.setDebugMode(btIDebugDraw::DBG_NoDebug);
     physicsWorld.m_dynamicsWorld->setDebugDrawer(&debugDrawer);
 
     // Shaders
@@ -124,7 +122,7 @@ int main(int argc, char **argv)
     ResourceManager resourceManager;
 
     Model &cube = *resourceManager.getModel("../src/assets/models/cube.obj");
-    // Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
+    Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
     Model &quad = *resourceManager.getModel("../src/assets/models/quad.obj");
     // Model &wheel = *resourceManager.getModel("../src/assets/models/wheel.obj");
     // Model &cylinder = *resourceManager.getModel("../src/assets/models/cylinder.obj");
@@ -141,7 +139,7 @@ int main(int argc, char **argv)
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Render manager
-    RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, q_vao);
+    RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, &sphere, q_vao);
 
     // Task manager
     TaskManager taskManager;
@@ -229,7 +227,7 @@ int main(int argc, char **argv)
 
     // Scene
     eTransform transform(glm::vec3(5.f, 5.f, 5.f), glm::quat(1.f, 0.f, 0.f, 0.f), glm::vec3(5.f, 5.f, 5.f));
-    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+    renderManager.addSource(RenderSourceBuilder()
                                 .setTransform(transform)
                                 .setModel(&spherePBR)
                                 .build());
@@ -238,17 +236,17 @@ int main(int argc, char **argv)
     renderManager.addTerrainSource(ShaderType::pbr, transform, &terrain);
 
     transform.setPosition(glm::vec3(103.f, 1.8f, 260.f));
-    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+    renderManager.addSource(RenderSourceBuilder()
                                 .setTransform(transform)
-                                .setMergedPBRTextures(true)
+                                .setAoRoughMetalMap(true)
                                 .setModel(&shelter)
                                 .build());
 
     transform.setPosition(glm::vec3(112.f, 18.2f, 233.f));
     transform.setScale(glm::vec3(.1f, .1f, .1f));
-    renderManager.addSource(RenderSourceBuilder(ShaderType::pbr)
+    renderManager.addSource(RenderSourceBuilder()
                                 .setTransform(transform)
-                                .setMergedPBRTextures(true)
+                                .setAoRoughMetalMap(true)
                                 .setModel(&tower)
                                 .build());
 
@@ -302,6 +300,7 @@ int main(int argc, char **argv)
         renderManager.updateTransforms();
         renderManager.renderDepth();
         renderManager.renderOpaque();
+        renderManager.renderDeferredShading();
 
         // Update Debug Drawer
         debugDrawer.getLines().clear();

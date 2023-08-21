@@ -5,8 +5,10 @@ void RenderUI::render()
     if (!ImGui::CollapsingHeader("Render", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    int totalSourceCount = m_renderManager->m_pbrSources.size() + m_renderManager->m_basicSources.size();
-    int visibleSourceCount = m_renderManager->m_visiblePbrSources.size() + m_renderManager->m_visibleBasicSources.size();
+    renderGBuffer();
+
+    int totalSourceCount = m_renderManager->m_pbrSources.size();
+    int visibleSourceCount = m_renderManager->m_visiblePbrSources.size() + m_renderManager->m_visiblePbrAnimSources.size();
     ImGui::Text("total source count: %d", totalSourceCount);
     ImGui::Text("visible source count: %d", visibleSourceCount);
     ImGui::Checkbox("m_debugCulling", &m_renderManager->m_debugCulling);
@@ -17,32 +19,30 @@ void RenderUI::render()
         m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
                                                                                                           : btIDebugDraw::DBG_NoDebug);
     }
+    ImGui::Checkbox("m_lightAreaDebug", &m_renderManager->m_lightAreaDebug);
+    ImGui::Checkbox("m_lightSurfaceDebug", &m_renderManager->m_lightSurfaceDebug);
     ImGui::Text("Bloom");
     ImGui::Checkbox("m_karisAverageOnDownsample", &m_renderManager->m_bloomManager->m_karisAverageOnDownsample);
     // ImGui::DragFloat("m_threshold", &m_renderManager->m_bloomManager->m_threshold, 0.01f);
     // ImGui::DragFloat("m_softThreshold", &m_renderManager->m_bloomManager->m_softThreshold, 0.01f);
     ImGui::DragFloat("m_filterRadius", &m_renderManager->m_bloomManager->m_filterRadius, 0.001f);
     ImGui::Text("Post process");
-    ImGui::DragFloat("m_bloomIntensity", &m_renderManager->m_postProcess->m_bloomIntensity, 0.01f);
     ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
     ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
+    ImGui::DragFloat("m_bloomIntensity", &m_renderManager->m_postProcess->m_bloomIntensity, 0.01f);
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         VectorUI::renderVec3("m_sunColor", m_renderManager->m_sunColor, 1.f);
         ImGui::DragFloat("m_sunIntensity", &m_renderManager->m_sunIntensity, 0.1f);
     }
     // list render sources
-    if (ImGui::CollapsingHeader("PBR Sources", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader("PBR Sources", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         for (const auto &source : m_renderManager->m_pbrSources)
             renderRenderSource(source);
     }
 
-    if (ImGui::CollapsingHeader("Basic Sources", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        for (const auto &source : m_renderManager->m_basicSources)
-            renderRenderSource(source);
-    }
+    renderLightSources();
 
     // if (ImGui::CollapsingHeader("Particle Sources", ImGuiTreeNodeFlags_DefaultOpen))
     // {
@@ -111,4 +111,90 @@ void RenderUI::renderSelectedSource()
 
         ImGui::End();
     }
+}
+
+void RenderUI::renderLightSources()
+{
+    if (!ImGui::CollapsingHeader("Point Light Sources", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+        return;
+
+    ImGui::BeginTable("PointLightsTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+
+    // Table header
+    ImGui::TableSetupColumn("Point Light Index");
+    ImGui::TableSetupColumn("Camera Inside Volume");
+    ImGui::TableSetupColumn("Linear");
+    ImGui::TableSetupColumn("Quadratic");
+    ImGui::TableHeadersRow();
+
+    // Checkbox and input fields
+    for (int i = 0; i < m_renderManager->m_pointLights.size(); i++)
+    {
+        ImGui::TableNextRow();
+
+        LightSource &light = m_renderManager->m_pointLights[i];
+
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("m_pointLights: %d", i);
+
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Checkbox(("##Checkbox" + std::to_string(i)).c_str(), &light.camInsideVolume);
+
+        ImGui::TableSetColumnIndex(2);
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputFloat(("##Linear" + std::to_string(i)).c_str(), &light.linear);
+
+        ImGui::TableSetColumnIndex(3);
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputFloat(("##Quadratic" + std::to_string(i)).c_str(), &light.quadratic);
+    }
+
+    ImGui::EndTable();
+}
+
+void RenderUI::renderGBuffer()
+{
+    if (!ImGui::CollapsingHeader("G-Buffer", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+        return;
+
+    ImVec2 uv0(0.0f, 1.0f);
+    ImVec2 uv1(1.0f, 0.0f);
+
+    float width = m_renderManager->m_gBuffer->m_width;
+    float height = m_renderManager->m_gBuffer->m_height;
+
+    float aspectRatio = width / height;
+    float desiredWidth = 200.0f; // Your desired width
+
+    // Calculate the corresponding height to maintain the aspect ratio
+    float desiredHeight = desiredWidth / aspectRatio;
+
+    ImVec2 size(desiredWidth, desiredHeight);
+
+    // Begin the table
+    ImGui::BeginTable("ImageTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+
+    // Table header
+    ImGui::TableSetupColumn("G-Buffer Position");
+    ImGui::TableSetupColumn("G-Buffer Normal");
+    ImGui::TableSetupColumn("G-Buffer Albedo");
+    ImGui::TableSetupColumn("G-Buffer AO-Rough-Metal");
+    ImGui::TableHeadersRow();
+
+    // Image and label cells
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gPosition)), size, uv0, uv1);
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gNormalShadow)), size, uv0, uv1);
+
+    ImGui::TableSetColumnIndex(2);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gAlbedo)), size, uv0, uv1);
+
+    ImGui::TableSetColumnIndex(3);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gAoRoughMetal)), size, uv0, uv1);
+
+    // End the table
+    ImGui::EndTable();
 }

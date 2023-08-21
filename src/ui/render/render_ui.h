@@ -19,6 +19,8 @@ public:
     void render() override;
     void renderRenderSource(RenderSource *source);
     void renderSelectedSource();
+    void renderLightSources();
+    void renderGBuffer();
 };
 
 #endif /* render_ui_hpp */

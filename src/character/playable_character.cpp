@@ -50,9 +50,9 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
 
     m_pistolModel = resourceManager->getModel("../src/assets/gltf/colt3.glb");
 
-    m_pistolSource = RenderSourceBuilder(ShaderType::pbr)
+    m_pistolSource = RenderSourceBuilder()
                        .setModel(m_pistolModel)
-                       .setMergedPBRTextures(true)
+                       .setAoRoughMetalMap(true)
                        .build();
     renderManager->addSource(m_pistolSource);
 

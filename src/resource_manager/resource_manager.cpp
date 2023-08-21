@@ -53,19 +53,17 @@ Texture ResourceManager::getTexture(const Model &model, const std::string &path,
     texture.type = typeName;
 
     if (embeddedTexture != nullptr)
-        texture.id = textureFromMemory(embeddedTexture);
+        textureFromMemory(texture, embeddedTexture);
     else
-        texture.id = textureFromFile(path.c_str(), model.directory);
+        textureFromFile(texture, path.c_str(), model.directory);
 
     m_textures[refPath] = texture;
 
     return texture;
 }
 
-unsigned int ResourceManager::textureFromMemory(const aiTexture *embeddedTexture)
+void ResourceManager::textureFromMemory(Texture &texture, const aiTexture *embeddedTexture)
 {
-    unsigned int textureID;
-
     int w, h, nrComponents;
     void *pData = embeddedTexture->pcData;
     unsigned int bufferSize = embeddedTexture->mWidth;
@@ -75,24 +73,24 @@ unsigned int ResourceManager::textureFromMemory(const aiTexture *embeddedTexture
     {
         std::vector<void *> tdata;
         tdata.push_back(data);
-        textureID = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.nrComponents = nrComponents;
+        texture.width = w;
+        texture.height = h;
     }
     else
     {
         std::cout << "ResourceManager: texture failed to load from memory" << std::endl;
     }
-    stbi_image_free(data);
 
-    return textureID;
+    stbi_image_free(data);
 }
 
-unsigned int ResourceManager::textureFromFile(const char *path, const std::string &directory)
+void ResourceManager::textureFromFile(Texture &texture, const char *path, const std::string &directory)
 {
     std::string filename = std::string(path);
     filename = directory + '/' + filename;
     std::cout << filename << std::endl;
-
-    unsigned int textureID;
 
     int w, h, nrComponents;
     void *data = stbi_load(filename.c_str(), &w, &h, &nrComponents, 0);
@@ -100,15 +98,17 @@ unsigned int ResourceManager::textureFromFile(const char *path, const std::strin
     {
         std::vector<void *> tdata;
         tdata.push_back(data);
-        textureID = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.nrComponents = nrComponents;
+        texture.width = w;
+        texture.height = h;
     }
     else
     {
         std::cout << "ResourceManager: texture failed to load at path: " << path << std::endl;
     }
-    stbi_image_free(data);
 
-    return textureID;
+    stbi_image_free(data);
 }
 
 unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> texturePaths, bool anisotropicFiltering)

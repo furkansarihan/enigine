@@ -34,8 +34,8 @@ public:
 
     Model *getModel(const std::string &path, bool useOffset = true);
     Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
-    unsigned int textureFromMemory(const aiTexture *embeddedTexture);
-    unsigned int textureFromFile(const char *path, const std::string &directory);
+    void textureFromMemory(Texture &texture, const aiTexture *embeddedTexture);
+    void textureFromFile(Texture &texture, const char *path, const std::string &directory);
     unsigned int textureArrayFromFile(std::vector<std::string> texturePaths, bool anisotropicFiltering = false);
     unsigned int loadTexture(TextureLoadParams params);
     unsigned int loadTextureArray(TextureLoadParams params);

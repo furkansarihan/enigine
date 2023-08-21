@@ -1,6 +1,6 @@
 #include "post_process.h"
 
-PostProcess::PostProcess(float width, float heigth)
+PostProcess::PostProcess(int width, int heigth)
     : m_width(width),
       m_height(heigth),
       m_exposure(1.0f),
@@ -38,8 +38,8 @@ void PostProcess::createTexture()
 
     glGenRenderbuffers(1, &m_depthRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, m_depthRenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_width, m_height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, m_width, m_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_depthRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -53,12 +53,10 @@ void PostProcess::createTexture()
     m_texture = texture;
 }
 
-void PostProcess::updateFramebuffer(float width, float height)
+void PostProcess::updateResolution(int width, int height)
 {
     if (m_width == width && m_height == height)
-    {
         return;
-    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferObject);
 

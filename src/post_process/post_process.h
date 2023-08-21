@@ -14,21 +14,21 @@
 class PostProcess
 {
 public:
-    PostProcess(float width, float height);
+    PostProcess(int width, int height);
     ~PostProcess();
 
     GLuint m_framebufferObject;
     GLuint m_texture;
     GLuint m_depthRenderbuffer;
-    float m_width;
-    float m_height;
+    int m_width;
+    int m_height;
 
     float m_exposure;
     float m_contrastBright;
     float m_contrastDark;
     float m_bloomIntensity;
 
-    void updateFramebuffer(float width, float height);
+    void updateResolution(int width, int height);
 
 private:
     void createTexture();

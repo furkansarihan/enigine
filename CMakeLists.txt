@@ -90,6 +90,8 @@ add_executable( enigine
                 src/transform/transform.cpp
                 src/render_manager/render_manager.h
                 src/render_manager/render_manager.cpp
+                src/render_manager/g_buffer.h
+                src/render_manager/g_buffer.cpp
                 src/transform_link/transform_link.h
                 src/transform_link/link_rigidbody.h
                 src/transform_link/link_rigidbody.cpp

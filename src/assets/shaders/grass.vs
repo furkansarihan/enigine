@@ -1,8 +1,11 @@
 #version 410 core
 
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 
+out vec3 WorldPos;
+out vec3 Normal;
 out vec2 TexCoords;
 out float _height;
 out vec3 _normal;
@@ -126,6 +129,10 @@ void main()
     localPos.x += move;
 
     localPos -= offset * (1 - aTexCoords.y) * 0.5;
+
+    WorldPos = vec3(worldPos.x, height, worldPos.y) + localPos;
+    // TODO: ?
+    Normal = aNormal * -1.0;
 
     gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
     

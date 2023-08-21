@@ -24,6 +24,7 @@ out vec2 _tuv; // texture coordinates
 out vec2 _zalpha; // coordinates for elevation-map lookup
 out float _distance; // vertex distance to the camera
 out vec3 _normal; // vertex normal
+out vec2 _heightSlope;
 
 // shadowmap
 out vec3 Position_worldspace;
@@ -44,6 +45,14 @@ vec3 computeNormal(vec2 uv, float texelSize, float texelAspect, float scale)
     n.y = 2 * scale;
 
     return normalize(n);
+}
+
+vec2 calculateHeightSlopeVector(float slope) {
+    float maxHeightGap = maxHeight - minHeight;
+    
+    float h = _height / maxHeightGap;
+
+    return vec2(h, slope);
 }
 
 void main()
@@ -87,4 +96,7 @@ void main()
     float texelAspect = yScaleFactor;
 
     _normal = computeNormal(uv, texelSize, texelAspect, scale);
+
+    float slope = dot(vec3(0, 1, 0), _normal);
+    _heightSlope = calculateHeightSlopeVector(slope);
 }

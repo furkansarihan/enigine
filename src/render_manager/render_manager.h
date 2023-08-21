@@ -25,6 +25,8 @@
 #include "../culling_manager/culling_manager.h"
 #include "../utils/common.h"
 
+#include "g_buffer.h"
+
 enum ShaderType
 {
     pbr,
@@ -36,24 +38,22 @@ class RenderSource
 {
 public:
     RenderManager *m_renderManager = nullptr;
-    ShaderType type;
     eTransform transform;
     eTransform offset;
     Model *model = nullptr;
     Animator *animator = nullptr;
     TransformLink *transformLink = nullptr;
     // TODO: auto detect
-    bool mergedPBRTextures = false;
+    bool aoRoughMetalMap = false;
     int cullIndex = -1;
 
-    RenderSource(ShaderType type, eTransform transform, eTransform offset, Model *model, Animator *animator, TransformLink *transformLink, bool mergedPBRTextures)
-        : type(type),
-          transform(transform),
+    RenderSource(eTransform transform, eTransform offset, Model *model, Animator *animator, TransformLink *transformLink, bool aoRoughMetalMap)
+        : transform(transform),
           offset(offset),
           model(model),
           animator(animator),
           transformLink(transformLink),
-          mergedPBRTextures(mergedPBRTextures){};
+          aoRoughMetalMap(aoRoughMetalMap){};
 
     void setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
     void setModelMatrix(glm::mat4 modelMatrix);
@@ -92,7 +92,7 @@ public:
 class RenderSourceBuilder
 {
 public:
-    RenderSourceBuilder(ShaderType type) : m_type(type) {}
+    RenderSourceBuilder() {}
 
     RenderSourceBuilder &setTransform(eTransform transform)
     {
@@ -124,31 +124,50 @@ public:
         return *this;
     }
 
-    RenderSourceBuilder &setMergedPBRTextures(bool mergedPBRTextures)
+    RenderSourceBuilder &setAoRoughMetalMap(bool aoRoughMetalMap)
     {
-        m_mergedPBRTextures = mergedPBRTextures;
+        m_aoRoughMetalMap = aoRoughMetalMap;
         return *this;
     }
 
     RenderSource *build()
     {
-        return new RenderSource(m_type, m_transform, m_offset, m_model, m_animator, m_transformLink, m_mergedPBRTextures);
+        return new RenderSource(m_transform, m_offset, m_model, m_animator, m_transformLink, m_aoRoughMetalMap);
     }
 
 private:
-    ShaderType m_type;
     eTransform m_transform;
     eTransform m_offset;
     Model *m_model = nullptr;
     Animator *m_animator = nullptr;
     TransformLink *m_transformLink = nullptr;
-    bool m_mergedPBRTextures;
+    bool m_aoRoughMetalMap;
+};
+
+struct LightSource
+{
+    glm::vec3 position;
+    glm::vec3 color;
+    float intensity = 10.f;
+    bool camInsideVolume = false;
+
+    float radius;
+    float linear;
+    float quadratic;
+
+    LightSource(glm::vec3 position, glm::vec3 color, float intensity)
+        : position(position),
+          color(color),
+          intensity(intensity),
+          radius(1.f),
+          linear(1.f),
+          quadratic(1.f){};
 };
 
 class RenderManager
 {
 public:
-    RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, unsigned int quad_vao);
+    RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, Model *sphere, unsigned int quad_vao);
     ~RenderManager();
 
     ShaderManager *m_shaderManager;
@@ -157,39 +176,45 @@ public:
     // TODO: move?
     Model *cube;
     Model *quad;
+    Model *sphere;
     unsigned int quad_vao;
 
     PbrManager *m_pbrManager;
     ShadowManager *m_shadowManager;
     ShadowmapManager *m_shadowmapManager;
     CullingManager *m_cullingManager;
+    GBuffer *m_gBuffer;
     PostProcess *m_postProcess;
     BloomManager *m_bloomManager;
     bool m_debugCulling = false;
     bool m_drawCullingAabb = false;
 
     std::vector<RenderSource *> m_visiblePbrSources;
-    std::vector<RenderSource *> m_visibleBasicSources;
+    std::vector<RenderSource *> m_visiblePbrAnimSources;
 
     std::vector<RenderSource *> m_pbrSources;
-    std::vector<RenderSource *> m_basicSources;
     std::vector<RenderSource *> m_linkSources;
     std::vector<RenderTerrainSource *> m_pbrTerrainSources;
     std::vector<RenderTerrainSource *> m_basicTerrainSources;
     std::vector<RenderParticleSource *> m_particleSources;
 
-    // TODO: animation support with preprocessor - pbr, basic, depth
-    Shader pbrShader;
-    Shader animShader; // TODO: basicShader
+    std::vector<LightSource> m_pointLights;
+
+    Shader pbrDeferredPre;
+    Shader pbrDeferredPreAnim;
+    Shader pbrDeferredAfter;
+    Shader pbrDeferredPointLight;
+    Shader pbrTransmission;
     Shader depthShader;
-    Shader animDepthShader; // TODO: remove
+    Shader depthShaderAnim;
+    Shader lightVolume;
 
     Shader terrainPBRShader;
     Shader terrainBasicShader;
     Shader terrainDepthShader;
 
     // Skybox
-    Shader cubemapShader;
+    Shader skyboxShader;
     Shader postProcessShader;
 
     // PBR Shaders
@@ -221,10 +246,14 @@ public:
     glm::vec3 m_shadowBias = glm::vec3(0.020, 0.023, 0.005);
     bool m_cullFront = false;
 
+    bool m_lightAreaDebug = false;
+    bool m_lightSurfaceDebug = false;
+
     void updateTransforms();
     void setupFrame(GLFWwindow *window);
     void renderDepth();
     void renderOpaque();
+    void renderDeferredShading();
     void renderBlend();
     void renderTransmission();
     void renderPostProcess();

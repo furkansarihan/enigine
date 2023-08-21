@@ -40,24 +40,24 @@ CarController::CarController(ShaderManager *shaderManager, RenderManager *render
     transform.setPosition(glm::vec3(0.f, 2.07f, -3.89f));
     TransformLinkRigidBody *linkTrunk = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
 
-    m_bodySource = RenderSourceBuilder(ShaderType::pbr)
+    m_bodySource = RenderSourceBuilder()
                        .setModel(m_models.carBody)
                        .setTransformLink(linkBody)
-                       .setMergedPBRTextures(true)
+                       .setAoRoughMetalMap(true)
                        .build();
     renderManager->addSource(m_bodySource);
 
-    m_bodyHood = RenderSourceBuilder(ShaderType::pbr)
+    m_bodyHood = RenderSourceBuilder()
                      .setModel(m_models.carHood)
                      .setTransformLink(linkHood)
-                     .setMergedPBRTextures(true)
+                     .setAoRoughMetalMap(true)
                      .build();
     renderManager->addSource(m_bodyHood);
 
-    m_bodyTrunk = RenderSourceBuilder(ShaderType::pbr)
+    m_bodyTrunk = RenderSourceBuilder()
                       .setModel(m_models.carTrunk)
                       .setTransformLink(linkTrunk)
-                      .setMergedPBRTextures(true)
+                      .setAoRoughMetalMap(true)
                       .build();
     renderManager->addSource(m_bodyTrunk);
 
@@ -66,10 +66,10 @@ CarController::CarController(ShaderManager *shaderManager, RenderManager *render
     {
         TransformLinkWheel *link = new TransformLinkWheel(m_vehicle->m_vehicle, i, transform);
 
-        m_wheelSources[i] = RenderSourceBuilder(ShaderType::pbr)
+        m_wheelSources[i] = RenderSourceBuilder()
                                 .setModel(m_models.wheelModels[i])
                                 .setTransformLink(link)
-                                .setMergedPBRTextures(true)
+                                .setAoRoughMetalMap(true)
                                 .build();
         renderManager->addSource(m_wheelSources[i]);
     }
@@ -81,10 +81,10 @@ CarController::CarController(ShaderManager *shaderManager, RenderManager *render
         transform.setPosition(BulletGLM::getGLMVec3(m_vehicle->m_doors[i].posOffset));
         TransformLinkDoor *link = new TransformLinkDoor(m_vehicle, i, transformActive, transform);
 
-        m_doorSources[i] = RenderSourceBuilder(ShaderType::pbr)
+        m_doorSources[i] = RenderSourceBuilder()
                                .setModel(m_models.doorModels[i])
                                .setTransformLink(link)
-                               .setMergedPBRTextures(true)
+                               .setAoRoughMetalMap(true)
                                .build();
         renderManager->addSource(m_doorSources[i]);
     }

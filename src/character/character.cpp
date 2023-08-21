@@ -14,7 +14,7 @@ Character::Character(RenderManager *renderManager, TaskManager *taskManager, Res
 void Character::init()
 {
     // Animation
-    m_model = m_resourceManager->getModel("../src/assets/gltf/swat.glb");
+    m_model = m_resourceManager->getModel("../src/assets/gltf/swat5.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model, true);
@@ -208,9 +208,10 @@ void Character::init()
 
     eTransform transform;
     transform.setScale(glm::vec3(2.f, 2.f, 2.f));
-    m_renderSource = RenderSourceBuilder(ShaderType::basic)
+    m_renderSource = RenderSourceBuilder()
                          .setTransform(transform)
                          .setModel(m_model)
+                         .setAoRoughMetalMap(true)
                          .setAnimator(m_animator)
                          .build();
     m_renderManager->addSource(m_renderSource);
