@@ -2,9 +2,9 @@
 
 out vec4 color;
 
-uniform vec4 DiffuseColor;
+in vec3 lightColor;
 
 void main()
 {        
-    color = DiffuseColor;
+    color = vec4(lightColor, 1.0);
 }

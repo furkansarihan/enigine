@@ -123,6 +123,7 @@ int main(int argc, char **argv)
 
     Model &cube = *resourceManager.getModel("../src/assets/models/cube.obj");
     Model &sphere = *resourceManager.getModel("../src/assets/models/sphere.obj");
+    Model &icosahedron = *resourceManager.getModel("../src/assets/models/icosahedron.obj");
     Model &quad = *resourceManager.getModel("../src/assets/models/quad.obj");
     // Model &wheel = *resourceManager.getModel("../src/assets/models/wheel.obj");
     // Model &cylinder = *resourceManager.getModel("../src/assets/models/cylinder.obj");
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
     Camera editorCamera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Render manager
-    RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, &sphere, q_vao);
+    RenderManager renderManager(&shaderManager, &editorCamera, &cube, &quad, &icosahedron, q_vao);
 
     // Task manager
     TaskManager taskManager;
@@ -298,6 +299,7 @@ int main(int argc, char **argv)
         renderManager.setupFrame(window);
         // TODO: transform manager?
         renderManager.updateTransforms();
+        renderManager.updateLights();
         renderManager.renderDepth();
         renderManager.renderOpaque();
         renderManager.renderDeferredShading();

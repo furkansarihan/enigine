@@ -11,12 +11,12 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&pbrDeferredAfter, "../src/assets/shaders/pbr-deferred-after.vs", "../src/assets/shaders/pbr-deferred-after.fs"));
-    shaderManager->addShader(ShaderDynamic(&pbrDeferredPointLight, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/pbr-deferred-point-light.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPointLight, "../src/assets/shaders/pbr-deferred-point-light.vs", "../src/assets/shaders/pbr-deferred-point-light.fs"));
     shaderManager->addShader(ShaderDynamic(&pbrTransmission, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
 
     shaderManager->addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&depthShaderAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/light-volume.fs"));
+    shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/light-volume.fs"));
 
     // terrain
     shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr-deferred-pre.fs"));
@@ -61,6 +61,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     m_gBuffer = new GBuffer(1, 1);
     m_postProcess = new PostProcess(1, 1);
     m_bloomManager = new BloomManager(&downsampleShader, &upsampleShader, quad_vao);
+
+    setupLights();
 }
 
 RenderManager::~RenderManager()
@@ -83,11 +85,84 @@ RenderManager::~RenderManager()
     }
 }
 
+void RenderManager::setupLights()
+{
+    Model *lightVolume = sphere;
+
+    glGenBuffers(1, &m_lightArrayBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_pointLights.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
+
+    for (unsigned int i = 0; i < lightVolume->meshes.size(); i++)
+    {
+        unsigned int VAO = lightVolume->meshes[i]->VAO;
+        glBindVertexArray(VAO);
+
+        float size = sizeof(LightInstance);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, size, (void *)0);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, size, (void *)(sizeof(glm::vec4)));
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, size, (void *)(2 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, size, (void *)(3 * sizeof(glm::vec4)));
+
+        glEnableVertexAttribArray(7);
+        glVertexAttribPointer(7, 3, GL_FLOAT, GL_FALSE, size, (void *)offsetof(LightInstance, lightColor));
+
+        glEnableVertexAttribArray(8);
+        glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(LightInstance, radius));
+
+        glEnableVertexAttribArray(9);
+        glVertexAttribPointer(9, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(LightInstance, linear));
+
+        glEnableVertexAttribArray(10);
+        glVertexAttribPointer(10, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(LightInstance, quadratic));
+
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+        glVertexAttribDivisor(7, 1);
+        glVertexAttribDivisor(8, 1);
+        glVertexAttribDivisor(9, 1);
+        glVertexAttribDivisor(10, 1);
+
+        glBindVertexArray(0);
+    }
+}
+
 void RenderManager::updateTransforms()
 {
     // TODO: better way?
     for (int i = 0; i < m_linkSources.size(); i++)
         m_linkSources[i]->setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
+}
+
+void RenderManager::updateLights()
+{
+    for (int i = 0; i < m_pointLights.size(); ++i)
+    {
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, m_pointLights[i].position);
+        model = glm::scale(model, glm::vec3(m_pointLights[i].radius));
+        m_lightBufferList[i].model = model;
+        m_lightBufferList[i].lightColor = m_pointLights[i].color * m_pointLights[i].intensity;
+        m_lightBufferList[i].radius = m_pointLights[i].radius;
+        m_lightBufferList[i].linear = m_pointLights[i].linear;
+        m_lightBufferList[i].quadratic = m_pointLights[i].quadratic;
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_pointLights.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
+}
+
+void RenderManager::addLight(LightSource light)
+{
+    m_pointLights.push_back(light);
+    m_lightBufferList.push_back(LightInstance());
 }
 
 void RenderManager::setupFrame(GLFWwindow *window)
@@ -406,7 +481,14 @@ void RenderManager::renderDeferredShading()
     // light mask pass
     // TODO: frustum culling
     // TODO: group lights by cam inside - outside volume
-    // TODO: instancing
+
+    // for (int i = 0; i < m_pointLights.size(); i++)
+    // {
+    //     LightSource &light = m_pointLights[i];
+    //     float camDistance = glm::abs(glm::distance(m_cullViewPos, light.position));
+    //     // TODO: padding for camera near clip
+    //     light.camInsideVolume = camDistance < light.radius;
+    // }
 
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
@@ -420,21 +502,10 @@ void RenderManager::renderDeferredShading()
 
     // TODO: why can't use glCullFace?
     lightVolume.use();
-    for (int i = 0; i < m_pointLights.size(); i++)
-    {
-        LightSource &light = m_pointLights[i];
-        float camDistance = glm::abs(glm::distance(m_cullViewPos, light.position));
-        // TODO: padding for camera near clip
-        light.camInsideVolume = camDistance < light.radius;
-
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, light.position);
-        model = glm::scale(model, glm::vec3(1.0f) * light.radius);
-
-        lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
-        lightVolume.setMat4("MVP", m_viewProjection * model);
-        sphere->draw(lightVolume);
-    }
+    lightVolume.setMat4("projection", m_projection);
+    lightVolume.setMat4("view", m_view);
+    lightVolume.setMat4("model", glm::mat4(1.0f));
+    sphere->drawInstanced(lightVolume, m_pointLights.size());
 
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -453,34 +524,18 @@ void RenderManager::renderDeferredShading()
     if (m_lightSurfaceDebug)
     {
         lightVolume.use();
-        for (int i = 0; i < m_pointLights.size(); i++)
-        {
-            LightSource &light = m_pointLights[i];
-
-            if (light.camInsideVolume)
-            {
-                glCullFace(GL_FRONT);
-                glDisable(GL_DEPTH_TEST);
-            }
-            else
-            {
-                glCullFace(GL_BACK);
-                glEnable(GL_DEPTH_TEST);
-            }
-
-            glm::mat4 model(1.0f);
-            model = glm::translate(model, light.position);
-            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
-
-            lightVolume.setVec3("DiffuseColor", light.color * light.intensity);
-            lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
-            lightVolume.setMat4("MVP", m_viewProjection * model);
-            sphere->draw(lightVolume);
-        }
+        lightVolume.setMat4("projection", m_projection);
+        lightVolume.setMat4("view", m_view);
+        lightVolume.setVec4("DiffuseColor", glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
+        glm::mat4 model(1.0f);
+        lightVolume.setMat4("model", model);
+        sphere->drawInstanced(lightVolume, m_pointLights.size());
     }
     else
     {
         pbrDeferredPointLight.use();
+        pbrDeferredPointLight.setMat4("projection", m_projection);
+        pbrDeferredPointLight.setMat4("view", m_view);
         pbrDeferredPointLight.setVec3("camPos", m_camera->position);
         pbrDeferredPointLight.setVec2("screenSize", glm::vec2(m_screenW, m_screenH));
 
@@ -500,36 +555,7 @@ void RenderManager::renderDeferredShading()
         glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gAoRoughMetal"), 3);
         glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
 
-        for (int i = 0; i < m_pointLights.size(); i++)
-        {
-            LightSource &light = m_pointLights[i];
-
-            if (light.camInsideVolume)
-            {
-                glCullFace(GL_FRONT);
-                glDisable(GL_DEPTH_TEST);
-            }
-            else
-            {
-                glCullFace(GL_BACK);
-                glEnable(GL_DEPTH_TEST);
-            }
-
-            glm::mat4 model(1.0f);
-            model = glm::translate(model, light.position);
-            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
-
-            pbrDeferredPointLight.setVec3("light.position", light.position);
-            pbrDeferredPointLight.setVec3("light.color", light.color * light.intensity);
-            pbrDeferredPointLight.setFloat("light.radius", light.radius);
-            pbrDeferredPointLight.setFloat("light.linear", light.linear);
-            pbrDeferredPointLight.setFloat("light.quadratic", light.quadratic);
-
-            pbrDeferredPointLight.setMat4("u_meshOffset", glm::mat4(1.0f));
-            pbrDeferredPointLight.setMat4("MVP", m_viewProjection * model);
-
-            sphere->draw(pbrDeferredPointLight);
-        }
+        sphere->drawInstanced(pbrDeferredPointLight, m_pointLights.size());
     }
 
     glCullFace(GL_BACK);
@@ -545,26 +571,12 @@ void RenderManager::renderDeferredShading()
     if (m_lightAreaDebug)
     {
         lightVolume.use();
-
-        for (int i = 0; i < m_pointLights.size(); i++)
-        {
-            LightSource &light = m_pointLights[i];
-
-            if (light.camInsideVolume)
-                glCullFace(GL_FRONT);
-            else
-                glCullFace(GL_BACK);
-
-            glm::mat4 model(1.0f);
-            model = glm::translate(model, light.position);
-            model = glm::scale(model, glm::vec3(1.0f) * light.radius);
-
-            lightVolume.setVec4("DiffuseColor", glm::vec4(light.color, 0.1));
-            lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
-            lightVolume.setMat4("MVP", m_viewProjection * model);
-            sphere->draw(lightVolume);
-        }
-        glCullFace(GL_BACK);
+        lightVolume.setMat4("projection", m_projection);
+        lightVolume.setMat4("view", m_view);
+        lightVolume.setVec4("DiffuseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.1f));
+        glm::mat4 model(1.0f);
+        lightVolume.setMat4("model", model);
+        sphere->drawInstanced(lightVolume, m_pointLights.size());
     }
 
     glDisable(GL_BLEND);
@@ -576,21 +588,14 @@ void RenderManager::renderDeferredShading()
 
     // light points
     lightVolume.use();
-    for (int i = 0; i < m_pointLights.size(); i++)
-    {
-        LightSource &light = m_pointLights[i];
-
-        lightVolume.setVec4("DiffuseColor", glm::vec4(light.color * light.intensity, 1.0f));
-
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, light.position);
-        model = glm::scale(model, glm::vec3(0.02f, 0.02f, 0.02f));
-
-        lightVolume.setMat4("u_meshOffset", glm::mat4(1.0f));
-        lightVolume.setMat4("MVP", m_viewProjection * model);
-        // TODO: quad
-        sphere->draw(lightVolume);
-    }
+    lightVolume.setMat4("projection", m_projection);
+    lightVolume.setMat4("view", m_view);
+    lightVolume.setVec4("DiffuseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.01f));
+    glm::mat4 model(1.0f);
+    model = glm::scale(model, glm::vec3(0.01f));
+    lightVolume.setMat4("model", model);
+    // TODO: bilboarded circle
+    sphere->drawInstanced(lightVolume, m_pointLights.size());
 }
 
 void RenderManager::renderBlend()

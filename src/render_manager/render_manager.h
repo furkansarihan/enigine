@@ -144,6 +144,7 @@ private:
     bool m_aoRoughMetalMap;
 };
 
+// TODO: as stride
 struct LightSource
 {
     glm::vec3 position;
@@ -162,6 +163,17 @@ struct LightSource
           radius(1.f),
           linear(1.f),
           quadratic(1.f){};
+};
+
+struct LightInstance
+{
+    glm::mat4 model;
+    glm::vec3 lightColor;
+    float radius;
+    float linear;
+    float quadratic;
+
+    LightInstance(){};
 };
 
 class RenderManager
@@ -249,7 +261,12 @@ public:
     bool m_lightAreaDebug = false;
     bool m_lightSurfaceDebug = false;
 
+    // instanced lights
+    unsigned int m_lightArrayBuffer;
+    std::vector<LightInstance> m_lightBufferList;
+
     void updateTransforms();
+    void updateLights();
     void setupFrame(GLFWwindow *window);
     void renderDepth();
     void renderOpaque();
@@ -261,8 +278,10 @@ public:
     void addSource(RenderSource *source);
     RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
+    void addLight(LightSource light);
 
 private:
+    void setupLights();
     bool inShadowFrustum(RenderSource *source, int frustumIndex);
 };
 

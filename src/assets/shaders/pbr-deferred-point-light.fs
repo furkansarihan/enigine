@@ -7,15 +7,12 @@ uniform sampler2D gNormalShadow;
 uniform sampler2D gAlbedo;
 uniform sampler2D gAoRoughMetal;
 
-struct Light {
-    vec3 position;
-    vec3 color;
-    float radius;
-    float linear;
-    float quadratic;
-};
-
-uniform Light light;
+// light
+in vec3 position;
+in vec3 color;
+in float radius;
+in float linear;
+in float quadratic;
 
 uniform vec3 camPos;
 uniform vec2 screenSize;
@@ -88,13 +85,16 @@ void main()
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
+
+    vec3 L = normalize(position - WorldPos);
+    vec3 H = normalize(V + L);
+    float dist = length(position - WorldPos);
+
+    if (dist < radius)
     {
-        // calculate per-light radiance
-        vec3 L = normalize(light.position - WorldPos);
-        vec3 H = normalize(V + L);
-        float dist = length(light.position - WorldPos);
-        float attenuation = 1.0 / (1.0 + light.linear * dist + light.quadratic * dist * dist);
-        vec3 radiance = light.color * attenuation;
+        // float attenuation = 1.0 / (1.0 + linear * dist + quadratic * dist * dist);
+        float attenuation = 1.0 - (dist / radius);
+        vec3 radiance = color * attenuation;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);   
@@ -133,7 +133,7 @@ void main()
     // FragColor = vec4(vec3(ao), 1.0);
     // FragColor = vec4(vec3(roughness), 1.0);
     // FragColor = vec4(vec3(metallic), 1.0);
-    // FragColor = vec4(vec3(light.color), 1.0);
+    // FragColor = vec4(vec3(color), 1.0);
     // FragColor = vec4(texture(gPosition, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(gNormal, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(gAlbedo, TexCoords).rgb, 1.0);
