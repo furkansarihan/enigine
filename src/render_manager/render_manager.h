@@ -150,7 +150,6 @@ struct LightSource
     glm::vec3 position;
     glm::vec3 color;
     float intensity = 10.f;
-    bool camInsideVolume = false;
 
     float radius;
     float linear;
@@ -220,6 +219,7 @@ public:
     Shader depthShader;
     Shader depthShaderAnim;
     Shader lightVolume;
+    Shader lightVolumeDebug;
 
     Shader terrainPBRShader;
     Shader terrainBasicShader;
@@ -266,7 +266,6 @@ public:
     std::vector<LightInstance> m_lightBufferList;
 
     void updateTransforms();
-    void updateLights();
     void setupFrame(GLFWwindow *window);
     void renderDepth();
     void renderOpaque();
@@ -282,6 +281,8 @@ public:
 
 private:
     void setupLights();
+    void renderLightVolumes(std::vector<LightSource> &lights, bool camInsideVolume);
+    void updateLightBuffer(std::vector<LightSource> &lights);
     bool inShadowFrustum(RenderSource *source, int frustumIndex);
 };
 

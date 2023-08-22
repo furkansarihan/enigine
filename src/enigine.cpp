@@ -299,7 +299,6 @@ int main(int argc, char **argv)
         renderManager.setupFrame(window);
         // TODO: transform manager?
         renderManager.updateTransforms();
-        renderManager.updateLights();
         renderManager.renderDepth();
         renderManager.renderOpaque();
         renderManager.renderDeferredShading();

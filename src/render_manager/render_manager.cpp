@@ -17,6 +17,7 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&depthShaderAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/light-volume.fs"));
+    shaderManager->addShader(ShaderDynamic(&lightVolumeDebug, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/simple-shader.fs"));
 
     // terrain
     shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr-deferred-pre.fs"));
@@ -91,6 +92,7 @@ void RenderManager::setupLights()
 
     glGenBuffers(1, &m_lightArrayBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
+    // TODO: ?
     glBufferData(GL_ARRAY_BUFFER, m_pointLights.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
 
     for (unsigned int i = 0; i < lightVolume->meshes.size(); i++)
@@ -141,28 +143,9 @@ void RenderManager::updateTransforms()
         m_linkSources[i]->setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
 }
 
-void RenderManager::updateLights()
-{
-    for (int i = 0; i < m_pointLights.size(); ++i)
-    {
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, m_pointLights[i].position);
-        model = glm::scale(model, glm::vec3(m_pointLights[i].radius));
-        m_lightBufferList[i].model = model;
-        m_lightBufferList[i].lightColor = m_pointLights[i].color * m_pointLights[i].intensity;
-        m_lightBufferList[i].radius = m_pointLights[i].radius;
-        m_lightBufferList[i].linear = m_pointLights[i].linear;
-        m_lightBufferList[i].quadratic = m_pointLights[i].quadratic;
-    }
-
-    glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
-    glBufferData(GL_ARRAY_BUFFER, m_pointLights.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
-}
-
 void RenderManager::addLight(LightSource light)
 {
     m_pointLights.push_back(light);
-    m_lightBufferList.push_back(LightInstance());
 }
 
 void RenderManager::setupFrame(GLFWwindow *window)
@@ -478,18 +461,34 @@ void RenderManager::renderDeferredShading()
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->m_skyboxTexture);
     cube->draw(skyboxShader);
 
-    // light mask pass
     // TODO: frustum culling
-    // TODO: group lights by cam inside - outside volume
 
-    // for (int i = 0; i < m_pointLights.size(); i++)
-    // {
-    //     LightSource &light = m_pointLights[i];
-    //     float camDistance = glm::abs(glm::distance(m_cullViewPos, light.position));
-    //     // TODO: padding for camera near clip
-    //     light.camInsideVolume = camDistance < light.radius;
-    // }
+    std::vector<LightSource> lightsInsideCam;
+    std::vector<LightSource> lightsOutsideCam;
 
+    for (int i = 0; i < m_pointLights.size(); i++)
+    {
+        LightSource &light = m_pointLights[i];
+        float camDistance = glm::abs(glm::distance(m_cullViewPos, light.position));
+        // TODO: padding for camera near clip
+        if (camDistance < light.radius)
+            lightsInsideCam.push_back(light);
+        else
+            lightsOutsideCam.push_back(light);
+    }
+
+    renderLightVolumes(lightsInsideCam, true);
+    renderLightVolumes(lightsOutsideCam, false);
+}
+
+void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool camInsideVolume)
+{
+    if (lights.size() == 0)
+        return;
+
+    updateLightBuffer(lights);
+
+    // light mask pass
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
 
@@ -505,7 +504,7 @@ void RenderManager::renderDeferredShading()
     lightVolume.setMat4("projection", m_projection);
     lightVolume.setMat4("view", m_view);
     lightVolume.setMat4("model", glm::mat4(1.0f));
-    sphere->drawInstanced(lightVolume, m_pointLights.size());
+    sphere->drawInstanced(lightVolume, lights.size());
 
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -518,18 +517,26 @@ void RenderManager::renderDeferredShading()
     glBlendFunc(GL_ONE, GL_ONE);
     glBlendEquation(GL_FUNC_ADD);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    if (camInsideVolume)
+    {
+        glCullFace(GL_FRONT);
+        glDisable(GL_DEPTH_TEST);
+    }
+    else
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+    }
 
     if (m_lightSurfaceDebug)
     {
-        lightVolume.use();
-        lightVolume.setMat4("projection", m_projection);
-        lightVolume.setMat4("view", m_view);
-        lightVolume.setVec4("DiffuseColor", glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
+        lightVolumeDebug.use();
+        lightVolumeDebug.setMat4("projection", m_projection);
+        lightVolumeDebug.setMat4("view", m_view);
+        lightVolumeDebug.setVec4("DiffuseColor", glm::vec4(1.0f, 0.0f, 1.0f, 0.1f));
         glm::mat4 model(1.0f);
-        lightVolume.setMat4("model", model);
-        sphere->drawInstanced(lightVolume, m_pointLights.size());
+        lightVolumeDebug.setMat4("model", model);
+        sphere->drawInstanced(lightVolumeDebug, lights.size());
     }
     else
     {
@@ -555,7 +562,7 @@ void RenderManager::renderDeferredShading()
         glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gAoRoughMetal"), 3);
         glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
 
-        sphere->drawInstanced(pbrDeferredPointLight, m_pointLights.size());
+        sphere->drawInstanced(pbrDeferredPointLight, lights.size());
     }
 
     glCullFace(GL_BACK);
@@ -570,13 +577,18 @@ void RenderManager::renderDeferredShading()
 
     if (m_lightAreaDebug)
     {
-        lightVolume.use();
-        lightVolume.setMat4("projection", m_projection);
-        lightVolume.setMat4("view", m_view);
-        lightVolume.setVec4("DiffuseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.1f));
+        if (camInsideVolume)
+            glCullFace(GL_FRONT);
+        else
+            glCullFace(GL_BACK);
+
+        lightVolumeDebug.use();
+        lightVolumeDebug.setMat4("projection", m_projection);
+        lightVolumeDebug.setMat4("view", m_view);
+        lightVolumeDebug.setVec4("DiffuseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.1f));
         glm::mat4 model(1.0f);
-        lightVolume.setMat4("model", model);
-        sphere->drawInstanced(lightVolume, m_pointLights.size());
+        lightVolumeDebug.setMat4("model", model);
+        sphere->drawInstanced(lightVolumeDebug, lights.size());
     }
 
     glDisable(GL_BLEND);
@@ -584,6 +596,7 @@ void RenderManager::renderDeferredShading()
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_TRUE);
 
+    glCullFace(GL_BACK);
     glDisable(GL_CULL_FACE);
 
     // light points
@@ -595,7 +608,31 @@ void RenderManager::renderDeferredShading()
     model = glm::scale(model, glm::vec3(0.01f));
     lightVolume.setMat4("model", model);
     // TODO: bilboarded circle
-    sphere->drawInstanced(lightVolume, m_pointLights.size());
+    sphere->drawInstanced(lightVolume, lights.size());
+}
+
+void RenderManager::updateLightBuffer(std::vector<LightSource> &lights)
+{
+    m_lightBufferList.clear();
+
+    for (int i = 0; i < lights.size(); ++i)
+    {
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, lights[i].position);
+        model = glm::scale(model, glm::vec3(lights[i].radius));
+
+        LightInstance lightInstance;
+        lightInstance.model = model;
+        lightInstance.lightColor = lights[i].color * lights[i].intensity;
+        lightInstance.radius = lights[i].radius;
+        lightInstance.linear = lights[i].linear;
+        lightInstance.quadratic = lights[i].quadratic;
+
+        m_lightBufferList.push_back(lightInstance);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_lightBufferList.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
 }
 
 void RenderManager::renderBlend()
