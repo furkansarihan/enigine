@@ -26,6 +26,9 @@ out float _distance; // vertex distance to the camera
 out vec3 _normal; // vertex normal
 out vec2 _heightSlope;
 
+out vec3 ViewPos;
+out vec3 ViewNormal;
+
 // shadowmap
 out vec3 Position_worldspace;
 out vec3 LightDirection_cameraspace;
@@ -96,6 +99,10 @@ void main()
     float texelAspect = yScaleFactor;
 
     _normal = computeNormal(uv, texelSize, texelAspect, scale);
+
+    ViewPos = (V * vec4(position_worldspace, 1.0)).xyz;
+    // TODO?
+    ViewNormal = mat3(transpose(inverse(V))) * _normal;
 
     float slope = dot(vec3(0, 1, 0), _normal);
     _heightSlope = calculateHeightSlopeVector(slope);

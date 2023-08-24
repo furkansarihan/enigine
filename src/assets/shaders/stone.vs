@@ -10,6 +10,9 @@ out vec2 TexCoords;
 out float _height;
 out vec3 _normal;
 
+out vec3 ViewPos;
+out vec3 ViewNormal;
+
 uniform sampler2D elevationSampler;
 
 uniform vec2 elevationMapSize;
@@ -115,6 +118,10 @@ void main()
     WorldPos = vec3(worldPos.x, height, worldPos.y) + localPos;
     // TODO: ?
     Normal = aNormal * -1.0;
+
+    ViewPos = (view * vec4(WorldPos, 1.0)).xyz;
+    // TODO?
+    ViewNormal = mat3(transpose(inverse(view))) * aNormal * -1;
 
     // normal
     float texelSize = elevationMapSize.x;

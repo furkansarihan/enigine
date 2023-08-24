@@ -4,11 +4,15 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalShadow;
 layout (location = 2) out vec3 gAlbedo;
 layout (location = 3) out vec3 gAoRoughMetal;
+layout (location = 4) out vec3 gViewPosition;
+layout (location = 5) out vec3 gViewNormal;
 
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 ModelPos;
 in vec3 Normal;
+in vec3 ViewPos;
+in vec3 ViewNormal;
 
 in mat4 TransformedModel;
 
@@ -109,7 +113,8 @@ float getVisibility()
 }
 
 // TODO: any other way?
-vec3 getNormalFromMap()
+// TODO: correct for ViewPos and WorldPos?
+vec3 getNormalFromMap(vec3 normal)
 {
     vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
 
@@ -118,7 +123,7 @@ vec3 getNormalFromMap()
     vec2 st1 = dFdx(TexCoords);
     vec2 st2 = dFdy(TexCoords);
 
-    vec3 N   = normalize(Normal);
+    vec3 N   = normalize(normal);
     vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
     vec3 B  = -normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
@@ -159,10 +164,13 @@ void main()
     }
 
     vec3 N;
+    vec3 ViewN;
     if (material.normalMap) {
-        N = getNormalFromMap();
+        N = getNormalFromMap(Normal);
+        ViewN = getNormalFromMap(ViewNormal);
     } else {
         N = normalize(Normal);
+        ViewN = normalize(ViewNormal);
     }
 
     gPosition = WorldPos;
@@ -171,6 +179,8 @@ void main()
     gAoRoughMetal.r = ao;
     gAoRoughMetal.g = roughness;
     gAoRoughMetal.b = metallic;
+    gViewPosition = ViewPos;
+    gViewNormal = ViewN;
 
     // TODO: debug frustumIndex
     // if (frustumIndex == 0) {

@@ -9,6 +9,9 @@ out vec3 ModelPos;
 out vec3 Normal;
 out mat4 TransformedModel;
 
+out vec3 ViewPos;
+out vec3 ViewNormal;
+
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
@@ -21,6 +24,9 @@ void main()
     WorldPos = vec3(TransformedModel * vec4(aPos, 1.0));
     ModelPos = aPos;
     Normal = mat3(transpose(inverse(TransformedModel))) * aNormal;
+
+    ViewPos = (view * vec4(WorldPos, 1.0)).xyz;
+    ViewNormal = mat3(transpose(inverse(view * TransformedModel))) * aNormal;
 
     gl_Position = projection * view * vec4(WorldPos, 1.0);
 }

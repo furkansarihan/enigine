@@ -4,6 +4,8 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalShadow;
 layout (location = 2) out vec3 gAlbedo;
 layout (location = 3) out vec3 gAoRoughMetal;
+layout (location = 4) out vec3 gViewPosition;
+layout (location = 5) out vec3 gViewNormal;
 
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -38,6 +40,9 @@ in vec2 _tuv; // texture coordinates
 in float _distance; // vertex distance to the camera
 in vec3 _normal; // vertex normal
 in vec2 _heightSlope;
+
+in vec3 ViewPos;
+in vec3 ViewNormal;
 
 // shadowmap
 in vec3 Position_worldspace;
@@ -242,6 +247,8 @@ void main()
     gAoRoughMetal.r = sampleTex(texture_ao1, hs).r;
     gAoRoughMetal.g = sampleTex(texture_rough1, hs).r;
     gAoRoughMetal.b = sampleTex(texture_metal1, hs).r;;
+    gViewPosition = ViewPos;
+    gViewNormal = normalize(ViewNormal);
 
     // TODO: 
     // if (ShowCascade) {

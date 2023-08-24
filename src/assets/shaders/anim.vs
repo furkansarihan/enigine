@@ -25,6 +25,9 @@ out vec3 Tangent;
 out vec3 Bitangent;
 out mat4 TransformedModel;
 
+out vec3 ViewPos;
+out vec3 ViewNormal;
+
 void main()
 {
     vec4 totalPosition = vec4(0);
@@ -55,6 +58,9 @@ void main()
     Normal = invTrModel * normalize(localNormal);
     Tangent = invTrModel * normalize(localTangent);
     Bitangent = invTrModel * normalize(localBitangent);
+
+    ViewPos = (view * vec4(WorldPos, 1)).xyz;
+    ViewNormal = mat3(transpose(inverse(view * TransformedModel))) * normalize(localNormal);
 
     gl_Position = projection * view * vec4(WorldPos, 1);
 }

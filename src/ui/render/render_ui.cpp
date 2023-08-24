@@ -26,6 +26,7 @@ void RenderUI::render()
     ImGui::DragFloat("fogMinDist", &m_renderManager->fogMinDist, 100.0f);
     ImGui::ColorEdit4("fogColor", &m_renderManager->fogColor[0]);
     ImGui::Text("SSAO");
+    // ImGui::DragInt("noiseSize", &m_renderManager->m_ssao->noiseSize, 1);
     ImGui::DragInt("kernelSize", &m_renderManager->m_ssao->kernelSize, 1);
     ImGui::DragFloat("radius", &m_renderManager->m_ssao->radius, 0.001f);
     ImGui::DragFloat("bias", &m_renderManager->m_ssao->bias, 0.001f);
@@ -195,6 +196,13 @@ void RenderUI::renderGBuffer()
 
     ImGui::TableSetColumnIndex(3);
     ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gAoRoughMetal)), size, uv0, uv1);
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gViewPosition)), size, uv0, uv1);
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gViewNormal)), size, uv0, uv1);
 
     // End the table
     ImGui::EndTable();

@@ -11,6 +11,9 @@ out float _height;
 out vec3 _normal;
 out float _n;
 
+out vec3 ViewPos;
+out vec3 ViewNormal;
+
 uniform sampler2D elevationSampler;
 
 uniform vec2 elevationMapSize;
@@ -133,6 +136,10 @@ void main()
     WorldPos = vec3(worldPos.x, height, worldPos.y) + localPos;
     // TODO: ?
     Normal = aNormal * -1.0;
+
+    ViewPos = (view * vec4(WorldPos, 1.0)).xyz;
+    // TODO?
+    ViewNormal = mat3(transpose(inverse(view))) * aNormal * -1;
 
     gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
     
