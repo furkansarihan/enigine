@@ -26,6 +26,7 @@
 #include "../utils/common.h"
 
 #include "g_buffer.h"
+#include "ssao.h"
 
 enum ShaderType
 {
@@ -195,6 +196,7 @@ public:
     ShadowmapManager *m_shadowmapManager;
     CullingManager *m_cullingManager;
     GBuffer *m_gBuffer;
+    SSAO *m_ssao;
     PostProcess *m_postProcess;
     BloomManager *m_bloomManager;
     bool m_debugCulling = false;
@@ -220,6 +222,7 @@ public:
     Shader depthShaderAnim;
     Shader lightVolume;
     Shader lightVolumeDebug;
+    Shader shaderSSAO, shaderSSAOBlur;
 
     Shader terrainPBRShader;
     Shader terrainBasicShader;
@@ -265,10 +268,15 @@ public:
     unsigned int m_lightArrayBuffer;
     std::vector<LightInstance> m_lightBufferList;
 
+    float fogMaxDist = 10000.0f;
+    float fogMinDist = 4500.0f;
+    glm::vec4 fogColor = glm::vec4(1.f, 1.f, 1.f, 0.75f);
+
     void updateTransforms();
     void setupFrame(GLFWwindow *window);
     void renderDepth();
     void renderOpaque();
+    void renderSSAO();
     void renderDeferredShading();
     void renderBlend();
     void renderTransmission();

@@ -19,6 +19,9 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/light-volume.fs"));
     shaderManager->addShader(ShaderDynamic(&lightVolumeDebug, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/simple-shader.fs"));
 
+    shaderManager->addShader(ShaderDynamic(&shaderSSAO, "../src/assets/shaders/ssao.vs", "../src/assets/shaders/ssao.fs"));
+    shaderManager->addShader(ShaderDynamic(&shaderSSAOBlur, "../src/assets/shaders/ssao.vs", "../src/assets/shaders/ssao-blur.fs"));
+
     // terrain
     shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-shader.fs"));
@@ -60,6 +63,7 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
 
     m_cullingManager = new CullingManager();
     m_gBuffer = new GBuffer(1, 1);
+    m_ssao = new SSAO(1, 1);
     m_postProcess = new PostProcess(1, 1);
     m_bloomManager = new BloomManager(&downsampleShader, &upsampleShader, quad_vao);
 
@@ -300,6 +304,7 @@ void RenderManager::renderOpaque()
 {
     // render to post process texture
     m_gBuffer->updateResolution(m_screenW, m_screenH);
+    m_ssao->updateResolution(m_screenW, m_screenH);
     m_postProcess->updateResolution(m_screenW, m_screenH);
     m_bloomManager->updateResolution(m_screenW, m_screenH);
 
@@ -383,6 +388,58 @@ void RenderManager::renderOpaque()
     glDisable(GL_CULL_FACE);
 }
 
+void RenderManager::renderSSAO()
+{
+    // color
+    glBindFramebuffer(GL_FRAMEBUFFER, m_ssao->ssaoFBO);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    shaderSSAO.use();
+    // Send kernel + rotation
+    for (unsigned int i = 0; i < 64; ++i)
+        shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", m_ssao->ssaoKernel[i]);
+    shaderSSAO.setMat4("projection", m_projection);
+    shaderSSAO.setMat4("view", m_view);
+    shaderSSAO.setInt("kernelSize", m_ssao->kernelSize);
+    shaderSSAO.setFloat("radius", m_ssao->radius);
+    shaderSSAO.setFloat("bias", m_ssao->bias);
+    shaderSSAO.setFloat("strength", m_ssao->strength);
+    // tile noise texture over screen based on screen dimensions divided by noise size
+    shaderSSAO.setVec2("noiseScale", glm::vec2(m_screenW, m_screenH) / (float)m_ssao->noiseSize);
+
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gPosition"), 0);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gPosition);
+
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gNormal"), 1);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gNormalShadow);
+
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glUniform1i(glGetUniformLocation(shaderSSAO.id, "texNoise"), 2);
+    glBindTexture(GL_TEXTURE_2D, m_ssao->noiseTexture);
+
+    glBindVertexArray(quad_vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // blur
+    glBindFramebuffer(GL_FRAMEBUFFER, m_ssao->ssaoBlurFBO);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    shaderSSAOBlur.use();
+
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(shaderSSAOBlur.id, "ssaoInput"), 0);
+    glBindTexture(GL_TEXTURE_2D, m_ssao->ssaoColorBuffer);
+
+    glBindVertexArray(quad_vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void RenderManager::renderDeferredShading()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_postProcess->m_framebufferObject);
@@ -412,9 +469,13 @@ void RenderManager::renderDeferredShading()
 
     // directional light and shadow pass
     pbrDeferredAfter.use();
+    pbrDeferredAfter.setMat4("view", m_view);
     pbrDeferredAfter.setVec3("camPos", m_camera->position);
     pbrDeferredAfter.setVec3("light.direction", m_shadowManager->m_lightPos);
     pbrDeferredAfter.setVec3("light.color", m_sunColor * m_sunIntensity);
+    pbrDeferredAfter.setFloat("fogMaxDist", fogMaxDist);
+    pbrDeferredAfter.setFloat("fogMinDist", fogMinDist);
+    pbrDeferredAfter.setVec4("fogColor", fogColor);
 
     glActiveTexture(GL_TEXTURE0 + 0);
     glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gPosition"), 0);
@@ -431,6 +492,10 @@ void RenderManager::renderDeferredShading()
     glActiveTexture(GL_TEXTURE0 + 3);
     glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "gAoRoughMetal"), 3);
     glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
+
+    glActiveTexture(GL_TEXTURE0 + 4);
+    glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "ssaoSampler"), 4);
+    glBindTexture(GL_TEXTURE_2D, m_ssao->ssaoColorBufferBlur);
 
     glActiveTexture(GL_TEXTURE0 + 8);
     glUniform1i(glGetUniformLocation(pbrDeferredAfter.id, "irradianceMap"), 8);

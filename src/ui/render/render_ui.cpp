@@ -6,6 +6,7 @@ void RenderUI::render()
         return;
 
     renderGBuffer();
+    renderSSAO();
 
     int totalSourceCount = m_renderManager->m_pbrSources.size();
     int visibleSourceCount = m_renderManager->m_visiblePbrSources.size() + m_renderManager->m_visiblePbrAnimSources.size();
@@ -21,6 +22,14 @@ void RenderUI::render()
     }
     ImGui::Checkbox("m_lightAreaDebug", &m_renderManager->m_lightAreaDebug);
     ImGui::Checkbox("m_lightSurfaceDebug", &m_renderManager->m_lightSurfaceDebug);
+    ImGui::DragFloat("fogMaxDist", &m_renderManager->fogMaxDist, 100.0f);
+    ImGui::DragFloat("fogMinDist", &m_renderManager->fogMinDist, 100.0f);
+    ImGui::ColorEdit4("fogColor", &m_renderManager->fogColor[0]);
+    ImGui::Text("SSAO");
+    ImGui::DragInt("kernelSize", &m_renderManager->m_ssao->kernelSize, 1);
+    ImGui::DragFloat("radius", &m_renderManager->m_ssao->radius, 0.001f);
+    ImGui::DragFloat("bias", &m_renderManager->m_ssao->bias, 0.001f);
+    ImGui::DragFloat("strength", &m_renderManager->m_ssao->strength, 0.001f);
     ImGui::Text("Bloom");
     ImGui::Checkbox("m_karisAverageOnDownsample", &m_renderManager->m_bloomManager->m_karisAverageOnDownsample);
     // ImGui::DragFloat("m_threshold", &m_renderManager->m_bloomManager->m_threshold, 0.01f);
@@ -118,11 +127,10 @@ void RenderUI::renderLightSources()
     if (!ImGui::CollapsingHeader("Point Light Sources", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    ImGui::BeginTable("PointLightsTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+    ImGui::BeginTable("PointLightsTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
     // Table header
     ImGui::TableSetupColumn("Point Light Index");
-    ImGui::TableSetupColumn("Camera Inside Volume");
     ImGui::TableSetupColumn("Linear");
     ImGui::TableSetupColumn("Quadratic");
     ImGui::TableHeadersRow();
@@ -138,13 +146,10 @@ void RenderUI::renderLightSources()
         ImGui::Text("m_pointLights: %d", i);
 
         ImGui::TableSetColumnIndex(1);
-        ImGui::Checkbox(("##Checkbox" + std::to_string(i)).c_str(), &light.camInsideVolume);
-
-        ImGui::TableSetColumnIndex(2);
         ImGui::SetNextItemWidth(-1);
         ImGui::InputFloat(("##Linear" + std::to_string(i)).c_str(), &light.linear);
 
-        ImGui::TableSetColumnIndex(3);
+        ImGui::TableSetColumnIndex(2);
         ImGui::SetNextItemWidth(-1);
         ImGui::InputFloat(("##Quadratic" + std::to_string(i)).c_str(), &light.quadratic);
     }
@@ -159,20 +164,16 @@ void RenderUI::renderGBuffer()
 
     ImVec2 uv0(0.0f, 1.0f);
     ImVec2 uv1(1.0f, 0.0f);
-
     float width = m_renderManager->m_gBuffer->m_width;
     float height = m_renderManager->m_gBuffer->m_height;
-
     float aspectRatio = width / height;
-    float desiredWidth = 200.0f; // Your desired width
-
-    // Calculate the corresponding height to maintain the aspect ratio
+    float desiredWidth = 200.0f;
     float desiredHeight = desiredWidth / aspectRatio;
 
     ImVec2 size(desiredWidth, desiredHeight);
 
     // Begin the table
-    ImGui::BeginTable("ImageTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+    ImGui::BeginTable("G-Buffer-Table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
     // Table header
     ImGui::TableSetupColumn("G-Buffer Position");
@@ -194,6 +195,36 @@ void RenderUI::renderGBuffer()
 
     ImGui::TableSetColumnIndex(3);
     ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gAoRoughMetal)), size, uv0, uv1);
+
+    // End the table
+    ImGui::EndTable();
+}
+
+void RenderUI::renderSSAO()
+{
+    if (!ImGui::CollapsingHeader("SSAO", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+        return;
+
+    ImVec2 uv0(0.0f, 1.0f);
+    ImVec2 uv1(1.0f, 0.0f);
+    float width = m_renderManager->m_gBuffer->m_width;
+    float height = m_renderManager->m_gBuffer->m_height;
+    float aspectRatio = width / height;
+    float desiredWidth = 400.0f;
+    float desiredHeight = desiredWidth / aspectRatio;
+    ImVec2 size(desiredWidth, desiredHeight);
+
+    ImGui::BeginTable("SSAO-Table", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+    ImGui::TableSetupColumn("SSAO Color");
+    ImGui::TableSetupColumn("SSAO Blur");
+    ImGui::TableHeadersRow();
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_ssao->ssaoColorBuffer)), size, uv0, uv1);
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_ssao->ssaoColorBufferBlur)), size, uv0, uv1);
 
     // End the table
     ImGui::EndTable();

@@ -21,9 +21,6 @@ void TerrainUI::render()
     {
         m_terrain->updateHorizontalScale();
     }
-    ImGui::DragFloat("fogMaxDist", &m_terrain->fogMaxDist, 100.0f);
-    ImGui::DragFloat("fogMinDist", &m_terrain->fogMinDist, 100.0f);
-    ImGui::ColorEdit4("fogColor", &m_terrain->fogColor[0]);
     ImGui::DragFloat("ambientMult", &m_terrain->ambientMult, 0.01f);
     ImGui::DragFloat("diffuseMult", &m_terrain->diffuseMult, 0.01f);
     ImGui::DragFloat("specularMult", &m_terrain->specularMult, 0.01f);

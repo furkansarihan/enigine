@@ -301,6 +301,7 @@ int main(int argc, char **argv)
         renderManager.updateTransforms();
         renderManager.renderDepth();
         renderManager.renderOpaque();
+        renderManager.renderSSAO();
         renderManager.renderDeferredShading();
 
         // Update Debug Drawer

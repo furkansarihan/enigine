@@ -9,9 +9,6 @@ uniform vec3 lightDirection;
 uniform vec3 lightColor;
 uniform bool wireframe;
 uniform vec3 wireColor;
-uniform float fogMaxDist;
-uniform float fogMinDist;
-uniform vec4 fogColor;
 uniform float minHeight;
 uniform float maxHeight;
 
@@ -210,7 +207,7 @@ void main()
 
     if (wireframe) {
         gPosition = Position_worldspace;
-        gNormalShadow = vec4(getNormalFromMap(sampleTex(texture_normal1, hs)), 1.0);
+        gNormalShadow = vec4(_normal, 1.0);
         gAlbedo = wireColor;
         gAoRoughMetal.r = sampleTex(texture_ao1, hs).r;
         gAoRoughMetal.g = sampleTex(texture_rough1, hs).r;
@@ -236,8 +233,11 @@ void main()
     slopeMixer2.to = 2;
     slopeMixer2.mixer = 0.0;
 
+    // TODO: distance based normal selection
+    vec3 N = _normal;
+
     gPosition = Position_worldspace;
-    gNormalShadow = vec4(getNormalFromMap(sampleTex(texture_normal1, hs)), getVisibility());
+    gNormalShadow = vec4(N, getVisibility());
     gAlbedo = sampleTex(texture_diffuse1, hs);
     gAoRoughMetal.r = sampleTex(texture_ao1, hs).r;
     gAoRoughMetal.g = sampleTex(texture_rough1, hs).r;
@@ -247,10 +247,4 @@ void main()
     // if (ShowCascade) {
     //     outColor[index] = 0.9;
     // }
-
-    // fog
-    // TODO: 
-    // float fogFactor = (fogMaxDist - _distance) / (fogMaxDist - fogMinDist);
-    // fogFactor = clamp(fogFactor, 0, 1);
-    // color = mix(fogColor, outColor, fogFactor);
 }

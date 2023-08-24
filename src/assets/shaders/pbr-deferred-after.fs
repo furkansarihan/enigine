@@ -10,6 +10,7 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormalShadow;
 uniform sampler2D gAlbedo;
 uniform sampler2D gAoRoughMetal;
+uniform sampler2D ssaoSampler;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
@@ -22,7 +23,13 @@ struct Light {
 
 uniform Light light;
 
+uniform mat4 view;
 uniform vec3 camPos;
+
+// fog
+uniform float fogMaxDist;
+uniform float fogMinDist;
+uniform vec4 fogColor;
 
 const float PI = 3.14159265359;
 
@@ -83,6 +90,9 @@ void main()
     float ao = aoRoughMetal.r;
     float roughness = aoRoughMetal.g;
     float metallic = aoRoughMetal.b;
+    float ssao = texture(ssaoSampler, TexCoords).r;
+
+    ao = min(ao, ssao);
 
     vec3 V = normalize(camPos - WorldPos);
 
@@ -161,12 +171,20 @@ void main()
 
     FragColor = vec4(color * shadow, 1.0);
 
+    // fog
+    float _distance = -(view * vec4(WorldPos, 1.0)).z;
+    float fogFactor = (_distance - fogMinDist) / (fogMaxDist - fogMinDist);
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    FragColor = mix(FragColor, fogColor, fogFactor);
+
     // FragColor = vec4(WorldPos, 1.0);
     // FragColor = vec4(albedo, 1.0);
     // FragColor = vec4(N, 1.0);
     // FragColor = vec4(vec3(ao), 1.0);
+    // FragColor = vec4(vec3(_distance), 1.0);
     // FragColor = vec4(vec3(roughness), 1.0);
     // FragColor = vec4(vec3(metallic), 1.0);
+    // FragColor = vec4(vec3(ssao), 1.0);
     // FragColor = vec4(vec3(lightColor), 1.0);
     // FragColor = vec4(irradiance, 1.0);
     // FragColor = vec4(texture(gPosition, TexCoords).rgb, 1.0);

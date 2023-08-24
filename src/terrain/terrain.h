@@ -49,9 +49,6 @@ public:
 
     glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
     int level = 9;
-    float fogMaxDist = 10000.0f;
-    float fogMinDist = 4500.0f;
-    glm::vec4 fogColor = glm::vec4(1.f, 1.f, 1.f, 0.75f);
     glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
     bool showCascade = false;
     bool wireframe = false;

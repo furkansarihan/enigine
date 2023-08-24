@@ -346,9 +346,6 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     terrainShader.setFloat("lightPower", lightPower);
     terrainShader.setVec2("uvOffset", uvOffset);
     terrainShader.setVec2("terrainSize", glm::vec2(width, height));
-    terrainShader.setFloat("fogMaxDist", fogMaxDist);
-    terrainShader.setFloat("fogMinDist", fogMinDist);
-    terrainShader.setVec4("fogColor", fogColor);
     terrainShader.setFloat("ambientMult", ambientMult);
     terrainShader.setFloat("diffuseMult", diffuseMult);
     terrainShader.setFloat("specularMult", specularMult);

@@ -92,6 +92,8 @@ add_executable( enigine
                 src/render_manager/render_manager.cpp
                 src/render_manager/g_buffer.h
                 src/render_manager/g_buffer.cpp
+                src/render_manager/ssao.h
+                src/render_manager/ssao.cpp
                 src/transform_link/transform_link.h
                 src/transform_link/link_rigidbody.h
                 src/transform_link/link_rigidbody.cpp

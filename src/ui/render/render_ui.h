@@ -21,6 +21,7 @@ public:
     void renderSelectedSource();
     void renderLightSources();
     void renderGBuffer();
+    void renderSSAO();
 };
 
 #endif /* render_ui_hpp */
