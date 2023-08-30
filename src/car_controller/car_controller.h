@@ -19,6 +19,7 @@
 #include "../render_manager/render_manager.h"
 #include "../shader_manager/shader_manager.h"
 #include "../transform_link/link_rigidbody.h"
+#include "../update_manager/update_manager.h"
 
 #include "link_wheel.h"
 #include "link_door.h"
@@ -61,12 +62,13 @@ struct Models
     Model *doorModels[4];
 };
 
-class CarController
+class CarController : public Updatable
 {
 public:
-    CarController(ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
+    CarController(GLFWwindow *window, ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
     ~CarController();
 
+    GLFWwindow *m_window;
     Vehicle *m_vehicle;
     Camera *m_followCamera;
     ParticleEngine *m_exhausParticle;
@@ -94,12 +96,18 @@ public:
     RenderSource *m_doorSources[4];
     RenderParticleSource *m_exhaustSource;
 
-    void update(GLFWwindow *window, float deltaTime);
-    void updateExhaust(GLFWwindow *window, float deltaTime);
+    void update(float deltaTime);
+    void updateExhaust(float deltaTime);
     glm::mat4 translateOffset(glm::vec3 offset);
     void followCar();
     void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
     static void staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
+private:
+    int m_keyForward = GLFW_KEY_W;
+    int m_keyBack = GLFW_KEY_S;
+    int m_keyRight = GLFW_KEY_D;
+    int m_keyLeft = GLFW_KEY_A;
 };
 
 #endif /* car_controller_hpp */

@@ -26,9 +26,10 @@ struct ShaderDynamic
 class ShaderManager
 {
 public:
-    ShaderManager();
+    ShaderManager(std::string executablePath);
     ~ShaderManager();
 
+    std::string m_executablePath;
     std::vector<ShaderDynamic> m_shaderList;
 
     void addShader(const ShaderDynamic &shaderDynamic);

@@ -1,12 +1,14 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
     : Character(renderManager, taskManager, resourceManager, physicsWorld, followCamera),
-      m_soundEngine(soundEngine)
+      m_soundEngine(soundEngine),
+      m_window(window)
 {
     try
     {
-        m_fireSoundBuffer = m_soundEngine->loadSound("../src/assets/sounds/colt-fire.mp3");
+        // TODO: resource manager
+        m_fireSoundBuffer = m_soundEngine->loadSound((resourceManager->m_executablePath + "/assets/sounds/colt-fire.mp3").c_str());
     }
     catch (const char *e)
     {
@@ -39,8 +41,8 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     m_muzzleFlash->m_particleScale = 0.15f;
 
     // TODO: share across instances
-    shaderManager->addShader(ShaderDynamic(&m_smokeShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/smoke.fs"));
-    shaderManager->addShader(ShaderDynamic(&m_muzzleFlashShader, "../src/assets/shaders/muzzle-flash.vs", "../src/assets/shaders/muzzle-flash.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_smokeShader, "assets/shaders/smoke.vs", "assets/shaders/smoke.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_muzzleFlashShader, "assets/shaders/muzzle-flash.vs", "assets/shaders/muzzle-flash.fs"));
 
     m_smokeSource = new RenderParticleSource(&m_smokeShader, m_smokeParticle);
     renderManager->addParticleSource(m_smokeSource);
@@ -48,16 +50,16 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     m_muzzleSource = new RenderParticleSource(&m_muzzleFlashShader, m_muzzleFlash);
     renderManager->addParticleSource(m_muzzleSource);
 
-    m_pistolModel = resourceManager->getModel("../src/assets/gltf/colt3.glb");
+    m_pistolModel = resourceManager->getModel("assets/gltf/colt3.glb");
 
     m_pistolSource = RenderSourceBuilder()
-                       .setModel(m_pistolModel)
-                       .setAoRoughMetalMap(true)
-                       .build();
+                         .setModel(m_pistolModel)
+                         .setAoRoughMetalMap(true)
+                         .build();
     renderManager->addSource(m_pistolSource);
 
-    m_controlCharacter = true;
-    m_followCharacter = true;
+    m_controlCharacter = false;
+    m_followCharacter = false;
 }
 
 PCharacter::~PCharacter()
@@ -70,7 +72,7 @@ PCharacter::~PCharacter()
     delete m_muzzleFlash;
 }
 
-void PCharacter::update(GLFWwindow *window, float deltaTime)
+void PCharacter::update(float deltaTime)
 {
     Character::update(deltaTime);
 
@@ -88,7 +90,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     // input
     {
 
-        m_controller->recieveInput(window, deltaTime);
+        m_controller->recieveInput(m_window, deltaTime);
         bool anyInput = m_controller->m_actionState.forward ||
                         m_controller->m_actionState.backward ||
                         m_controller->m_actionState.left ||
@@ -128,7 +130,7 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
         m_followCamera->position = worldRef + offsetX + offsetZ;
     }
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         // TODO: change state
         if (!m_controller->m_aimLocked)
@@ -145,14 +147,14 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
         }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS)
     {
         for (int i = 0; i < m_npcList.size(); i++)
             m_npcList[i]->resetRagdoll();
         resetRagdoll();
     }
 
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS)
     {
         float now = (float)glfwGetTime();
         if (m_passengerInfo.state == PassengerState::outside)
@@ -174,12 +176,12 @@ void PCharacter::update(GLFWwindow *window, float deltaTime)
     }
 
     // TODO: single key event
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
     {
         m_controller->m_aimLocked = true;
         cancelEnterCar();
     }
-    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+    if (glfwGetKey(m_window, GLFW_KEY_T) == GLFW_PRESS)
         m_controller->m_aimLocked = false;
 }
 

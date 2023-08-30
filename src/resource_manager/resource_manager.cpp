@@ -3,7 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../external/stb_image/stb_image.h"
 
-ResourceManager::ResourceManager()
+ResourceManager::ResourceManager(std::string executablePath)
+    : m_executablePath(executablePath)
 {
 }
 
@@ -21,15 +22,16 @@ ResourceManager::~ResourceManager()
 
 Model *ResourceManager::getModel(const std::string &path, bool useOffset)
 {
+    std::string fullPath = m_executablePath + '/' + path;
     // TODO: sharing same model object is safe?
-    if (m_models.find(path) != m_models.end())
+    if (m_models.find(fullPath) != m_models.end())
     {
         // std::cout << "ResourceManager: found loaded model: path: " << path << std::endl;
-        return m_models[path];
+        return m_models[fullPath];
     }
 
-    Model *model = new Model(this, path, useOffset);
-    m_models[path] = model;
+    Model *model = new Model(this, fullPath, useOffset);
+    m_models[fullPath] = model;
 
     return model;
 }
@@ -121,7 +123,7 @@ unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> text
     std::vector<void *> tdata;
 
     for (int i = 0; i < nrTextures; i++)
-        tdata.push_back(stbi_load(texturePaths[i].c_str(), &twidth[i], &theight[i], &tnrComponents[i], 0));
+        tdata.push_back(stbi_load((m_executablePath + '/' + texturePaths[i]).c_str(), &twidth[i], &theight[i], &tnrComponents[i], 0));
 
     for (int i = 0; i < nrTextures; i++)
     {

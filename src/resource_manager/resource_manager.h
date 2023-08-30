@@ -26,9 +26,10 @@ struct TextureLoadParams
 class ResourceManager
 {
 public:
-    ResourceManager();
+    ResourceManager(std::string executablePath);
     ~ResourceManager();
 
+    std::string m_executablePath;
     std::unordered_map<std::string, Model *> m_models;
     std::unordered_map<std::string, Texture> m_textures;
 

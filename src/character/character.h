@@ -34,6 +34,7 @@ class TaskManager;
 #include "../character_task/enter_car.h"
 #include "../character_task/exit_car.h"
 #include "../render_manager/render_manager.h"
+#include "../update_manager/update_manager.h"
 
 struct PathResult
 {
@@ -62,7 +63,7 @@ struct PassengerInfo
     CarController *car = nullptr;
 };
 
-class Character
+class Character : public Updatable
 {
 public:
     RenderManager *m_renderManager;

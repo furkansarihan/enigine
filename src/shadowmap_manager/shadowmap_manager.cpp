@@ -20,9 +20,8 @@ void ShadowmapManager::createTextureArray()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferObject);
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+    glGenTextures(1, &m_textureArray);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_textureArray);
 
     glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, m_shadowmapSize, m_shadowmapSize, m_cascadeCount, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
@@ -40,7 +39,7 @@ void ShadowmapManager::createTextureArray()
 
     for (int i = 0; i < m_cascadeCount; i++)
     {
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, texture, 0, i);
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_textureArray, 0, i);
     }
 
     glDrawBuffer(GL_NONE);
@@ -53,8 +52,6 @@ void ShadowmapManager::createTextureArray()
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    m_textureArray = texture;
 }
 
 void ShadowmapManager::bindFramebuffer()

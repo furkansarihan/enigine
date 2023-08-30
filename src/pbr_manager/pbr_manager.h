@@ -15,8 +15,10 @@
 class PbrManager
 {
 public:
-    PbrManager();
+    PbrManager(std::string executablePath);
     ~PbrManager();
+
+    std::string m_executablePath;
 
     unsigned int m_skyboxTexture;
 

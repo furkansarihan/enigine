@@ -8,41 +8,41 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
       sphere(sphere),
       quad_vao(quad_vao)
 {
-    shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
-    shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/pbr-deferred-pre.fs"));
-    shaderManager->addShader(ShaderDynamic(&pbrDeferredAfter, "../src/assets/shaders/pbr-deferred-after.vs", "../src/assets/shaders/pbr-deferred-after.fs"));
-    shaderManager->addShader(ShaderDynamic(&pbrDeferredPointLight, "../src/assets/shaders/pbr-deferred-point-light.vs", "../src/assets/shaders/pbr-deferred-point-light.fs"));
-    shaderManager->addShader(ShaderDynamic(&pbrTransmission, "../src/assets/shaders/pbr.vs", "../src/assets/shaders/pbr.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "assets/shaders/pbr.vs", "assets/shaders/pbr-deferred-pre.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "assets/shaders/anim.vs", "assets/shaders/pbr-deferred-pre.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredAfter, "assets/shaders/pbr-deferred-after.vs", "assets/shaders/pbr-deferred-after.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrDeferredPointLight, "assets/shaders/pbr-deferred-point-light.vs", "assets/shaders/pbr-deferred-point-light.fs"));
+    shaderManager->addShader(ShaderDynamic(&pbrTransmission, "assets/shaders/pbr.vs", "assets/shaders/pbr.fs"));
 
-    shaderManager->addShader(ShaderDynamic(&depthShader, "../src/assets/shaders/simple-shader.vs", "../src/assets/shaders/depth-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&depthShaderAnim, "../src/assets/shaders/anim.vs", "../src/assets/shaders/depth-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&lightVolume, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/light-volume.fs"));
-    shaderManager->addShader(ShaderDynamic(&lightVolumeDebug, "../src/assets/shaders/light-volume.vs", "../src/assets/shaders/simple-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&depthShader, "assets/shaders/simple-shader.vs", "assets/shaders/depth-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&depthShaderAnim, "assets/shaders/anim.vs", "assets/shaders/depth-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&lightVolume, "assets/shaders/light-volume.vs", "assets/shaders/light-volume.fs"));
+    shaderManager->addShader(ShaderDynamic(&lightVolumeDebug, "assets/shaders/light-volume.vs", "assets/shaders/simple-shader.fs"));
 
-    shaderManager->addShader(ShaderDynamic(&shaderSSAO, "../src/assets/shaders/ssao.vs", "../src/assets/shaders/ssao.fs"));
-    shaderManager->addShader(ShaderDynamic(&shaderSSAOBlur, "../src/assets/shaders/ssao.vs", "../src/assets/shaders/ssao-blur.fs"));
+    shaderManager->addShader(ShaderDynamic(&shaderSSAO, "assets/shaders/ssao.vs", "assets/shaders/ssao.fs"));
+    shaderManager->addShader(ShaderDynamic(&shaderSSAOBlur, "assets/shaders/ssao.vs", "assets/shaders/ssao-blur.fs"));
 
     // terrain
-    shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-pbr-deferred-pre.fs"));
-    shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "../src/assets/shaders/terrain-shader.vs", "../src/assets/shaders/terrain-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "../src/assets/shaders/terrain-shadow.vs", "../src/assets/shaders/depth-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-pbr-deferred-pre.fs"));
+    shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "assets/shaders/terrain-shadow.vs", "assets/shaders/depth-shader.fs"));
 
-    shaderManager->addShader(ShaderDynamic(&skyboxShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/skybox.fs"));
-    shaderManager->addShader(ShaderDynamic(&postProcessShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/post-process.fs"));
+    shaderManager->addShader(ShaderDynamic(&skyboxShader, "assets/shaders/cubemap.vs", "assets/shaders/skybox.fs"));
+    shaderManager->addShader(ShaderDynamic(&postProcessShader, "assets/shaders/post-process.vs", "assets/shaders/post-process.fs"));
 
     // PBR Shaders
-    shaderManager->addShader(ShaderDynamic(&hdrToCubemapShader, "../src/assets/shaders/hdr-to-cubemap.vs", "../src/assets/shaders/hdr-to-cubemap.fs"));
-    shaderManager->addShader(ShaderDynamic(&irradianceShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/irradiance.fs"));
-    shaderManager->addShader(ShaderDynamic(&prefilterShader, "../src/assets/shaders/cubemap.vs", "../src/assets/shaders/prefilter.fs"));
-    shaderManager->addShader(ShaderDynamic(&brdfShader, "../src/assets/shaders/post-process.vs", "../src/assets/shaders/brdf.fs"));
+    shaderManager->addShader(ShaderDynamic(&hdrToCubemapShader, "assets/shaders/hdr-to-cubemap.vs", "assets/shaders/hdr-to-cubemap.fs"));
+    shaderManager->addShader(ShaderDynamic(&irradianceShader, "assets/shaders/cubemap.vs", "assets/shaders/irradiance.fs"));
+    shaderManager->addShader(ShaderDynamic(&prefilterShader, "assets/shaders/cubemap.vs", "assets/shaders/prefilter.fs"));
+    shaderManager->addShader(ShaderDynamic(&brdfShader, "assets/shaders/post-process.vs", "assets/shaders/brdf.fs"));
 
-    shaderManager->addShader(ShaderDynamic(&downsampleShader, "../src/assets/shaders/sample.vs", "../src/assets/shaders/downsample.fs"));
-    shaderManager->addShader(ShaderDynamic(&upsampleShader, "../src/assets/shaders/sample.vs", "../src/assets/shaders/upsample.fs"));
+    shaderManager->addShader(ShaderDynamic(&downsampleShader, "assets/shaders/sample.vs", "assets/shaders/downsample.fs"));
+    shaderManager->addShader(ShaderDynamic(&upsampleShader, "assets/shaders/sample.vs", "assets/shaders/upsample.fs"));
 
     m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // PBR Setup
-    m_pbrManager = new PbrManager();
+    m_pbrManager = new PbrManager(CommonUtil::getExecutablePath());
     // TODO: variable skybox
     // TODO: cache the textures?
     m_pbrManager->setupCubemap(cube, hdrToCubemapShader);

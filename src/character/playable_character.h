@@ -12,11 +12,13 @@
 class PCharacter : public Character
 {
 public:
-    PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
     TaskManager *m_taskManager;
     SoundEngine *m_soundEngine;
+    // TODO: input manager
+    GLFWwindow *m_window;
     std::vector<Character *> m_npcList;
     ALuint m_fireSoundBuffer;
     std::vector<SoundSource> m_fireSounds;
@@ -59,7 +61,7 @@ public:
     float m_lastCarRequest = 0.f;
     float m_carRequestLimit = 1.f;
 
-    void update(GLFWwindow *window, float deltaTime);
+    void update(float deltaTime);
     void updatePistolModelMatrix();
     void fireWeapon();
     void shootRay();

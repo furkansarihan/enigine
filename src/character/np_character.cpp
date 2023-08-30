@@ -9,14 +9,14 @@ NPCharacter::~NPCharacter()
 {
 }
 
-void NPCharacter::update(GLFWwindow *window, float deltaTime)
+void NPCharacter::update(float deltaTime)
 {
     Character::update(deltaTime);
     // TODO: convert task
-    // avoidAim(window, deltaTime);
+    // avoidAim(deltaTime);
 }
 
-void NPCharacter::avoidAim(GLFWwindow *window, float deltaTime)
+void NPCharacter::avoidAim(float deltaTime)
 {
     bool intersect;
     for (int i = 0; i < m_avoidAimList.size(); i++)

@@ -53,9 +53,10 @@ void Terrain::init()
     createMesh(3, 3, vbo_3x3, vao_3x3, ebo_3x3);
 
     // buffer elevationSampler texture
+    // TODO: resource manager
     glGenTextures(1, &textureID);
     int nrComponents;
-    data = stbi_loadf(m_heightmapFilename.c_str(), &heightmapWidth, &heightmapHeight, &nrComponents, 1);
+    data = stbi_loadf((m_resourceManager->m_executablePath + m_heightmapFilename).c_str(), &heightmapWidth, &heightmapHeight, &nrComponents, 1);
     if (data == nullptr)
     {
         fprintf(stderr, "Failed to read heightmap\n");
@@ -97,6 +98,7 @@ void Terrain::init()
 
     updateHorizontalScale();
 
+    // TODO: variable path
     // texture arrays
     if (m_PBR)
     {
@@ -118,12 +120,12 @@ void Terrain::init()
         for (int i = 0; i < 5; i++)
         {
             std::vector<std::string> texturePaths;
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i]);
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i]);
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i]);
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i]);
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i]);
-            texturePaths.push_back("../src/assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i]);
+            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i]);
 
             PBRTextureArrayIds[i] = m_resourceManager->textureArrayFromFile(texturePaths, true);
         }
@@ -131,21 +133,21 @@ void Terrain::init()
     else
     {
         std::vector<std::string> texturePaths;
-        texturePaths.push_back("../src/assets/images/water-1.jpg");
-        texturePaths.push_back("../src/assets/images/sand-1.jpg");
-        texturePaths.push_back("../src/assets/images/stone-1.jpg");
-        texturePaths.push_back("../src/assets/images/grass-1.jpg");
-        texturePaths.push_back("../src/assets/images/rock-1.jpg");
-        texturePaths.push_back("../src/assets/images/snow-1.jpg");
+        texturePaths.push_back("assets/images/water-1.jpg");
+        texturePaths.push_back("assets/images/sand-1.jpg");
+        texturePaths.push_back("assets/images/stone-1.jpg");
+        texturePaths.push_back("assets/images/grass-1.jpg");
+        texturePaths.push_back("assets/images/rock-1.jpg");
+        texturePaths.push_back("assets/images/snow-1.jpg");
 
         normalTextureArrayId = m_resourceManager->textureArrayFromFile(texturePaths, true);
     }
 
-    m_grass = m_resourceManager->getModel("../src/assets/terrain/grass.obj");
-    m_stone = m_resourceManager->getModel("../src/assets/terrain/stone.obj");
+    m_grass = m_resourceManager->getModel("assets/terrain/grass.obj");
+    m_stone = m_resourceManager->getModel("assets/terrain/stone.obj");
 
-    m_shaderManager->addShader(ShaderDynamic(&m_grassShader, "../src/assets/shaders/grass.vs", "../src/assets/shaders/grass.fs"));
-    m_shaderManager->addShader(ShaderDynamic(&m_stoneShader, "../src/assets/shaders/stone.vs", "../src/assets/shaders/stone.fs"));
+    m_shaderManager->addShader(ShaderDynamic(&m_grassShader, "assets/shaders/grass.vs", "assets/shaders/grass.fs"));
+    m_shaderManager->addShader(ShaderDynamic(&m_stoneShader, "assets/shaders/stone.vs", "assets/shaders/stone.fs"));
 }
 
 // https://stackoverflow.com/a/9194117/11601515

@@ -111,7 +111,6 @@ public:
     float wheelRadius;
 
     void update(float deltaTime);
-    void recieveInput(GLFWwindow *window);
     void resetVehicle(btTransform tr);
     void updateHingeState(int door, HingeState newState);
     void openDoor(int door);
@@ -119,11 +118,6 @@ public:
     bool isDoorOpen(int door);
 
 private:
-    int m_keyForward = GLFW_KEY_W;
-    int m_keyBack = GLFW_KEY_S;
-    int m_keyRight = GLFW_KEY_D;
-    int m_keyLeft = GLFW_KEY_A;
-
     void initDefaultValues();
     void initVehicle();
     void setupCollider();

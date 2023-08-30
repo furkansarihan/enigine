@@ -9,6 +9,14 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 class CommonUtil
 {
 public:
@@ -23,7 +31,7 @@ public:
         time_t now = time(0);
         char *dateTime = ctime(&now);
         // version, format -> x.xx.xxx
-        std::string version("000001");
+        std::string version("0.0.1");
 
         std::cout << "enigine_version: " << version << std::endl;
         std::cout << "cpp_version: " << __cplusplus << std::endl;
@@ -159,6 +167,35 @@ public:
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+    }
+
+    static std::string getExecutablePath()
+    {
+        std::string path;
+
+#if defined(_WIN32) || defined(_WIN64)
+        char buffer[MAX_PATH];
+        GetModuleFileNameA(NULL, buffer, MAX_PATH);
+        path = buffer;
+#elif defined(__linux__)
+        char buffer[PATH_MAX];
+        ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+        if (len != -1)
+        {
+            buffer[len] = '\0';
+            path = buffer;
+        }
+#elif defined(__APPLE__)
+        char buffer[PATH_MAX];
+        uint32_t size = sizeof(buffer);
+        if (_NSGetExecutablePath(buffer, &size) == 0)
+        {
+            path = buffer;
+        }
+#endif
+
+        size_t lastSeparator = path.find_last_of("/");
+        return path.substr(0, lastSeparator);
     }
 };
 

@@ -1,7 +1,8 @@
 #include "car_controller.h"
 
-CarController::CarController(ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position)
-    : m_followCamera(followCamera)
+CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position)
+    : m_window(window),
+      m_followCamera(followCamera)
 {
     m_vehicle = new Vehicle(physicsWorld, resourceManager, position);
     m_vehicle->m_carChassis->setUserPointer(this);
@@ -15,21 +16,22 @@ CarController::CarController(ShaderManager *shaderManager, RenderManager *render
     m_exhausParticle->m_maxDuration = 2.0f;
     m_exhausParticle->m_particleScale = 0.1f;
 
-    shaderManager->addShader(ShaderDynamic(&m_exhaustShader, "../src/assets/shaders/smoke.vs", "../src/assets/shaders/exhaust.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_exhaustShader, "assets/shaders/smoke.vs", "assets/shaders/exhaust.fs"));
 
+    // TODO: variable path
     // models
-    m_models.carBody = resourceManager->getModel("../src/assets/car/body.gltf", false);
-    m_models.carHood = resourceManager->getModel("../src/assets/car/hood.gltf", false);
-    m_models.carTrunk = resourceManager->getModel("../src/assets/car/trunk.gltf", false);
+    m_models.carBody = resourceManager->getModel("assets/car/body.gltf", false);
+    m_models.carHood = resourceManager->getModel("assets/car/hood.gltf", false);
+    m_models.carTrunk = resourceManager->getModel("assets/car/trunk.gltf", false);
     // TODO: single wheel with rotation offset transform
-    m_models.wheelModels[0] = m_models.carWheelFL = resourceManager->getModel("../src/assets/car/wheel-fl.gltf", false);
-    m_models.wheelModels[1] = m_models.carWheelFR = resourceManager->getModel("../src/assets/car/wheel-fr.gltf", false);
-    m_models.wheelModels[2] = m_models.carWheelRL = resourceManager->getModel("../src/assets/car/wheel-rl.gltf", false);
-    m_models.wheelModels[3] = m_models.carWheelRR = resourceManager->getModel("../src/assets/car/wheel-rr.gltf", false);
-    m_models.doorModels[0] = m_models.carDoorFL = resourceManager->getModel("../src/assets/car/door-fl.gltf", false);
-    m_models.doorModels[1] = m_models.carDoorFR = resourceManager->getModel("../src/assets/car/door-fr.gltf", false);
-    m_models.doorModels[2] = m_models.carDoorRL = resourceManager->getModel("../src/assets/car/door-rl.gltf", false);
-    m_models.doorModels[3] = m_models.carDoorRR = resourceManager->getModel("../src/assets/car/door-rr.gltf", false);
+    m_models.wheelModels[0] = m_models.carWheelFL = resourceManager->getModel("assets/car/wheel-fl.gltf", false);
+    m_models.wheelModels[1] = m_models.carWheelFR = resourceManager->getModel("assets/car/wheel-fr.gltf", false);
+    m_models.wheelModels[2] = m_models.carWheelRL = resourceManager->getModel("assets/car/wheel-rl.gltf", false);
+    m_models.wheelModels[3] = m_models.carWheelRR = resourceManager->getModel("assets/car/wheel-rr.gltf", false);
+    m_models.doorModels[0] = m_models.carDoorFL = resourceManager->getModel("assets/car/door-fl.gltf", false);
+    m_models.doorModels[1] = m_models.carDoorFR = resourceManager->getModel("assets/car/door-fr.gltf", false);
+    m_models.doorModels[2] = m_models.carDoorRL = resourceManager->getModel("assets/car/door-rl.gltf", false);
+    m_models.doorModels[3] = m_models.carDoorRR = resourceManager->getModel("assets/car/door-rr.gltf", false);
 
     eTransform transform = eTransform(glm::vec3(0.f, 2.07f, -0.14f), glm::quat(0.707f, 0.f, -0.707f, 0.f), glm::vec3(0.028f));
     TransformLinkRigidBody *linkBody = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
@@ -88,7 +90,7 @@ CarController::CarController(ShaderManager *shaderManager, RenderManager *render
                                .build();
         renderManager->addSource(m_doorSources[i]);
     }
-    
+
     transform = eTransform(glm::vec3(0.98f, 0.93f, -4.34f), glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
     TransformLinkRigidBody *linkExhaust = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
     m_exhaustSource = new RenderParticleSource(&m_exhaustShader, m_exhausParticle, linkExhaust);
@@ -125,13 +127,19 @@ void CarController::staticKeyCallback(GLFWwindow *window, int key, int scancode,
     cc->keyCallback(window, key, scancode, action, mods);
 }
 
-void CarController::update(GLFWwindow *window, float deltaTime)
+void CarController::update(float deltaTime)
 {
     m_vehicle->update(deltaTime);
     if (m_controlVehicle)
-        m_vehicle->recieveInput(window);
+    {
+        // TODO: better?
+        m_vehicle->m_controlState.forward = glfwGetKey(m_window, m_keyForward) == GLFW_PRESS;
+        m_vehicle->m_controlState.back = glfwGetKey(m_window, m_keyBack) == GLFW_PRESS;
+        m_vehicle->m_controlState.left = glfwGetKey(m_window, m_keyLeft) == GLFW_PRESS;
+        m_vehicle->m_controlState.right = glfwGetKey(m_window, m_keyRight) == GLFW_PRESS;
+    }
 
-    updateExhaust(window, deltaTime);
+    updateExhaust(deltaTime);
     followCar();
 }
 
@@ -179,7 +187,7 @@ void CarController::followCar()
     follow.move = std::max(0.f, std::min(follow.move, 1.f));
 }
 
-void CarController::updateExhaust(GLFWwindow *window, float deltaTime)
+void CarController::updateExhaust(float deltaTime)
 {
     m_exhausParticle->update(deltaTime);
 

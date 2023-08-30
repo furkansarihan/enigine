@@ -2,7 +2,8 @@
 
 #include "../external/stb_image/stb_image.h"
 
-PbrManager::PbrManager()
+PbrManager::PbrManager(std::string executablePath)
+    : m_executablePath(executablePath)
 {
 }
 
@@ -16,7 +17,7 @@ void PbrManager::setupCubemap(Model *cube, Shader hdrToCubemapShader)
     stbi_set_flip_vertically_on_load(true);
     int faceSize = 512;
     int width, height, nrComponents;
-    float *data = stbi_loadf("../src/assets/hdr_skybox/skybox-7.hdr", &width, &height, &nrComponents, 0);
+    float *data = stbi_loadf((m_executablePath + "/assets/hdr_skybox/skybox-7.hdr").c_str(), &width, &height, &nrComponents, 0);
 
     if (data)
     {

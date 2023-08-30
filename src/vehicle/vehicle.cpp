@@ -109,11 +109,12 @@ void Vehicle::initVehicle()
     setupDoors();
 }
 
+// TODO: variable path
 void Vehicle::setupCollider()
 {
     m_compoundShape = new btCompoundShape();
 
-    m_collider = m_resourceManager->getModel("../src/assets/car/car-collider.obj");
+    m_collider = m_resourceManager->getModel("assets/car/car-collider.obj");
 
     for (int i = 0; i < m_collider->meshes.size(); i++)
     {
@@ -255,14 +256,6 @@ void Vehicle::resetVehicle(btTransform tr)
     m_carChassis->setLinearVelocity(btVector3(0, 0, 0));
     m_carChassis->setAngularVelocity(btVector3(0, 0, 0));
     m_physicsWorld->m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis->getBroadphaseHandle(), m_physicsWorld->m_dynamicsWorld->getDispatcher());
-}
-
-void Vehicle::recieveInput(GLFWwindow *window)
-{
-    m_controlState.forward = glfwGetKey(window, m_keyForward) == GLFW_PRESS;
-    m_controlState.back = glfwGetKey(window, m_keyBack) == GLFW_PRESS;
-    m_controlState.left = glfwGetKey(window, m_keyLeft) == GLFW_PRESS;
-    m_controlState.right = glfwGetKey(window, m_keyRight) == GLFW_PRESS;
 }
 
 void Vehicle::updateDoorAngles(float deltaTime)

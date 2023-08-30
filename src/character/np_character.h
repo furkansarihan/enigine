@@ -11,8 +11,8 @@ public:
 
     std::vector<Character *> m_avoidAimList;
 
-    void update(GLFWwindow *window, float deltaTime);
-    void avoidAim(GLFWwindow *window, float deltaTime);
+    void update(float deltaTime);
+    void avoidAim(float deltaTime);
 };
 
 #endif /* np_character_hpp */
