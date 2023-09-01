@@ -330,6 +330,13 @@ void RenderManager::renderOpaque()
                                    m_camera->projectionMode == ProjectionMode::Ortho);
     }
 
+    // render each renderable
+    for (int i = 0; i < m_renderables.size(); i++)
+    {
+        Renderable *renderable = m_renderables[i];
+        renderable->render();
+    }
+
     glEnable(GL_CULL_FACE);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
@@ -847,6 +854,18 @@ RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform
 void RenderManager::addParticleSource(RenderParticleSource *source)
 {
     m_particleSources.push_back(source);
+}
+
+void RenderManager::addCustomRenderable(Renderable *renderable)
+{
+    m_renderables.push_back(renderable);
+}
+
+void RenderManager::removeCustomRenderable(Renderable *renderable)
+{
+    auto it = std::find(m_renderables.begin(), m_renderables.end(), renderable);
+    if (it != m_renderables.end())
+        m_renderables.erase(it);
 }
 
 bool RenderManager::inShadowFrustum(RenderSource *source, int frustumIndex)

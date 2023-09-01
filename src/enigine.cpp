@@ -6,16 +6,15 @@ Enigine::Enigine()
 
 Enigine::~Enigine()
 {
-    // Cleanup imgui
+    // cleanup imgui
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    // Cleanup glfw
+    // cleanup glfw
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    //
-    delete window;
+    // cleanup objects
     delete physicsWorld;
     delete debugDrawer;
     delete soundEngine;
@@ -25,7 +24,7 @@ Enigine::~Enigine()
     delete taskManager;
     delete mainCamera;
 
-    // ui
+    // cleanup ui
     for (int i = 0; i < rootUI->m_uiList.size(); i++)
         delete rootUI->m_uiList[i];
     delete rootUI;
@@ -100,7 +99,6 @@ int Enigine::init()
 
     // Shaders
     shaderManager = new ShaderManager(executablePath);
-    Shader simpleShader, lineShader, textureArrayShader;
     shaderManager->addShader(ShaderDynamic(&simpleShader, "assets/shaders/simple-shader.vs", "assets/shaders/simple-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&lineShader, "assets/shaders/line-shader.vs", "assets/shaders/line-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&textureArrayShader, "assets/shaders/simple-texture.vs", "assets/shaders/texture-array.fs"));

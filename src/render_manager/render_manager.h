@@ -176,6 +176,14 @@ struct LightInstance
     LightInstance(){};
 };
 
+class Renderable
+{
+public:
+    virtual ~Renderable() {}
+
+    virtual void render() = 0;
+};
+
 class RenderManager
 {
 public:
@@ -204,6 +212,7 @@ public:
 
     std::vector<RenderSource *> m_visiblePbrSources;
     std::vector<RenderSource *> m_visiblePbrAnimSources;
+    std::vector<Renderable *> m_renderables;
 
     std::vector<RenderSource *> m_pbrSources;
     std::vector<RenderSource *> m_linkSources;
@@ -286,6 +295,9 @@ public:
     RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
     void addLight(LightSource light);
+
+    void addCustomRenderable(Renderable *renderable);
+    void removeCustomRenderable(Renderable *renderable);
 
 private:
     void setupLights();
