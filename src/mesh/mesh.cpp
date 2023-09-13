@@ -14,6 +14,9 @@ Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned 
 
 Mesh::~Mesh()
 {
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
 }
 
 void Mesh::draw(Shader shader)

@@ -11,5 +11,5 @@ void SystemMonitorUI::render()
     else
         ImGui::Text("Mouse Position: <invalid>");
     ImGui::Text("FPS: %.1f", io.Framerate);
-    ImGui::Text("RAM: %d", (int)m_info->resident_size);
+    ImGui::Text("RAM: %.2f MB", static_cast<float>(m_info->resident_size) / (1024.0f * 1024.0f));
 }

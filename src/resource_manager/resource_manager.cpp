@@ -36,6 +36,15 @@ Model *ResourceManager::getModel(const std::string &path, bool useOffset)
     return model;
 }
 
+void ResourceManager::disposeModel(std::string fullPath)
+{
+    if (m_models.find(fullPath) == m_models.end())
+        return;
+
+    delete m_models[fullPath];
+    m_models.erase(fullPath);
+}
+
 Texture ResourceManager::getTexture(const Model &model, const std::string &path, const std::string &typeName)
 {
     const aiTexture *embeddedTexture = model.m_scene->GetEmbeddedTexture(path.c_str());
@@ -142,6 +151,8 @@ unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> text
 
     unsigned int textureId = 0;
     textureId = loadTextureArray(TextureLoadParams(tdata, tWidth, tHeight, tNrComponents, anisotropicFiltering));
+
+    std::cout << "ResourceManager: loaded texture: " << textureId << std::endl;
 
     for (int i = 0; i < nrTextures; i++)
         stbi_image_free(tdata[i]);

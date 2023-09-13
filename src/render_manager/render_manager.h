@@ -60,6 +60,7 @@ public:
     void setModelMatrix(glm::mat4 modelMatrix);
 };
 
+// TODO: remove
 class RenderTerrainSource
 {
 public:
@@ -73,6 +74,7 @@ public:
           terrain(terrain){};
 };
 
+// TODO: remove?
 class RenderParticleSource
 {
 public:
@@ -292,6 +294,7 @@ public:
     void renderPostProcess();
 
     void addSource(RenderSource *source);
+    void removeSource(RenderSource *source);
     RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
     void addLight(LightSource light);

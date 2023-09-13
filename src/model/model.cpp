@@ -12,10 +12,12 @@ Model::Model(ResourceManager *resourceManager, std::string const &path, bool use
 
 Model::~Model()
 {
+    // TODO: delete when?
     delete m_importer;
 
     for (int i = 0; i < meshes.size(); i++)
         delete meshes[i];
+    meshes.clear();
 }
 
 void Model::draw(Shader shader, bool drawOpaque)
@@ -119,7 +121,8 @@ Mesh *Model::processMesh(aiMesh *mesh)
         Vertex vertex;
         setVertexBoneDataToDefault(vertex);
         vertex.position = AssimpToGLM::getGLMVec3(mesh->mVertices[i]);
-        vertex.normal = AssimpToGLM::getGLMVec3(mesh->mNormals[i]);
+        if (mesh->HasNormals())
+            vertex.normal = AssimpToGLM::getGLMVec3(mesh->mNormals[i]);
         // texture coordinates
         if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
         {

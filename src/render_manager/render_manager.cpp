@@ -839,6 +839,22 @@ void RenderManager::addSource(RenderSource *source)
     m_cullingManager->addObject(source, size, source->transform.getModelMatrix());
 }
 
+void RenderManager::removeSource(RenderSource *source)
+{
+    m_cullingManager->removeObject(source);
+
+    auto it = std::find(m_pbrSources.begin(), m_pbrSources.end(), source);
+    if (it != m_pbrSources.end())
+        m_pbrSources.erase(it);
+
+    if (source->transformLink)
+    {
+        auto it = std::find(m_linkSources.begin(), m_linkSources.end(), source);
+        if (it != m_linkSources.end())
+            m_linkSources.erase(it);
+    }
+}
+
 RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain)
 {
     RenderTerrainSource *source = new RenderTerrainSource(type, transform, terrain);

@@ -76,6 +76,32 @@ btCollisionObject *CullingManager::addObject(void *userPointer, const glm::vec3 
     return createCollisionObject(userPointer, shape, modelMatrix);
 }
 
+void CullingManager::removeObject(void *userPointer)
+{
+    btCollisionObject *objectToRemove = nullptr;
+
+    int numCollisionObjects = m_collisionWorld->getNumCollisionObjects();
+    for (int i = 0; i < numCollisionObjects; ++i)
+    {
+        btCollisionObject *obj = m_collisionWorld->getCollisionObjectArray()[i];
+        if (obj->getUserPointer() == userPointer)
+        {
+            objectToRemove = obj;
+            break;
+        }
+    }
+
+    if (objectToRemove)
+    {
+        if (objectToRemove->getCollisionShape())
+            delete objectToRemove->getCollisionShape();
+
+        m_collisionWorld->removeCollisionObject(objectToRemove);
+
+        delete objectToRemove;
+    }
+}
+
 void CullingManager::updateObject(void *userPointer, const glm::mat4 &modelMatrix)
 {
     auto it = m_collisionObjects.find(userPointer);

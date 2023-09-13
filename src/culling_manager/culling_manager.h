@@ -34,6 +34,7 @@ public:
     void setupFrame(glm::mat4 viewProjection);
     btCollisionObject *addObject(void *userPointer, const float radius, const glm::mat4 &modelMatrix);
     btCollisionObject *addObject(void *userPointer, const glm::vec3 &size, const glm::mat4 &modelMatrix);
+    void removeObject(void *userPointer);
     void updateObject(void *userPointer, const glm::mat4 &modelMatrix);
     std::vector<CulledObject> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
 

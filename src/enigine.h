@@ -76,11 +76,11 @@ public:
     int init();
     void start();
 
-private:
     // TODO: move
     unsigned int vbo, vao, ebo;
     unsigned int q_vbo, q_vao, q_ebo;
 
+private:
     float lastFrame;
 };
 
