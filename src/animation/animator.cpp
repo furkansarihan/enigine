@@ -57,10 +57,12 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     {
         Anim anim = m_state.animations[i];
         Bone *bone = m_animations[anim.index]->getBone(nodeName);
-        float blendWeight = anim.blendFactor * bone->m_blendFactor;
 
         if (!bone)
             continue;
+
+        float blendWeight = anim.blendFactor * bone->m_blendFactor;
+
         if (blendWeight == 0.0f)
             continue;
 
@@ -95,10 +97,12 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
         AnimPose animPose = m_state.poses[i];
         Animation *animation = m_animations[animPose.index];
         Bone *bone = animation->getBone(nodeName);
-        float blendWeight = animPose.blendFactor * bone->m_blendFactor;
 
         if (!bone)
             continue;
+
+        float blendWeight = animPose.blendFactor * bone->m_blendFactor;
+
         if (blendWeight == 0.0f)
             continue;
 

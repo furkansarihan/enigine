@@ -1,17 +1,12 @@
 #version 410 core
 
-layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 norm;
-layout(location = 2) in vec2 tex;
-layout(location = 3) in vec3 tangent;
-layout(location = 4) in vec3 bitangent;
-layout(location = 5) in ivec4 boneIds;
-layout(location = 6) in vec4 weights;
-
-uniform mat4 projection;
-uniform mat4 view;
-uniform mat4 model;
-uniform mat4 u_meshOffset;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTexCoords;
+layout(location = 3) in vec3 aTangent;
+layout(location = 4) in vec3 aBitangent;
+layout(location = 5) in ivec4 aBoneIds;
+layout(location = 6) in vec4 aWeights;
 
 const int MAX_BONES = 200;
 const int MAX_BONE_PER_VERTEX = 4;
@@ -21,12 +16,21 @@ out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 ModelPos;
 out vec3 Normal;
-out vec3 Tangent;
-out vec3 Bitangent;
 out mat4 TransformedModel;
 
 out vec3 ViewPos;
 out vec3 ViewNormal;
+
+out mat3 TBN;
+out mat3 ViewTBN;
+out vec3 TangentViewerPos;
+out vec3 TangentFragPos;
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+uniform mat4 u_meshOffset;
+uniform vec3 viewerPos;
 
 void main()
 {
@@ -36,31 +40,46 @@ void main()
     vec3 localBitangent = vec3(0);
     for(int i = 0; i < MAX_BONE_PER_VERTEX; i++)
     {
-        if(boneIds[i] == -1) 
+        if(aBoneIds[i] == -1) 
             continue;
-        if(boneIds[i] >= MAX_BONES) 
+        if(aBoneIds[i] >= MAX_BONES) 
         {
-            totalPosition = vec4(pos, 1);
+            totalPosition = vec4(aPos, 1);
             break;
         }
-        vec4 localPosition = finalBonesMatrices[boneIds[i]] * vec4(pos, 1);
-        totalPosition += localPosition * weights[i];
-        localNormal += mat3(finalBonesMatrices[boneIds[i]]) * norm;
-        localTangent += mat3(finalBonesMatrices[boneIds[i]]) * tangent;
-        localBitangent += mat3(finalBonesMatrices[boneIds[i]]) * bitangent;
+        vec4 localPosition = finalBonesMatrices[aBoneIds[i]] * vec4(aPos, 1);
+        totalPosition += localPosition * aWeights[i];
+        localNormal += mat3(finalBonesMatrices[aBoneIds[i]]) * aNormal;
+        localTangent += mat3(finalBonesMatrices[aBoneIds[i]]) * aTangent;
+        localBitangent += mat3(finalBonesMatrices[aBoneIds[i]]) * aBitangent;
     }
 
-    TexCoords = tex;
+    TexCoords = aTexCoords;
     TransformedModel = model * u_meshOffset;
     WorldPos = vec3(TransformedModel * totalPosition);
     ModelPos = totalPosition.xyz;
-    mat3 invTrModel = mat3(transpose(inverse(TransformedModel)));
-    Normal = invTrModel * normalize(localNormal);
-    Tangent = invTrModel * normalize(localTangent);
-    Bitangent = invTrModel * normalize(localBitangent);
-
     ViewPos = (view * vec4(WorldPos, 1)).xyz;
-    ViewNormal = mat3(transpose(inverse(view * TransformedModel))) * normalize(localNormal);
 
-    gl_Position = projection * view * vec4(WorldPos, 1);
+    gl_Position = projection * vec4(ViewPos, 1.0);
+
+    // world space normals
+    mat3 normalMatrix = transpose(inverse(mat3(TransformedModel)));
+    Normal = normalize(normalMatrix * localNormal);
+
+    vec3 T = normalize(normalMatrix * localTangent);
+    T = normalize(T - dot(T, Normal) * Normal);
+    vec3 B = cross(Normal, T);
+    TBN = mat3(T, B, Normal);
+
+    TangentViewerPos = TBN * viewerPos;
+    TangentFragPos = TBN * WorldPos;
+
+    // view space normals
+    mat3 viewNormalMatrix = transpose(inverse(mat3(view * TransformedModel)));
+    ViewNormal = normalize(viewNormalMatrix * localNormal);
+
+    vec3 viewT = normalize(viewNormalMatrix * localTangent);
+    viewT = normalize(viewT - dot(viewT, ViewNormal) * ViewNormal);
+    vec3 viewB = cross(ViewNormal, viewT);
+    ViewTBN = mat3(viewT, viewB, ViewNormal);
 }

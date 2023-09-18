@@ -345,6 +345,7 @@ void RenderManager::renderOpaque()
     pbrDeferredPre.use();
     pbrDeferredPre.setMat4("view", m_view);
     pbrDeferredPre.setMat4("projection", m_projection);
+    pbrDeferredPre.setVec3("viewerPos", m_camera->position);
     pbrDeferredPre.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrDeferredPre.setVec4("FrustumDistances", m_frustumDistances);
     pbrDeferredPre.setVec3("Bias", m_shadowBias);
@@ -366,6 +367,7 @@ void RenderManager::renderOpaque()
     pbrDeferredPreAnim.use();
     pbrDeferredPreAnim.setMat4("view", m_view);
     pbrDeferredPreAnim.setMat4("projection", m_projection);
+    pbrDeferredPreAnim.setVec3("viewerPos", m_camera->position);
     pbrDeferredPreAnim.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrDeferredPreAnim.setVec4("FrustumDistances", m_frustumDistances);
     pbrDeferredPreAnim.setVec3("Bias", m_shadowBias);
@@ -748,6 +750,7 @@ void RenderManager::renderTransmission()
     pbrTransmission.setMat4("view", m_view);
     pbrTransmission.setMat4("projection", m_projection);
     pbrTransmission.setVec3("camPos", m_camera->position);
+    pbrTransmission.setVec3("viewerPos", m_camera->position);
     pbrTransmission.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrTransmission.setVec3("lightColor", m_sunColor * m_sunIntensity);
     pbrTransmission.setVec3("CamView", m_shadowManager->m_camera->front);

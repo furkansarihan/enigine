@@ -5,12 +5,16 @@ set -x
 
 BUILD_DIR="build"
 CLEAN_BUILD=false
+BUILD_TYPE="Debug"
 
 # Parse command line parameters
 for arg in "$@"; do
   case $arg in
     --clean)
       CLEAN_BUILD=true
+      ;;
+    --release)
+      BUILD_TYPE="Release"
       ;;
   esac
 done
@@ -29,7 +33,7 @@ fi
 pushd $BUILD_DIR
 
 conan install .. --build=missing
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 cmake --build .
 
 bin/enigine_dev

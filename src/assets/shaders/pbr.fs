@@ -6,6 +6,11 @@ in vec3 WorldPos;
 in vec3 ModelPos;
 in vec3 Normal;
 
+in mat3 TBN;
+in mat3 ViewTBN;
+in vec3 TangentViewerPos;
+in vec3 TangentFragPos;
+
 in mat4 TransformedModel;
 uniform mat4 view;
 uniform mat4 projection;
@@ -119,23 +124,6 @@ float getVisibility()
     return visibility;
 }
 
-// TODO: any other way?
-vec3 getNormalFromMap()
-{
-    vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
-
-    vec3 Q1  = dFdx(WorldPos);
-    vec3 Q2  = dFdy(WorldPos);
-    vec2 st1 = dFdx(TexCoords);
-    vec2 st2 = dFdy(TexCoords);
-
-    vec3 N   = normalize(Normal);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
-    return normalize(TBN * tangentNormal);
-}
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -327,6 +315,7 @@ void main()
     vec3 N;
     vec3 V = normalize(camPos - WorldPos);
 
+    // TODO: 
     // TODO: correct? - variable material properties
 // #ifdef MATERIAL_TRANSMISSION
     if (material.transmission_factor > 0) {
@@ -339,7 +328,8 @@ void main()
     }
 // #else
     else {
-        N = getNormalFromMap();
+        vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
+        N = normalize(TBN * tangentNormal);
     }
 
     // TODO: debug frustumIndex

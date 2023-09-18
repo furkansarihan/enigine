@@ -11,10 +11,10 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
 # Add all .cpp files in the src directory and its subdirectories
-file(GLOB_RECURSE CPP_SOURCES ../src/*.cpp)
+file(GLOB_RECURSE CPP_SOURCES ../src/*.cpp src/*.cpp)
 
 # Add all .h files in the src directory and its subdirectories
-file(GLOB_RECURSE HEADER_FILES ../src/*.h)
+file(GLOB_RECURSE HEADER_FILES ../src/*.h src/*.h)
 
 # Create the enigine library target
 add_executable(enigine_dev src/main.cpp ${CPP_SOURCES} ${HEADER_FILES})

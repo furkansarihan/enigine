@@ -129,15 +129,9 @@ Mixer calculateSampleMixer(Mixer result, float value, vec4 steps, vec4 transitio
     return result;
 }
 
-vec3 getNormalFromMap(vec3 tangentNormal)
+vec3 getNormalFromMap(vec3 T, vec3 tangentNormal, vec3 normal)
 {
-    vec3 Q1  = dFdx(Position_worldspace);
-    vec3 Q2  = dFdy(Position_worldspace);
-    vec2 st1 = dFdx(_tuv);
-    vec2 st2 = dFdy(_tuv);
-
-    vec3 N   = normalize(_normal);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+    vec3 N   = normalize(normal);
     vec3 B  = -normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
@@ -238,8 +232,15 @@ void main()
     slopeMixer2.to = 2;
     slopeMixer2.mixer = 0.0;
 
-    // TODO: distance based normal selection
-    vec3 N = _normal;
+    vec3 tangentNormal = sampleTex(texture_normal1, hs) * 2.0 - 1.0;
+    vec3 Q1  = dFdx(Position_worldspace);
+    vec3 Q2  = dFdy(Position_worldspace);
+    vec2 st1 = dFdx(_tuv);
+    vec2 st2 = dFdy(_tuv);
+    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+
+    vec3 N = getNormalFromMap(T, tangentNormal, _normal);
+    vec3 ViewN = getNormalFromMap(T, tangentNormal, ViewNormal);
 
     gPosition = Position_worldspace;
     gNormalShadow = vec4(N, getVisibility());
@@ -248,7 +249,7 @@ void main()
     gAoRoughMetal.g = sampleTex(texture_rough1, hs).r;
     gAoRoughMetal.b = sampleTex(texture_metal1, hs).r;;
     gViewPosition = ViewPos;
-    gViewNormal = normalize(ViewNormal);
+    gViewNormal = normalize(ViewN);
 
     // TODO: 
     // if (ShowCascade) {

@@ -14,6 +14,11 @@ in vec3 Normal;
 in vec3 ViewPos;
 in vec3 ViewNormal;
 
+in mat3 TBN;
+in mat3 ViewTBN;
+in vec3 TangentViewerPos;
+in vec3 TangentFragPos;
+
 in mat4 TransformedModel;
 
 struct Material {
@@ -25,6 +30,7 @@ struct Material {
     float transmission_factor;
     //
     bool normalMap;
+    bool heightMap;
     bool aoMap;
     bool roughMap;
     bool metalMap;
@@ -112,52 +118,89 @@ float getVisibility()
     return visibility;
 }
 
-// TODO: any other way?
-// TODO: correct for ViewPos and WorldPos?
-vec3 getNormalFromMap(vec3 normal)
-{
-    vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
+// TODO: variable parameters
+// TODO: height or 1 - height
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
+{ 
+    float heightScale = 0.05;
+    // number of depth layers
+    const float minLayers = 8;
+    const float maxLayers = 32;
+    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));  
+    // calculate the size of each layer
+    float layerDepth = 1.0 / numLayers;
+    // depth of current layer
+    float currentLayerDepth = 0.0;
+    // the amount to shift the texture coordinates per layer (from vector P)
+    vec2 P = viewDir.xy / viewDir.z * heightScale; 
+    vec2 deltaTexCoords = P / numLayers;
+  
+    // get initial values
+    vec2  currentTexCoords     = texCoords;
+    float currentDepthMapValue = 1.0 - texture(texture_height1, currentTexCoords).r;
+      
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        // shift texture coordinates along direction of P
+        currentTexCoords -= deltaTexCoords;
+        // get depthmap value at current texture coordinates
+        currentDepthMapValue = 1.0 - texture(texture_height1, currentTexCoords).r;  
+        // get depth of next layer
+        currentLayerDepth += layerDepth;  
+    }
+    
+    // get texture coordinates before collision (reverse operations)
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
 
-    vec3 Q1  = dFdx(WorldPos);
-    vec3 Q2  = dFdy(WorldPos);
-    vec2 st1 = dFdx(TexCoords);
-    vec2 st2 = dFdy(TexCoords);
+    // get depth after and before collision for linear interpolation
+    float afterDepth  = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = 1.0 - texture(texture_height1, prevTexCoords).r - currentLayerDepth + layerDepth;
+ 
+    // interpolation of texture coordinates
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
 
-    vec3 N   = normalize(normal);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
-    return normalize(TBN * tangentNormal);
+    return finalTexCoords;
 }
 
 void main()
 {
+    vec2 pTexCoords;
+    if (material.heightMap) {
+        vec3 viewDir = normalize(TangentViewerPos - TangentFragPos);
+        pTexCoords = ParallaxMapping(TexCoords, viewDir);
+        // TODO:
+        // if(pTexCoords.x > 1.0 || pTexCoords.y > 1.0 || pTexCoords.x < 0.0 || pTexCoords.y < 0.0)
+        //     discard;
+    } else {
+        pTexCoords = TexCoords;
+    }
+
     // TODO: preprocessor texture read - material properties
-    vec3 albedo = texture(texture_diffuse1, TexCoords).rgb;
+    vec3 albedo = texture(texture_diffuse1, pTexCoords).rgb;
     float metallic, roughness, ao;
 
     // TODO: merge detection
     if (material.aoRoughMetalMap) {
         // TODO: individual present
-        vec3 merged = texture(texture_unknown1, TexCoords).rgb;
+        vec3 merged = texture(texture_unknown1, pTexCoords).rgb;
         ao = merged.r;
         roughness = merged.g;
         metallic = merged.b;
     } else {
         if (material.aoMap) {
-            ao = texture(texture_ao1, TexCoords).r;
+            ao = texture(texture_ao1, pTexCoords).r;
         } else {
             // TODO:
             ao = 1;
         }
         if (material.roughMap) {
-            roughness = texture(texture_rough1, TexCoords).r;
+            roughness = texture(texture_rough1, pTexCoords).r;
         } else {
             roughness = material.roughnessFactor;
         }
         if (material.metalMap) {
-            metallic = texture(texture_metal1, TexCoords).r;
+            metallic = texture(texture_metal1, pTexCoords).r;
         } else {
             metallic = material.metallicFactor;
         }
@@ -166,8 +209,9 @@ void main()
     vec3 N;
     vec3 ViewN;
     if (material.normalMap) {
-        N = getNormalFromMap(Normal);
-        ViewN = getNormalFromMap(ViewNormal);
+        vec3 tangentNormal = texture(texture_normal1, pTexCoords).xyz * 2.0 - 1.0;
+        N = normalize(TBN * tangentNormal);
+        ViewN = normalize(ViewTBN * tangentNormal);
     } else {
         N = normalize(Normal);
         ViewN = normalize(ViewNormal);
@@ -199,14 +243,14 @@ void main()
     // gAlbedo = vec3(ao);
     // gAlbedo = N;
     // gAlbedo = irradiance;
-    // gAlbedo = texture(texture_diffuse1, TexCoords).rgb;
-    // gAlbedo = texture(texture_normal1, TexCoords).rgb;
+    // gAlbedo = texture(texture_diffuse1, pTexCoords).rgb;
+    // gAlbedo = texture(texture_normal1, pTexCoords).rgb;
     // gAlbedo = Normal;
-    // gAlbedo = texture(texture_metal1, TexCoords).rgb;
-    // gAlbedo = texture(texture_height1, TexCoords).rgb;
-    // gAlbedo = texture(texture_rough1, TexCoords).rgb;
-    // gAlbedo = texture(texture_ao1, TexCoords).rgb;
-    // gAlbedo = texture(texture_unknown1, TexCoords).ggg;
+    // gAlbedo = texture(texture_metal1, pTexCoords).rgb;
+    // gAlbedo = texture(texture_height1, pTexCoords).rgb;
+    // gAlbedo = texture(texture_rough1, pTexCoords).rgb;
+    // gAlbedo = texture(texture_ao1, pTexCoords).rgb;
+    // gAlbedo = texture(texture_unknown1, pTexCoords).ggg;
     // gAlbedo = texture(irradianceMap, N).rgb;
     // gAlbedo = textureLod(prefilterMap, N, 0).rgb;
     // gAlbedo = texture(brdfLUT, N.xy).rgb;

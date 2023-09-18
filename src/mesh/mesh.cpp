@@ -84,6 +84,7 @@ void Mesh::bindTextures(Shader shader)
     }
 
     shader.setBool("material.normalMap", normalNr > 1);
+    shader.setBool("material.heightMap", heightNr > 1);
     shader.setBool("material.aoMap", aoNr > 1);
     shader.setBool("material.roughMap", roughNr > 1);
     shader.setBool("material.metalMap", metalNr > 1);
@@ -98,6 +99,7 @@ void Mesh::unbindTextures(Shader shader)
     }
 
     shader.setBool("material.normalMap", false);
+    shader.setBool("material.heightMap", false);
     shader.setBool("material.aoMap", false);
     shader.setBool("material.roughMap", false);
     shader.setBool("material.metalMap", false);
