@@ -16,21 +16,18 @@ out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 ModelPos;
 out vec3 Normal;
+out vec3 Tangent;
+out vec3 Bitangent;
 out mat4 TransformedModel;
 
 out vec3 ViewPos;
 out vec3 ViewNormal;
-
-out mat3 TBN;
 out mat3 ViewTBN;
-out vec3 TangentViewerPos;
-out vec3 TangentFragPos;
 
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 uniform mat4 u_meshOffset;
-uniform vec3 viewerPos;
 
 void main()
 {
@@ -65,21 +62,14 @@ void main()
     // world space normals
     mat3 normalMatrix = transpose(inverse(mat3(TransformedModel)));
     Normal = normalize(normalMatrix * localNormal);
-
-    vec3 T = normalize(normalMatrix * localTangent);
-    T = normalize(T - dot(T, Normal) * Normal);
-    vec3 B = cross(Normal, T);
-    TBN = mat3(T, B, Normal);
-
-    TangentViewerPos = TBN * viewerPos;
-    TangentFragPos = TBN * WorldPos;
+    Tangent = normalize(normalMatrix * localTangent);
+    Bitangent = cross(Normal, Tangent);
 
     // view space normals
     mat3 viewNormalMatrix = transpose(inverse(mat3(view * TransformedModel)));
     ViewNormal = normalize(viewNormalMatrix * localNormal);
 
     vec3 viewT = normalize(viewNormalMatrix * localTangent);
-    viewT = normalize(viewT - dot(viewT, ViewNormal) * ViewNormal);
     vec3 viewB = cross(ViewNormal, viewT);
     ViewTBN = mat3(viewT, viewB, ViewNormal);
 }

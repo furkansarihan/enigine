@@ -10,14 +10,13 @@ layout (location = 5) out vec3 gViewNormal;
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 ModelPos;
+in vec3 Tangent;
+in vec3 Bitangent;
 in vec3 Normal;
 in vec3 ViewPos;
 in vec3 ViewNormal;
 
-in mat3 TBN;
 in mat3 ViewTBN;
-in vec3 TangentViewerPos;
-in vec3 TangentFragPos;
 
 in mat4 TransformedModel;
 
@@ -47,6 +46,10 @@ uniform sampler2D texture_height1;
 uniform sampler2D texture_rough1;
 uniform sampler2D texture_ao1;
 uniform sampler2D texture_unknown1;
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
 
 // sun
 uniform vec3 lightDirection;
@@ -118,62 +121,214 @@ float getVisibility()
     return visibility;
 }
 
-// TODO: variable parameters
-// TODO: height or 1 - height
-vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
-{ 
-    float heightScale = 0.05;
-    // number of depth layers
-    const float minLayers = 8;
-    const float maxLayers = 32;
-    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));  
-    // calculate the size of each layer
-    float layerDepth = 1.0 / numLayers;
-    // depth of current layer
-    float currentLayerDepth = 0.0;
-    // the amount to shift the texture coordinates per layer (from vector P)
-    vec2 P = viewDir.xy / viewDir.z * heightScale; 
-    vec2 deltaTexCoords = P / numLayers;
-  
-    // get initial values
-    vec2  currentTexCoords     = texCoords;
-    float currentDepthMapValue = 1.0 - texture(texture_height1, currentTexCoords).r;
-      
-    while(currentLayerDepth < currentDepthMapValue)
-    {
-        // shift texture coordinates along direction of P
-        currentTexCoords -= deltaTexCoords;
-        // get depthmap value at current texture coordinates
-        currentDepthMapValue = 1.0 - texture(texture_height1, currentTexCoords).r;  
-        // get depth of next layer
-        currentLayerDepth += layerDepth;  
-    }
-    
-    // get texture coordinates before collision (reverse operations)
-    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+// ----------------------------------------------------------------------------
+// Parallax Occlusion Mapping implementation by Michael Möller for Blender
+// https://devtalk.blender.org/t/parallax-occlusion-mapping/15774
+// https://archive.blender.org/developer/D9198
+// https://archive.blender.org/developer/D9792
+// Apache License, Version 2.0
 
-    // get depth after and before collision for linear interpolation
-    float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = 1.0 - texture(texture_height1, prevTexCoords).r - currentLayerDepth + layerDepth;
- 
-    // interpolation of texture coordinates
-    float weight = afterDepth / (afterDepth - beforeDepth);
-    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+// http://burtleburtle.net/bob/c/lookup3.c
+// GPL-2.0-or-later
 
-    return finalTexCoords;
+#define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
+
+#define final(a, b, c) \
+  { \
+    c ^= b; \
+    c -= rot(b, 14); \
+    a ^= c; \
+    a -= rot(c, 11); \
+    b ^= a; \
+    b -= rot(a, 25); \
+    c ^= b; \
+    c -= rot(b, 16); \
+    a ^= c; \
+    a -= rot(c, 4); \
+    b ^= a; \
+    b -= rot(a, 14); \
+    c ^= b; \
+    c -= rot(b, 24); \
+  }
+
+uint hash_uint2(uint kx, uint ky)
+{
+  uint a, b, c;
+  a = b = c = 0xdeadbeefu + (2u << 2u) + 13u;
+
+  b += ky;
+  a += kx;
+  final(a, b, c);
+
+  return c;
 }
+
+float hash_uint2_to_float(uint kx, uint ky)
+{
+  return float(hash_uint2(kx, ky)) / float(0xFFFFFFFFu);
+}
+
+float hash_vec2_to_float(vec2 k)
+{
+  return hash_uint2_to_float(floatBitsToUint(k.x), floatBitsToUint(k.y));
+}
+
+float safe_inverse(float x)
+{
+  return (x != 0.0) ? 1.0 / x : 0.0;
+}
+
+void node_parallax_occlusion_map(vec3 co,
+                                 float midlevel,
+                                 float scale,
+                                 float samples_count,
+                                 float scale_mode,
+                                 vec3 viewPosition,
+                                 vec3 viewNormal,
+                                 sampler2D heightmap,
+                                 out vec3 out_co,
+                                 out float depth,
+                                 out vec3 normal,
+                                 out vec3 out_worldposition)
+{
+  vec2 dcodx = dFdx(co.xy);
+  vec2 dcody = dFdy(co.xy);
+
+  vec3 dPdx = dFdx(viewPosition);
+  vec3 dPdy = dFdy(viewPosition);
+
+  mat3 ViewMatrixInverse = mat3(inverse(view));
+  vec3 dWdx = mat3(ViewMatrixInverse) * dPdx;
+  vec3 dWdy = mat3(ViewMatrixInverse) * dPdy;
+
+  vec3 I = (projection[3][3] == 0.0) ? viewPosition : vec3(0.0, 0.0, -1.0);
+  vec3 N = normalize(viewNormal);
+
+  float NdotI = dot(N, I);
+
+  vec3 v1 = cross(dPdy, N);
+  vec3 v2 = cross(N, dPdx);
+  float det = dot(dPdx, v1);
+  float f = safe_inverse(dcodx.x * dcody.y - dcodx.y * dcody.x);
+
+  if (scale_mode > 0) {
+    scale *= sqrt(abs(det * f));
+  }
+
+  float scale_per_sample = -scale / samples_count;
+ 
+  vec2 s = safe_inverse(det) * vec2(dot(v1, I), dot(v2, I));
+  vec2 ss = (safe_inverse(det * NdotI) * scale_per_sample) * vec2(dot(v1, I), dot(v2, I));
+  vec2 d = -safe_inverse(NdotI) * scale * (dcodx * s.x + dcody * s.y);
+  float r = hash_vec2_to_float(co.xy) - 0.5;
+  float e = (midlevel - 1.0) * samples_count + r;
+
+  float inverse_samples_count = 1.0 / samples_count;
+  vec3 step = inverse_samples_count * vec3(d, -1.0);
+  vec3 uvw = vec3(co.xy - (1 - midlevel) * d, 1.0) + r * step;
+
+  ivec2 heightmap_size = textureSize(heightmap, 0);
+  vec2 dtcdx = dcodx * heightmap_size;
+  vec2 dtcdy = dcody * heightmap_size;
+  float lod = max(0.0, 0.5 * log2(min(dot(dtcdx, dtcdx), dot(dtcdy, dtcdy))));
+
+  vec3 step_W = dWdx * ss.x + dWdy * ss.y;
+  vec3 W = WorldPos + e * step_W;
+
+  /* linear search */
+  for (float i = 0.0; i < samples_count; i++) {
+    vec3 next = uvw + step;
+    vec3 next_W = W + step_W;
+
+    float h = textureLod(heightmap, next.xy, lod).x;
+    if (h < next.z) {
+      uvw = next;
+      W = next_W;
+    }
+    else {
+      break;
+    }
+  }
+
+  /* binary search */
+  for (int i = 0; i < 8; i++) {
+    step *= 0.5;
+    step_W *= 0.5;
+    vec3 next = uvw + step;
+    vec3 next_W = W + step_W;
+    float h = textureLod(heightmap, next.xy, lod).x;
+    if (h < next.z) {
+      uvw = next;
+      W = next_W;
+    }
+  }
+
+  out_co = uvw;
+  out_worldposition = W;
+  vec2 offset = uvw.xy - co.xy;
+
+  float vx = f * (dcody.y * offset.x - dcody.x * offset.y);
+  float vy = f * (-dcodx.y * offset.x + dcodx.x * offset.y);
+  float vz = scale * (uvw.z - midlevel);
+
+  float Xz = dPdx.z - dot(dPdx, N) * N.z;
+  float Yz = dPdy.z - dot(dPdy, N) * N.z;
+  depth = -(vx * Xz + vy * Yz + vz * N.z);
+
+  float radius = 1.0 / max(heightmap_size.x, heightmap_size.y);
+  float dHdu = textureLod(heightmap, uvw.xy + vec2(radius, 0.0), lod).x -
+               textureLod(heightmap, uvw.xy - vec2(radius, 0.0), lod).x;
+  float dHdv = textureLod(heightmap, uvw.xy + vec2(0.0, radius), lod).x -
+               textureLod(heightmap, uvw.xy - vec2(0.0, radius), lod).x;
+
+  vec3 dPdu = f * (dcody.y * dPdx - dcodx.y * dPdy);
+  vec3 dPdv = f * (dcodx.x * dPdy - dcody.x * dPdx);
+  vec3 r1 = cross(dPdv, N);
+  vec3 r2 = cross(N, dPdu);
+
+  float dr = dot(dPdu, r1) * radius * 2.0;
+  vec3 surfgrad = dHdu * r1 + dHdv * r2;
+  normal = mat3(inverse(view)) * normalize(abs(dr) * N - (sign(dr) * scale) * surfgrad);
+
+  if (projection[3][3] == 0.0 && NdotI > -vz)
+    discard;
+}
+
+// ----------------------------------------------------------------------------
 
 void main()
 {
-    vec2 pTexCoords;
+    vec2 pTexCoords = TexCoords;
+    vec3 pNormal = Normal;
+    vec3 pWorldPos = WorldPos;
+
     if (material.heightMap) {
-        vec3 viewDir = normalize(TangentViewerPos - TangentFragPos);
-        pTexCoords = ParallaxMapping(TexCoords, viewDir);
-        // TODO:
-        // if(pTexCoords.x > 1.0 || pTexCoords.y > 1.0 || pTexCoords.x < 0.0 || pTexCoords.y < 0.0)
-        //     discard;
-    } else {
-        pTexCoords = TexCoords;
+        vec3 out_co;
+        float depth_offset;
+
+        // TODO: variable
+        node_parallax_occlusion_map(
+            vec3(TexCoords, 0.0),   // vec3 co,
+            0.5,                    // float midlevel,
+            0.05,                   // float scale,
+            16.0,                   // float samples_count,
+            1.0,                    // float scale_mode,
+            ViewPos,                // vec3 viewPosition,
+            ViewNormal,             // vec3 viewNormal,
+            texture_height1,        // sampler2D heightmap,
+            out_co,                 // out vec3 out_co,
+            depth_offset,           // out float depth,
+            pNormal,                // out vec3 normal
+            pWorldPos               // out vec3 out_worldposition
+        );
+
+        pTexCoords = out_co.xy;
+        
+        // TODO: disable option
+        // TODO: use depth_offset
+        vec4 v_clip_coord = (projection * view * vec4(pWorldPos, 1));
+        float f_ndc_depth = v_clip_coord.z / v_clip_coord.w;
+        gl_FragDepth = (1.0 - 0.0) * 0.5 * f_ndc_depth + (1.0 + 0.0) * 0.5;
     }
 
     // TODO: preprocessor texture read - material properties
@@ -206,18 +361,25 @@ void main()
         }
     }
 
+    // TODO: pom view space position and normal?
     vec3 N;
     vec3 ViewN;
     if (material.normalMap) {
         vec3 tangentNormal = texture(texture_normal1, pTexCoords).xyz * 2.0 - 1.0;
+        // TODO: pom tangent and bitangent?
+        mat3 TBN = mat3(
+            Tangent,
+            Bitangent,
+            pNormal
+        );
         N = normalize(TBN * tangentNormal);
         ViewN = normalize(ViewTBN * tangentNormal);
     } else {
-        N = normalize(Normal);
+        N = normalize(pNormal);
         ViewN = normalize(ViewNormal);
     }
 
-    gPosition = WorldPos;
+    gPosition = pWorldPos;
     gNormalShadow = vec4(N, getVisibility());
     gAlbedo = albedo;
     gAoRoughMetal.r = ao;

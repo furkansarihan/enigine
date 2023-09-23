@@ -5,11 +5,10 @@ in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 ModelPos;
 in vec3 Normal;
+in vec3 Tangent;
+in vec3 Bitangent;
 
-in mat3 TBN;
 in mat3 ViewTBN;
-in vec3 TangentViewerPos;
-in vec3 TangentFragPos;
 
 in mat4 TransformedModel;
 uniform mat4 view;
@@ -329,6 +328,11 @@ void main()
 // #else
     else {
         vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
+        mat3 TBN = mat3(
+            Tangent,
+            Bitangent,
+            Normal
+        );
         N = normalize(TBN * tangentNormal);
     }
 
