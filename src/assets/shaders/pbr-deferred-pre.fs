@@ -21,12 +21,14 @@ in mat3 ViewTBN;
 in mat4 TransformedModel;
 
 struct Material {
-    vec3 albedo;
     float ao;
     float roughnessFactor;
     float metallicFactor;
-    float opacity;
     float transmission_factor;
+    float parallaxMapMidLevel;
+    float parallaxMapScale;
+    float parallaxMapSampleCount;
+    float parallaxMapScaleMode;
     //
     bool normalMap;
     bool heightMap;
@@ -308,14 +310,14 @@ void main()
 
         // TODO: variable
         node_parallax_occlusion_map(
-            vec3(TexCoords, 0.0),   // vec3 co,
-            0.5,                    // float midlevel,
-            0.05,                   // float scale,
-            16.0,                   // float samples_count,
-            1.0,                    // float scale_mode,
-            ViewPos,                // vec3 viewPosition,
-            ViewNormal,             // vec3 viewNormal,
-            texture_height1,        // sampler2D heightmap,
+            vec3(TexCoords, 0.0),
+            material.parallaxMapMidLevel,
+            material.parallaxMapScale,
+            material.parallaxMapSampleCount,
+            material.parallaxMapScaleMode,
+            ViewPos,
+            ViewNormal,
+            texture_height1,
             out_co,                 // out vec3 out_co,
             depth_offset,           // out float depth,
             pNormal,                // out vec3 normal
@@ -329,6 +331,9 @@ void main()
         vec4 v_clip_coord = (projection * view * vec4(pWorldPos, 1));
         float f_ndc_depth = v_clip_coord.z / v_clip_coord.w;
         gl_FragDepth = (1.0 - 0.0) * 0.5 * f_ndc_depth + (1.0 + 0.0) * 0.5;
+    } else {
+        // TODO: when exactly should set?
+        gl_FragDepth = gl_FragCoord.z;
     }
 
     // TODO: preprocessor texture read - material properties

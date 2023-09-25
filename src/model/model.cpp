@@ -230,6 +230,15 @@ Mesh *Model::processMesh(aiMesh *mesh)
     std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
+    // default properties
+    if (!heightMaps.empty())
+    {
+        properties.push_back(MaterialProperty("parallaxMapMidLevel", aiPTI_Float, "0.5"));
+        properties.push_back(MaterialProperty("parallaxMapScale", aiPTI_Float, "0.05"));
+        properties.push_back(MaterialProperty("parallaxMapSampleCount", aiPTI_Float, "16.0"));
+        properties.push_back(MaterialProperty("parallaxMapScaleMode", aiPTI_Float, "1.0"));
+    }
+
     // animation
     extractBoneWeightForVertices(vertices, mesh);
 

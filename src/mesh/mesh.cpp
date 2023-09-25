@@ -182,6 +182,7 @@ void Mesh::setupMesh()
     glBindVertexArray(0);
 }
 
+// TODO: updateProperty
 void Mesh::updateTransmission()
 {
     for (int i = 0; i < material.properties.size(); i++)
@@ -195,6 +196,19 @@ void Mesh::updateTransmission()
                 opaque = false;
                 return;
             }
+        }
+    }
+}
+
+// TODO: O(1) - enum name - float value
+void Material::updateProperty(const std::string &name, const std::string &value)
+{
+    for (auto &property : properties)
+    {
+        if (property.name == name)
+        {
+            property.value = value;
+            return;
         }
     }
 }

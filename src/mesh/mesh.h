@@ -41,14 +41,17 @@ struct MaterialProperty
         : name(name), type(type), value(value) {}
 };
 
-struct Material
+class Material
 {
+public:
     std::string name;
     std::vector<Texture> textures;
     std::vector<MaterialProperty> properties;
 
     Material(const std::string &name, std::vector<Texture> &textures, std::vector<MaterialProperty> &properties)
         : name(name), textures(textures), properties(properties) {}
+
+    void updateProperty(const std::string &name, const std::string &value);
 };
 
 class Mesh
