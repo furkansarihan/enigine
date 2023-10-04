@@ -20,6 +20,7 @@
 #include "../camera/camera.h"
 #include "../model/model.h"
 #include "../pbr_manager/pbr_manager.h"
+#include "../render_manager/render_manager.h"
 
 struct HeightCell
 {
@@ -29,12 +30,15 @@ struct HeightCell
 };
 
 // TODO: naming variables
-class Terrain
+class Terrain : public Renderable
 {
 public:
-    Terrain(ResourceManager *m_resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR);
+    Terrain(RenderManager *renderManager, ResourceManager *resourceManager, ShaderManager *shaderManager,
+            PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight,
+            float scaleHoriz, bool PBR);
     ~Terrain();
 
+    RenderManager *m_renderManager;
     ResourceManager *m_resourceManager;
     ShaderManager *m_shaderManager;
     PhysicsWorld *m_physicsWorld;
@@ -47,8 +51,12 @@ public:
     float m_minHeight, m_maxHeight, m_scaleHoriz;
     bool m_PBR;
 
+    Shader terrainPBRShader;
+    Shader terrainBasicShader;
+    Shader terrainDepthShader;
+
     int level = 9;
-    glm::vec2 worldOrigin = glm::vec2(0.0f, 0.0f);
+    glm::vec2 m_worldOrigin = glm::vec2(0.0f, 0.0f);
     bool showCascade = false;
     bool wireframe = false;
     bool m_debugCulling = false;
@@ -80,6 +88,9 @@ public:
     int m_verticalCellCount;
     float m_cellScaleMult = 1.0f;
     bool m_drawHeightCells = false;
+
+    void renderDepth();
+    void renderColor();
 
     void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
     void drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,

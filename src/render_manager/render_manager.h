@@ -11,7 +11,6 @@
 
 #include "../model/model.h"
 #include "../animation/animator.h"
-#include "../terrain/terrain.h"
 #include "../transform/transform.h"
 #include "../shader_manager/shader_manager.h"
 #include "../pbr_manager/pbr_manager.h"
@@ -58,20 +57,6 @@ public:
 
     void setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
     void setModelMatrix(glm::mat4 modelMatrix);
-};
-
-// TODO: remove
-class RenderTerrainSource
-{
-public:
-    ShaderType type;
-    eTransform transform;
-    Terrain *terrain;
-
-    RenderTerrainSource(ShaderType type, eTransform transform, Terrain *terrain)
-        : type(type),
-          transform(transform),
-          terrain(terrain){};
 };
 
 // TODO: remove?
@@ -183,7 +168,8 @@ class Renderable
 public:
     virtual ~Renderable() {}
 
-    virtual void render() = 0;
+    virtual void renderDepth() = 0;
+    virtual void renderColor() = 0;
 };
 
 class RenderManager
@@ -219,8 +205,6 @@ public:
 
     std::vector<RenderSource *> m_pbrSources;
     std::vector<RenderSource *> m_linkSources;
-    std::vector<RenderTerrainSource *> m_pbrTerrainSources;
-    std::vector<RenderTerrainSource *> m_basicTerrainSources;
     std::vector<RenderParticleSource *> m_particleSources;
 
     std::vector<LightSource> m_pointLights;
@@ -235,10 +219,6 @@ public:
     Shader lightVolume;
     Shader lightVolumeDebug;
     Shader shaderSSAO, shaderSSAOBlur;
-
-    Shader terrainPBRShader;
-    Shader terrainBasicShader;
-    Shader terrainDepthShader;
 
     // Skybox
     Shader skyboxShader;
@@ -264,6 +244,11 @@ public:
     glm::mat4 m_cullView;
     glm::mat4 m_cullViewProjection;
     glm::vec3 m_cullViewPos;
+
+    // updated for each cascade
+    glm::mat4 m_depthP;
+    glm::mat4 m_depthVP;
+    glm::vec3 m_depthNearPlaneCenter;
 
     // TODO: light source
     glm::vec3 m_sunColor = glm::vec3(3.5f, 4.1f, 4.5f);
@@ -296,12 +281,11 @@ public:
 
     void addSource(RenderSource *source);
     void removeSource(RenderSource *source);
-    RenderTerrainSource *addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain);
     void addParticleSource(RenderParticleSource *source);
     void addLight(LightSource light);
 
-    void addCustomRenderable(Renderable *renderable);
-    void removeCustomRenderable(Renderable *renderable);
+    void addRenderable(Renderable *renderable);
+    void removeRenderable(Renderable *renderable);
 
     glm::vec3 getWorldOrigin();
     void setWorldOrigin(glm::vec3 newWorldOrigin);

@@ -23,11 +23,6 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&shaderSSAO, "assets/shaders/ssao.vs", "assets/shaders/ssao.fs"));
     shaderManager->addShader(ShaderDynamic(&shaderSSAOBlur, "assets/shaders/ssao.vs", "assets/shaders/ssao-blur.fs"));
 
-    // terrain
-    shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-pbr-deferred-pre.fs"));
-    shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "assets/shaders/terrain-shadow.vs", "assets/shaders/depth-shader.fs"));
-
     shaderManager->addShader(ShaderDynamic(&skyboxShader, "assets/shaders/cubemap.vs", "assets/shaders/skybox.fs"));
     shaderManager->addShader(ShaderDynamic(&postProcessShader, "assets/shaders/post-process.vs", "assets/shaders/post-process.fs"));
 
@@ -56,8 +51,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     std::vector<unsigned int> shaderIds;
     shaderIds.push_back(pbrDeferredPre.id);
     shaderIds.push_back(pbrDeferredPreAnim.id);
-    shaderIds.push_back(terrainPBRShader.id);
-    shaderIds.push_back(terrainBasicShader.id);
+    // shaderIds.push_back(terrainPBRShader.id);
+    // shaderIds.push_back(terrainBasicShader.id);
 
     m_shadowManager = new ShadowManager(m_camera, shaderIds);
     m_shadowmapManager = new ShadowmapManager(m_shadowManager->m_splitCount, 1024);
@@ -251,8 +246,8 @@ void RenderManager::renderDepth()
     {
         int frustumIndex = i;
         m_shadowmapManager->bindTextureArray(i);
-        glm::mat4 depthP = m_shadowManager->m_depthPMatrices[i];
-        glm::mat4 depthVP = depthP * m_depthViewMatrix;
+        m_depthP = m_shadowManager->m_depthPMatrices[i];
+        m_depthVP = m_depthP * m_depthViewMatrix;
 
         // Draw each terrain
         glm::vec3 nearPlaneEdges[4];
@@ -262,16 +257,14 @@ void RenderManager::renderDepth()
             glm::vec3 worldPoint3 = glm::vec3(worldPoint) / worldPoint.w;
             nearPlaneEdges[j] = worldPoint3;
         }
-        glm::vec3 nearPlaneCenter = (nearPlaneEdges[0] + nearPlaneEdges[1] + nearPlaneEdges[2] + nearPlaneEdges[3]) / 4.0f;
+        m_depthNearPlaneCenter = (nearPlaneEdges[0] + nearPlaneEdges[1] + nearPlaneEdges[2] + nearPlaneEdges[3]) / 4.0f;
 
-        // TODO: terrain only cascade - covers all area - last one
-        for (int i = 0; i < m_pbrTerrainSources.size(); i++)
+        // render each renderable
+        for (int i = 0; i < m_renderables.size(); i++)
         {
-            m_pbrTerrainSources[i]->terrain->worldOrigin = glm::vec2(m_worldOrigin.x, m_worldOrigin.z);
-            m_pbrTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
+            Renderable *renderable = m_renderables[i];
+            renderable->renderDepth();
         }
-        for (int i = 0; i < m_basicTerrainSources.size(); i++)
-            m_basicTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
 
         // Draw objects
         glEnable(GL_CULL_FACE);
@@ -290,7 +283,7 @@ void RenderManager::renderDepth()
                 continue;
 
             depthShader.use();
-            depthShader.setMat4("MVP", depthVP * m_originTransform * source->transform.getModelMatrix());
+            depthShader.setMat4("MVP", m_depthVP * m_originTransform * source->transform.getModelMatrix());
             source->model->draw(depthShader, true);
         }
         for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
@@ -303,7 +296,7 @@ void RenderManager::renderDepth()
             if (source->animator)
             {
                 depthShaderAnim.use();
-                depthShaderAnim.setMat4("projection", depthP);
+                depthShaderAnim.setMat4("projection", m_depthP);
                 depthShaderAnim.setMat4("view", m_depthViewMatrix);
 
                 // TODO: set as block
@@ -333,28 +326,11 @@ void RenderManager::renderOpaque()
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // draw each terrain
-    // TODO: m_basicTerrainSources
-    // TODO: opaque render source - own draw function
-    for (int i = 0; i < m_pbrTerrainSources.size(); i++)
-    {
-        RenderTerrainSource *source = m_pbrTerrainSources[i];
-
-        source->terrain->drawColor(m_pbrManager, terrainPBRShader, m_shadowManager->m_lightPos,
-                                   m_sunColor * m_sunIntensity, m_lightPower,
-                                   m_view, m_projection, m_camera->position,
-                                   m_cullView, m_cullProjection, m_cullViewPos,
-                                   m_shadowmapManager->m_textureArray,
-                                   m_camera->position, m_camera->front,
-                                   m_frustumDistances, m_shadowBias,
-                                   m_camera->projectionMode == ProjectionMode::Ortho);
-    }
-
     // render each renderable
     for (int i = 0; i < m_renderables.size(); i++)
     {
         Renderable *renderable = m_renderables[i];
-        renderable->render();
+        renderable->renderColor();
     }
 
     glEnable(GL_CULL_FACE);
@@ -875,29 +851,17 @@ void RenderManager::removeSource(RenderSource *source)
     }
 }
 
-RenderTerrainSource *RenderManager::addTerrainSource(ShaderType type, eTransform transform, Terrain *terrain)
-{
-    RenderTerrainSource *source = new RenderTerrainSource(type, transform, terrain);
-
-    if (type == ShaderType::pbr)
-        m_pbrTerrainSources.push_back(source);
-    else
-        m_basicTerrainSources.push_back(source);
-
-    return source;
-}
-
 void RenderManager::addParticleSource(RenderParticleSource *source)
 {
     m_particleSources.push_back(source);
 }
 
-void RenderManager::addCustomRenderable(Renderable *renderable)
+void RenderManager::addRenderable(Renderable *renderable)
 {
     m_renderables.push_back(renderable);
 }
 
-void RenderManager::removeCustomRenderable(Renderable *renderable)
+void RenderManager::removeRenderable(Renderable *renderable)
 {
     auto it = std::find(m_renderables.begin(), m_renderables.end(), renderable);
     if (it != m_renderables.end())

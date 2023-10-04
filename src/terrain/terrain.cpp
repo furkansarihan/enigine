@@ -3,8 +3,11 @@
 #include "../external/stb_image/stb_image.h"
 
 // TODO: change asset path at runtime
-Terrain::Terrain(ResourceManager *resourceManager, ShaderManager *shaderManager, PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight, float scaleHoriz, bool PBR)
-    : m_resourceManager(resourceManager),
+Terrain::Terrain(RenderManager *renderManager, ResourceManager *resourceManager, ShaderManager *shaderManager,
+                 PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight,
+                 float scaleHoriz, bool PBR)
+    : m_renderManager(renderManager),
+      m_resourceManager(resourceManager),
       m_shaderManager(shaderManager),
       m_physicsWorld(physicsWorld),
       m_heightmapFilename(heightmapFilename),
@@ -148,6 +151,32 @@ void Terrain::init()
 
     m_shaderManager->addShader(ShaderDynamic(&m_grassShader, "assets/shaders/grass.vs", "assets/shaders/grass.fs"));
     m_shaderManager->addShader(ShaderDynamic(&m_stoneShader, "assets/shaders/stone.vs", "assets/shaders/stone.fs"));
+
+    m_shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-pbr-deferred-pre.fs"));
+    m_shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-shader.fs"));
+    m_shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "assets/shaders/terrain-shadow.vs", "assets/shaders/depth-shader.fs"));
+}
+
+void Terrain::renderDepth()
+{
+    glm::vec3 worldOrigin = m_renderManager->getWorldOrigin();
+    m_worldOrigin = glm::vec2(worldOrigin.x, worldOrigin.z);
+
+    // TODO: terrain only visible cascade - covers all area - last one
+    drawDepth(terrainDepthShader, m_renderManager->m_depthViewMatrix, m_renderManager->m_depthP,
+              m_renderManager->m_depthNearPlaneCenter);
+}
+
+void Terrain::renderColor()
+{
+    drawColor(m_renderManager->m_pbrManager, terrainPBRShader, m_renderManager->m_shadowManager->m_lightPos,
+              m_renderManager->m_sunColor * m_renderManager->m_sunIntensity, m_renderManager->m_lightPower,
+              m_renderManager->m_view, m_renderManager->m_projection, m_renderManager->m_camera->position,
+              m_renderManager->m_cullView, m_renderManager->m_cullProjection, m_renderManager->m_cullViewPos,
+              m_renderManager->m_shadowmapManager->m_textureArray,
+              m_renderManager->m_camera->position, m_renderManager->m_camera->front,
+              m_renderManager->m_frustumDistances, m_renderManager->m_shadowBias,
+              m_renderManager->m_camera->projectionMode == ProjectionMode::Ortho);
 }
 
 // https://stackoverflow.com/a/9194117/11601515
@@ -346,7 +375,7 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     terrainShader.setVec3("lightDirection", lightPosition);
     terrainShader.setVec3("lightColor", lightColor);
     terrainShader.setFloat("lightPower", lightPower);
-    terrainShader.setVec2("worldOrigin", worldOrigin);
+    terrainShader.setVec2("worldOrigin", m_worldOrigin);
     terrainShader.setVec2("terrainSize", glm::vec2(width, height));
     terrainShader.setFloat("ambientMult", ambientMult);
     terrainShader.setFloat("diffuseMult", diffuseMult);
@@ -435,7 +464,7 @@ void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projecti
     terrainShadow.setFloat("scaleHoriz", m_scaleHoriz);
     terrainShadow.setFloat("minHeight", m_minHeight);
     terrainShadow.setFloat("maxHeight", m_maxHeight);
-    terrainShadow.setVec2("worldOrigin", worldOrigin);
+    terrainShadow.setVec2("worldOrigin", m_worldOrigin);
     terrainShadow.setVec2("terrainSize", glm::vec2(width, height));
 
     terrainShadow.setMat4("worldViewProjMatrix", projection * view);
@@ -451,7 +480,7 @@ void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projecti
 
 void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
 {
-    glm::vec3 vPos = viewPos - glm::vec3(worldOrigin.x, 0.f, worldOrigin.y);
+    glm::vec3 vPos = viewPos - glm::vec3(m_worldOrigin.x, 0.f, m_worldOrigin.y);
     int m = resolution;
 
     // for each level
@@ -708,7 +737,7 @@ void Terrain::drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos, Shad
     instanceShader.setVec3("grassColorFactor", grassColorFactor);
     instanceShader.setFloat("windIntensity", m_windIntensity);
     instanceShader.setFloat("mult", mult);
-    instanceShader.setVec2("worldOrigin", worldOrigin);
+    instanceShader.setVec2("worldOrigin", m_worldOrigin);
 
     // TODO: texture unit based on texture count for instanced model
     glActiveTexture(GL_TEXTURE0 + 1);

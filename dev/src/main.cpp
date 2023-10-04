@@ -57,10 +57,12 @@ int main()
                                  .setModel(&tower)
                                  .build());
 
-    Terrain terrain(resourceManager, shaderManager, physicsWorld, "/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
+    Terrain terrain(renderManager, resourceManager, shaderManager, physicsWorld, "/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
     // TODO: update
     // terrain.m_playerPos = character.m_position;
-    renderManager->addTerrainSource(ShaderType::pbr, eTransform(), &terrain);
+    renderManager->addRenderable(&terrain);
 
     enigine.start();
+
+    return 0;
 }
