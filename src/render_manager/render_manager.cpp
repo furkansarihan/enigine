@@ -6,7 +6,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
       cube(cube),
       quad(quad),
       sphere(sphere),
-      quad_vao(quad_vao)
+      quad_vao(quad_vao),
+      m_worldOrigin(glm::vec3(0.f))
 {
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "assets/shaders/pbr.vs", "assets/shaders/pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "assets/shaders/anim.vs", "assets/shaders/pbr-deferred-pre.fs"));
@@ -68,6 +69,7 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     m_bloomManager = new BloomManager(&downsampleShader, &upsampleShader, quad_vao);
 
     setupLights();
+    setWorldOrigin(m_worldOrigin);
 }
 
 RenderManager::~RenderManager()
@@ -88,6 +90,21 @@ RenderManager::~RenderManager()
     {
         delete m_particleSources[i];
     }
+}
+
+glm::vec3 RenderManager::getWorldOrigin()
+{
+    return m_worldOrigin;
+}
+
+void RenderManager::setWorldOrigin(glm::vec3 newWorldOrigin)
+{
+    m_worldOrigin = newWorldOrigin;
+    m_originTransform = glm::translate(glm::mat4(1.0f), m_worldOrigin);
+
+    // udpate for culling manager
+    for (int i = 0; i < m_pbrSources.size(); i++)
+        m_cullingManager->updateObject(m_pbrSources[i], m_originTransform * m_pbrSources[i]->transform.getModelMatrix());
 }
 
 void RenderManager::setupLights()
@@ -161,19 +178,19 @@ void RenderManager::setupFrame(GLFWwindow *window)
     // update view and projection matrix
     glfwGetFramebufferSize(window, &m_screenW, &m_screenH);
     m_projection = m_camera->getProjectionMatrix((float)m_screenW, (float)m_screenH);
-    m_view = m_camera->getViewMatrix();
+    m_view = m_camera->getViewMatrix(m_worldOrigin);
     m_viewProjection = m_projection * m_view;
 
     m_cullProjection = m_projection;
     m_cullView = m_view;
     m_cullViewProjection = m_viewProjection;
-    m_cullViewPos = m_camera->position;
+    m_cullViewPos = m_camera->position + m_worldOrigin;
     if (m_debugCulling)
     {
         m_cullProjection = m_debugCamera->getProjectionMatrix((float)m_screenW, (float)m_screenH);
-        m_cullView = m_debugCamera->getViewMatrix();
+        m_cullView = m_debugCamera->getViewMatrix(m_worldOrigin);
         m_cullViewProjection = m_cullProjection * m_cullView;
-        m_cullViewPos = m_debugCamera->position;
+        m_cullViewPos = m_debugCamera->position + m_worldOrigin;
     }
     else
     {
@@ -188,7 +205,7 @@ void RenderManager::setupFrame(GLFWwindow *window)
         m_shadowManager->m_camera = m_debugCamera;
     else
         m_shadowManager->m_camera = m_camera;
-    m_shadowManager->setupFrustum((float)m_screenW, (float)m_screenH, m_cullProjection);
+    m_shadowManager->setupFrustum((float)m_screenW, (float)m_screenH, m_cullProjection, m_worldOrigin);
     m_depthViewMatrix = m_shadowManager->getDepthViewMatrix();
     m_inverseDepthViewMatrix = glm::inverse(m_depthViewMatrix);
 
@@ -249,7 +266,10 @@ void RenderManager::renderDepth()
 
         // TODO: terrain only cascade - covers all area - last one
         for (int i = 0; i < m_pbrTerrainSources.size(); i++)
+        {
+            m_pbrTerrainSources[i]->terrain->worldOrigin = glm::vec2(m_worldOrigin.x, m_worldOrigin.z);
             m_pbrTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
+        }
         for (int i = 0; i < m_basicTerrainSources.size(); i++)
             m_basicTerrainSources[i]->terrain->drawDepth(terrainDepthShader, m_depthViewMatrix, depthP, nearPlaneCenter);
 
@@ -270,7 +290,7 @@ void RenderManager::renderDepth()
                 continue;
 
             depthShader.use();
-            depthShader.setMat4("MVP", depthVP * source->transform.getModelMatrix());
+            depthShader.setMat4("MVP", depthVP * m_originTransform * source->transform.getModelMatrix());
             source->model->draw(depthShader, true);
         }
         for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
@@ -291,7 +311,7 @@ void RenderManager::renderDepth()
                 for (int i = 0; i < transforms.size(); ++i)
                     depthShaderAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 
-                depthShaderAnim.setMat4("model", source->transform.getModelMatrix());
+                depthShaderAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
                 source->model->draw(depthShaderAnim, true);
             }
         }
@@ -358,7 +378,7 @@ void RenderManager::renderOpaque()
     {
         RenderSource *source = m_visiblePbrSources[i];
         pbrDeferredPre.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
-        pbrDeferredPre.setMat4("model", source->transform.getModelMatrix());
+        pbrDeferredPre.setMat4("model", m_originTransform * source->transform.getModelMatrix());
         source->model->draw(pbrDeferredPre, true);
     }
 
@@ -388,7 +408,7 @@ void RenderManager::renderOpaque()
         }
 
         pbrDeferredPreAnim.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
-        pbrDeferredPreAnim.setMat4("model", source->transform.getModelMatrix());
+        pbrDeferredPreAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
         source->model->draw(pbrDeferredPreAnim, true);
     }
 
@@ -476,7 +496,7 @@ void RenderManager::renderDeferredShading()
     // directional light and shadow pass
     pbrDeferredAfter.use();
     pbrDeferredAfter.setMat4("view", m_view);
-    pbrDeferredAfter.setVec3("camPos", m_camera->position);
+    pbrDeferredAfter.setVec3("camPos", m_camera->position + m_worldOrigin);
     pbrDeferredAfter.setVec3("light.direction", m_shadowManager->m_lightPos);
     pbrDeferredAfter.setVec3("light.color", m_sunColor * m_sunIntensity);
     pbrDeferredAfter.setFloat("fogMaxDist", fogMaxDist);
@@ -614,7 +634,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
         pbrDeferredPointLight.use();
         pbrDeferredPointLight.setMat4("projection", m_projection);
         pbrDeferredPointLight.setMat4("view", m_view);
-        pbrDeferredPointLight.setVec3("camPos", m_camera->position);
+        pbrDeferredPointLight.setVec3("camPos", m_camera->position + m_worldOrigin);
         pbrDeferredPointLight.setVec2("screenSize", glm::vec2(m_screenW, m_screenH));
 
         glActiveTexture(GL_TEXTURE0 + 0);
@@ -722,7 +742,7 @@ void RenderManager::renderBlend()
             m_particleSources[i]->particleEngine->m_direction = glm::normalize(glm::mat3(model) * glm::vec3(0.f, 0.f, 1.f));
         }
 
-        m_particleSources[i]->particleEngine->drawParticles(m_particleSources[i]->shader, quad, m_viewProjection);
+        m_particleSources[i]->particleEngine->drawParticles(m_particleSources[i]->shader, quad, m_viewProjection, m_worldOrigin);
     }
 
     glDisable(GL_BLEND);
@@ -747,7 +767,7 @@ void RenderManager::renderTransmission()
     pbrTransmission.use();
     pbrTransmission.setMat4("view", m_view);
     pbrTransmission.setMat4("projection", m_projection);
-    pbrTransmission.setVec3("camPos", m_camera->position);
+    pbrTransmission.setVec3("camPos", m_camera->position + m_worldOrigin);
     pbrTransmission.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrTransmission.setVec3("lightColor", m_sunColor * m_sunIntensity);
     pbrTransmission.setVec3("CamView", m_shadowManager->m_camera->front);
@@ -780,7 +800,7 @@ void RenderManager::renderTransmission()
     {
         RenderSource *source = m_visiblePbrSources[i];
         pbrTransmission.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
-        pbrTransmission.setMat4("model", source->transform.getModelMatrix());
+        pbrTransmission.setMat4("model", m_originTransform * source->transform.getModelMatrix());
         source->model->draw(pbrTransmission, false);
     }
 }
@@ -836,7 +856,7 @@ void RenderManager::addSource(RenderSource *source)
         m_linkSources.push_back(source);
 
     glm::vec3 size = (source->model->aabbMax - source->model->aabbMin) / 2.0f;
-    m_cullingManager->addObject(source, size, source->transform.getModelMatrix());
+    m_cullingManager->addObject(source, size, m_originTransform * source->transform.getModelMatrix());
 }
 
 void RenderManager::removeSource(RenderSource *source)
@@ -905,7 +925,7 @@ void RenderSource::setTransform(glm::vec3 position, glm::quat rotation, glm::vec
     if (!m_renderManager->m_cullingManager)
         return;
 
-    m_renderManager->m_cullingManager->updateObject(this, transform.getModelMatrix());
+    m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * transform.getModelMatrix());
 }
 
 void RenderSource::setModelMatrix(glm::mat4 modelMatrix)
@@ -915,5 +935,5 @@ void RenderSource::setModelMatrix(glm::mat4 modelMatrix)
     if (!m_renderManager->m_cullingManager)
         return;
 
-    m_renderManager->m_cullingManager->updateObject(this, modelMatrix);
+    m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * modelMatrix);
 }

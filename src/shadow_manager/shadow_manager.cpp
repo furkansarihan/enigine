@@ -197,7 +197,7 @@ glm::mat4 ShadowManager::applyCropMatrix(int frustumIndex, glm::mat4 lightView)
     return projection;
 }
 
-void ShadowManager::setupFrustum(float screenWidth, float screenHeight, glm::mat4 projection)
+void ShadowManager::setupFrustum(float screenWidth, float screenHeight, glm::mat4 projection, glm::vec3 worldOrigin)
 {
     m_frustums.clear();
     m_frustumDistances.clear();
@@ -219,7 +219,8 @@ void ShadowManager::setupFrustum(float screenWidth, float screenHeight, glm::mat
 
     for (int i = 0; i < m_splitCount; i++)
     {
-        updateFrustumPoints(m_frustums[i], m_camera->position, m_camera->front);
+        glm::vec3 cameraPosition = m_camera->position + worldOrigin;
+        updateFrustumPoints(m_frustums[i], cameraPosition, m_camera->front);
 
         float dist = 0.5f * (-m_frustums[i].far * projection[2][2] + projection[3][2]) / m_frustums[i].far + 0.5f;
         m_frustumDistances.push_back(dist);

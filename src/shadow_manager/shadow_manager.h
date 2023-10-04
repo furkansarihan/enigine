@@ -62,7 +62,7 @@ public:
     std::vector<glm::mat4> m_depthPMatrices;
 
     glm::mat4 getDepthViewMatrix();
-    void setupFrustum(float screenWidth, float screenHeight, glm::mat4 projection);
+    void setupFrustum(float screenWidth, float screenHeight, glm::mat4 projection, glm::vec3 worldOrigin);
     void setupLightAabb(const std::vector<aabb> &objectAabbs);
 
 private:

@@ -346,7 +346,7 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     terrainShader.setVec3("lightDirection", lightPosition);
     terrainShader.setVec3("lightColor", lightColor);
     terrainShader.setFloat("lightPower", lightPower);
-    terrainShader.setVec2("uvOffset", uvOffset);
+    terrainShader.setVec2("worldOrigin", worldOrigin);
     terrainShader.setVec2("terrainSize", glm::vec2(width, height));
     terrainShader.setFloat("ambientMult", ambientMult);
     terrainShader.setFloat("diffuseMult", diffuseMult);
@@ -435,7 +435,7 @@ void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projecti
     terrainShadow.setFloat("scaleHoriz", m_scaleHoriz);
     terrainShadow.setFloat("minHeight", m_minHeight);
     terrainShadow.setFloat("maxHeight", m_maxHeight);
-    terrainShadow.setVec2("uvOffset", uvOffset);
+    terrainShadow.setVec2("worldOrigin", worldOrigin);
     terrainShadow.setVec2("terrainSize", glm::vec2(width, height));
 
     terrainShadow.setMat4("worldViewProjMatrix", projection * view);
@@ -451,6 +451,7 @@ void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projecti
 
 void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
 {
+    glm::vec3 vPos = viewPos - glm::vec3(worldOrigin.x, 0.f, worldOrigin.y);
     int m = resolution;
 
     // for each level
@@ -460,8 +461,8 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
         // set param for each footprint
         int scale = pow(2, i - 1);
 
-        int X = -1 * (2 * m * scale) + (int)viewPos.x + (int)terrainCenter.x;
-        int Z = -1 * (2 * m * scale) + (int)viewPos.z + (int)terrainCenter.z;
+        int X = -1 * (2 * m * scale) + (int)vPos.x;
+        int Z = -1 * (2 * m * scale) + (int)vPos.z;
 
         int x = roundUp(X, scale * 2);
         int z = roundUp(Z, scale * 2);
@@ -520,7 +521,7 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
         for (int i = 0; i < 12; i++)
         {
             glm::vec2 pos = positions_mxm[i];
-            drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices, viewPos, ortho);
+            drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices, vPos, ortho);
         }
 
         // fine level
@@ -529,7 +530,7 @@ void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)
             for (int i = 12; i < 16; i++)
             {
                 glm::vec2 pos = positions_mxm[i];
-                drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices, viewPos, ortho);
+                drawBlock(terrainShader, vao_mxm, scale, glm::vec2(m, m), pos, mmIndices, vPos, ortho);
             }
 
             // TODO: center
@@ -707,6 +708,7 @@ void Terrain::drawInstance(glm::vec3 grassColorFactor, glm::vec3 playerPos, Shad
     instanceShader.setVec3("grassColorFactor", grassColorFactor);
     instanceShader.setFloat("windIntensity", m_windIntensity);
     instanceShader.setFloat("mult", mult);
+    instanceShader.setVec2("worldOrigin", worldOrigin);
 
     // TODO: texture unit based on texture count for instanced model
     glActiveTexture(GL_TEXTURE0 + 1);

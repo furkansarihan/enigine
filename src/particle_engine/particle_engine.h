@@ -32,7 +32,7 @@ public:
     ParticleEngine(Camera *viewCamera);
     ~ParticleEngine();
     void update(float deltaTime);
-    void drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection);
+    void drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection, glm::vec3 worldOrigin);
 
     // TODO: getAABB
 

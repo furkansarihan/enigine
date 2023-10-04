@@ -12,7 +12,7 @@ uniform vec4 scaleFactor;
 uniform vec4 fineTextureBlockOrigin; 
 uniform vec3 viewerPos;
 uniform vec2 terrainSize;
-uniform vec2 uvOffset;
+uniform vec2 worldOrigin;
 
 // shadowmap
 uniform vec3 lightDirection;
@@ -75,6 +75,7 @@ void main()
     height += minHeight;
 
     vec3 position_worldspace = vec3(worldPos.x, height, worldPos.y);
+    position_worldspace += vec3(worldOrigin.x, 0, worldOrigin.y);
 
     gl_Position = worldViewProjMatrix * vec4(position_worldspace, 1);
 
@@ -82,7 +83,8 @@ void main()
     float y = uv.y * terrainSize.y;
 
     _height = height;
-    _tuv = vec2(x, y) * vec2(0.5, 0.5);
+    _tuv = worldPos * 1 + vec2(0.5) * 1;
+    _tuv += worldOrigin;
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
     Position_worldspace = position_worldspace;

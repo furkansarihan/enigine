@@ -47,9 +47,8 @@ public:
     float m_minHeight, m_maxHeight, m_scaleHoriz;
     bool m_PBR;
 
-    glm::vec3 terrainCenter = glm::vec3(0.0f, 0.0f, 0.0f);
     int level = 9;
-    glm::vec2 uvOffset = glm::vec2(0.0f, 0.0f);
+    glm::vec2 worldOrigin = glm::vec2(0.0f, 0.0f);
     bool showCascade = false;
     bool wireframe = false;
     bool m_debugCulling = false;

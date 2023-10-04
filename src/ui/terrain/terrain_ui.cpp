@@ -24,10 +24,6 @@ void TerrainUI::render()
     ImGui::DragFloat("ambientMult", &m_terrain->ambientMult, 0.01f);
     ImGui::DragFloat("diffuseMult", &m_terrain->diffuseMult, 0.01f);
     ImGui::DragFloat("specularMult", &m_terrain->specularMult, 0.01f);
-    ImGui::DragFloat("terrainCenter-X", &m_terrain->terrainCenter.x, 1.0f);
-    ImGui::DragFloat("terrainCenter-Z", &m_terrain->terrainCenter.z, 1.0);
-    ImGui::DragFloat("uvOffset-X", &m_terrain->uvOffset.x, 0.001f);
-    ImGui::DragFloat("uvOffset-Y", &m_terrain->uvOffset.y, 0.001);
     ImGui::DragInt("grassTileSize", &m_terrain->m_grassTileSize, 1, 0, 128);
     ImGui::DragFloat("grassDensity", &m_terrain->m_grassDensity, 0.01, 0, 10);
     VectorUI::renderVec3("m_grassColorFactor", m_terrain->m_grassColorFactor, 0.01f);

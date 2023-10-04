@@ -209,6 +209,7 @@ public:
     SSAO *m_ssao;
     PostProcess *m_postProcess;
     BloomManager *m_bloomManager;
+    glm::mat4 m_originTransform;
     bool m_debugCulling = false;
     bool m_drawCullingAabb = false;
 
@@ -302,7 +303,13 @@ public:
     void addCustomRenderable(Renderable *renderable);
     void removeCustomRenderable(Renderable *renderable);
 
+    glm::vec3 getWorldOrigin();
+    void setWorldOrigin(glm::vec3 newWorldOrigin);
+
 private:
+    // TODO: chain with camera?
+    glm::vec3 m_worldOrigin;
+
     void setupLights();
     void renderLightVolumes(std::vector<LightSource> &lights, bool camInsideVolume);
     void updateLightBuffer(std::vector<LightSource> &lights);

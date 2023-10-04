@@ -21,6 +21,7 @@ uniform float maxHeight;
 uniform float scaleHoriz;
 uniform float u_time;
 uniform float mult;
+uniform vec2 worldOrigin;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -113,15 +114,16 @@ void main()
 
     vec3 localPos = aPos * vec3(0.2);
 
-    gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
-
     WorldPos = vec3(worldPos.x, height, worldPos.y) + localPos;
+    WorldPos += vec3(worldOrigin.x, 0, worldOrigin.y);
     // TODO: ?
     Normal = aNormal * -1.0;
 
     ViewPos = (view * vec4(WorldPos, 1.0)).xyz;
     // TODO?
     ViewNormal = mat3(transpose(inverse(view))) * aNormal * -1;
+
+    gl_Position = projection * view * vec4(WorldPos, 1);
 
     // normal
     float texelSize = elevationMapSize.x;

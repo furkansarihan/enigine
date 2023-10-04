@@ -73,7 +73,7 @@ void ParticleEngine::emitParticles(float deltaTime)
 }
 
 // TODO: instancing - compute shaders
-void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection)
+void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection, glm::vec3 worldOrigin)
 {
     if (m_particles.empty())
         return;
@@ -83,7 +83,7 @@ void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewPr
     for (int i = 0; i < m_particles.size(); i++)
     {
         glm::mat4 model(1.0f);
-        model = glm::translate(model, m_particles[i].position);
+        model = glm::translate(model, m_particles[i].position + worldOrigin);
 
         // bilboarding
         glm::vec3 camToParticle = glm::normalize(m_particles[i].position - m_viewCamera->position);

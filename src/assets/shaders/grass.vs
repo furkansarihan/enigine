@@ -24,6 +24,7 @@ uniform float u_time;
 uniform float mult;
 uniform float windIntensity;
 uniform vec3 playerPos;
+uniform vec2 worldOrigin;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -134,6 +135,7 @@ void main()
     localPos -= offset * (1 - aTexCoords.y) * 0.5;
 
     WorldPos = vec3(worldPos.x, height, worldPos.y) + localPos;
+    WorldPos += vec3(worldOrigin.x, 0, worldOrigin.y);
     // TODO: ?
     Normal = aNormal * -1.0;
 
@@ -141,7 +143,7 @@ void main()
     // TODO?
     ViewNormal = mat3(transpose(inverse(view))) * aNormal * -1;
 
-    gl_Position = projection * view * vec4(vec3(worldPos.x, height, worldPos.y) + localPos, 1);
+    gl_Position = projection * view * vec4(WorldPos, 1);
     
     // normal
     float texelSize = elevationMapSize.x;
