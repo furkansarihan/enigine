@@ -64,15 +64,18 @@ class RenderParticleSource
 {
 public:
     Shader *shader;
+    Model *model;
     ParticleEngine *particleEngine;
     TransformLink *transformLink = nullptr;
 
-    RenderParticleSource(Shader *shader, ParticleEngine *particleEngine)
+    RenderParticleSource(Shader *shader, Model *model, ParticleEngine *particleEngine)
         : shader(shader),
+          model(model),
           particleEngine(particleEngine){};
 
-    RenderParticleSource(Shader *shader, ParticleEngine *particleEngine, TransformLink *transformLink)
+    RenderParticleSource(Shader *shader, Model *model, ParticleEngine *particleEngine, TransformLink *transformLink)
         : shader(shader),
+          model(model),
           particleEngine(particleEngine),
           transformLink(transformLink){};
 };

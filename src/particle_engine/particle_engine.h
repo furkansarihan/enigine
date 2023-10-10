@@ -20,10 +20,15 @@ struct Particle
     glm::vec3 emitPosition;
     glm::vec3 velocity;
     float duration;
+    float maxDuration;
     float distance;
 
-    Particle(glm::vec3 position, glm::vec3 emitPosition, glm::vec3 velocity, float duration)
-        : position(position), emitPosition(emitPosition), velocity(velocity), duration(duration) {}
+    Particle(glm::vec3 position, glm::vec3 emitPosition, glm::vec3 velocity, float duration, float maxDuration)
+        : position(position),
+          emitPosition(emitPosition),
+          velocity(velocity),
+          duration(duration),
+          maxDuration(maxDuration) {}
 };
 
 class ParticleEngine

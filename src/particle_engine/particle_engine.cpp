@@ -16,8 +16,9 @@ void ParticleEngine::update(float deltaTime)
     updateParticles(deltaTime);
     emitParticles(deltaTime);
 
-    std::sort(m_particles.begin(), m_particles.end(), [](Particle a, Particle b)
-              { return a.distance > b.distance; });
+    // TODO: optional - when?
+    // std::sort(m_particles.begin(), m_particles.end(), [](Particle a, Particle b)
+    //           { return a.distance > b.distance; });
 
     // for (int i = 0; i < m_particles.size(); i++)
     // {
@@ -68,7 +69,7 @@ void ParticleEngine::emitParticles(float deltaTime)
         glm::vec3 randomVector = glm::sphericalRand(1.0f);
         glm::vec3 velocityDirection = glm::normalize(m_direction + m_randomness * randomVector);
 
-        m_particles.push_back(Particle(m_position, m_position, velocityDirection * velocityForce, duration));
+        m_particles.push_back(Particle(m_position, m_position, velocityDirection * velocityForce, duration, duration));
     }
 }
 
@@ -98,6 +99,7 @@ void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewPr
 
         shader->setFloat("emitDistance", glm::distance(m_particles[i].position, m_particles[i].emitPosition));
         shader->setFloat("duration", m_particles[i].duration);
+        shader->setFloat("maxDuration", m_particles[i].maxDuration);
         shader->setMat4("MVP", viewProjection * model);
         quad->draw(*shader);
     }

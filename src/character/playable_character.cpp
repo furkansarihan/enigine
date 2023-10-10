@@ -44,10 +44,10 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     shaderManager->addShader(ShaderDynamic(&m_smokeShader, "assets/shaders/smoke.vs", "assets/shaders/smoke.fs"));
     shaderManager->addShader(ShaderDynamic(&m_muzzleFlashShader, "assets/shaders/muzzle-flash.vs", "assets/shaders/muzzle-flash.fs"));
 
-    m_smokeSource = new RenderParticleSource(&m_smokeShader, m_smokeParticle);
+    m_smokeSource = new RenderParticleSource(&m_smokeShader, renderManager->quad, m_smokeParticle);
     renderManager->addParticleSource(m_smokeSource);
 
-    m_muzzleSource = new RenderParticleSource(&m_muzzleFlashShader, m_muzzleFlash);
+    m_muzzleSource = new RenderParticleSource(&m_muzzleFlashShader, renderManager->quad, m_muzzleFlash);
     renderManager->addParticleSource(m_muzzleSource);
 
     m_pistolModel = resourceManager->getModel("assets/gltf/colt3.glb");

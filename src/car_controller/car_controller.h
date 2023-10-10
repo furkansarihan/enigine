@@ -67,6 +67,7 @@ public:
     ParticleEngine *m_exhausParticle;
     std::vector<ParticleEngine *> m_tireSmokeParticles;
     Models m_models;
+    Model *m_smokeParticleModel;
     Shader m_exhaustShader;
     Shader m_tireSmokeShader;
 

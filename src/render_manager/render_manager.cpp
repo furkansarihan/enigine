@@ -80,11 +80,6 @@ RenderManager::~RenderManager()
             delete m_pbrSources[i]->transformLink;
         delete m_pbrSources[i];
     }
-
-    for (int i = 0; i < m_particleSources.size(); i++)
-    {
-        delete m_particleSources[i];
-    }
 }
 
 glm::vec3 RenderManager::getWorldOrigin()
@@ -704,6 +699,7 @@ void RenderManager::updateLightBuffer(std::vector<LightSource> &lights)
 
 void RenderManager::renderBlend()
 {
+    glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -718,10 +714,12 @@ void RenderManager::renderBlend()
             m_particleSources[i]->particleEngine->m_direction = glm::normalize(glm::mat3(model) * glm::vec3(0.f, 0.f, 1.f));
         }
 
-        m_particleSources[i]->particleEngine->drawParticles(m_particleSources[i]->shader, quad, m_viewProjection, m_worldOrigin);
+        m_particleSources[i]->particleEngine->drawParticles(m_particleSources[i]->shader, m_particleSources[i]->model,
+                                                            m_viewProjection, m_worldOrigin);
     }
 
     glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
 }
 
 void RenderManager::renderTransmission()

@@ -27,7 +27,6 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     m_exhausParticle->m_maxDuration = 2.0f;
     m_exhausParticle->m_particleScale = 0.1f;
 
-    // TODO: smoke textured particles - no particle sorting
     for (int i = 0; i < 4; i++)
     {
         bool front = i < 2;
@@ -36,15 +35,15 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
         particle->m_randomness = 1.f;
         particle->m_minVelocity = front ? 0.5f : 1.f;
         particle->m_maxVelocity = front ? 1.f : 3.f;
-        particle->m_minDuration = 1.f;
-        particle->m_maxDuration = 2.f;
+        particle->m_minDuration = 2.f;
+        particle->m_maxDuration = 3.f;
         particle->m_particleScale = front ? 0.75f : 3.f;
 
         m_tireSmokeParticles.push_back(particle);
     }
 
     shaderManager->addShader(ShaderDynamic(&m_exhaustShader, "assets/shaders/smoke.vs", "assets/shaders/exhaust.fs"));
-    shaderManager->addShader(ShaderDynamic(&m_tireSmokeShader, "assets/shaders/smoke.vs", "assets/shaders/tire_smoke.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_tireSmokeShader, "assets/shaders/tire-smoke.vs", "assets/shaders/tire-smoke.fs"));
 
     // TODO: variable path
     // models
@@ -122,7 +121,7 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     // exhaust
     transform = eTransform(glm::vec3(0.98f, 0.93f, -4.34f), glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
     TransformLinkRigidBody *linkExhaust = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-    m_exhaustSource = new RenderParticleSource(&m_exhaustShader, m_exhausParticle, linkExhaust);
+    m_exhaustSource = new RenderParticleSource(&m_exhaustShader, renderManager->quad, m_exhausParticle, linkExhaust);
     renderManager->addParticleSource(m_exhaustSource);
 
     // tire smoke
@@ -133,11 +132,14 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
         glm::vec3(1.5, wheelGap, -2.5),
         glm::vec3(-1.5, wheelGap, -2.5)};
 
+    m_smokeParticleModel = resourceManager->getModel("assets/car/smoke.obj", false);
+
     for (int i = 0; i < 4; i++)
     {
         transform = eTransform(wheelPos[i], glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
         TransformLinkRigidBody *linkTireSmoke = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-        RenderParticleSource *renderSource = new RenderParticleSource(&m_tireSmokeShader, m_tireSmokeParticles[i], linkTireSmoke);
+        RenderParticleSource *renderSource = new RenderParticleSource(&m_tireSmokeShader, m_smokeParticleModel,
+                                                                      m_tireSmokeParticles[i], linkTireSmoke);
         m_tireSmokeSources.push_back(renderSource);
         renderManager->addParticleSource(renderSource);
     }
@@ -146,6 +148,9 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
 CarController::~CarController()
 {
     delete m_vehicle;
+    delete m_exhausParticle;
+    for (int i = 0; i < 4; i++)
+        delete m_tireSmokeParticles[i];
 }
 
 void CarController::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -244,6 +249,7 @@ void CarController::followCar(float deltaTime)
     m_followCamera->right = glm::cross(m_followCamera->front, m_followCamera->up);
 }
 
+// TODO: fix
 void CarController::updateExhaust(float deltaTime)
 {
     m_exhausParticle->update(deltaTime);
