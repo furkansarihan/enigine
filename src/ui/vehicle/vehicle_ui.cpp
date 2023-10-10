@@ -19,18 +19,14 @@ void VehicleUI::render()
     ImGui::Checkbox("m_followVehicle", &m_cController->m_followVehicle);
     VectorUI::renderVec3("m_followOffset", m_follow.offset, 0.1f);
     ImGui::DragFloat("m_follow.distance", &m_follow.distance, 0.1f);
-    ImGui::DragFloat("m_follow.gapFactor", &m_follow.gapFactor, 0.001f);
-    ImGui::DragFloat("m_follow.gap", &m_follow.gap, 0.001f);
-    ImGui::DragFloat("m_follow.gapTarget", &m_follow.gapTarget, 0.001f);
-    ImGui::DragFloat("m_follow.steeringFactor", &m_follow.steeringFactor, 0.001f);
-    ImGui::DragFloat("m_follow.gapSpeed", &m_follow.gapSpeed, 0.001f);
-    ImGui::DragFloat("m_follow.angleFactor", &m_follow.angleFactor, 0.01f);
-    ImGui::DragFloat("m_follow.angleSpeed", &m_follow.angleSpeed, 0.001f);
-    ImGui::Text("m_follow.angleVelocity: %.3f", m_follow.angleVelocity);
-    ImGui::DragFloat("m_follow.angleVelocitySpeed", &m_follow.angleVelocitySpeed, 0.001f);
-    ImGui::DragFloat("m_follow.moveSpeed", &m_follow.moveSpeed, 0.001f);
-    ImGui::DragFloat("m_follow.moveSpeedRange", &m_follow.moveSpeedRange, 1.f);
-    ImGui::DragFloat("m_follow.angularSpeedRange", &m_follow.angularSpeedRange, 1.f);
+    ImGui::DragFloat("m_follow.stretchMax", &m_follow.stretchMax, 0.001f);
+    ImGui::DragFloat("m_follow.stretch", &m_follow.stretch, 0.001f);
+    ImGui::DragFloat("m_follow.stretchTarget", &m_follow.stretchTarget, 0.001f);
+    ImGui::DragFloat("m_follow.stretchSteeringFactor", &m_follow.stretchSteeringFactor, 0.001f);
+    ImGui::DragFloat("m_follow.stretchSpeed", &m_follow.stretchSpeed, 0.001f);
+    ImGui::DragFloat("m_follow.yOffset", &m_follow.yOffset, 0.01f);
+    ImGui::DragFloat("m_follow.yStretchFactor", &m_follow.yStretchFactor, 0.01f);
+    ImGui::DragFloat("m_follow.angularSpeed", &m_follow.angularSpeed, 0.001f);
     VectorUI::renderVec2("m_safeSize", m_cController->m_safeSize, 0.01f);
     VectorUI::renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
     VectorUI::renderVec3("m_animDoorOffset", m_cController->m_animDoorOffset, 0.01f);
@@ -41,7 +37,15 @@ void VehicleUI::render()
     ImGui::Text("m_speed = %f", m_vehicle->m_speed);
     ImGui::Text("m_vehicle.speedKmHour = %f", m_vehicle->m_vehicle->getCurrentSpeedKmHour());
     ImGui::Text("gEngineForce = %f", m_vehicle->gEngineForce);
+    ImGui::Text("m_frictionSlip = %f", m_vehicle->m_vehicle->getWheelInfo(3).m_frictionSlip);
+    ImGui::Text("m_speedZ = %f", m_vehicle->m_speedZ);
+    ImGui::Text("m_speedRate = %f", m_vehicle->m_speedRate);
+    ImGui::Text("m_speedSteerFactor = %f", m_vehicle->m_speedSteerFactor);
+    glm::vec3 forwardVector = BulletGLM::getGLMVec3(m_vehicle->m_vehicle->getForwardVector());
+    VectorUI::renderVec3("forwardVector", forwardVector, 0.01f);
     if (ImGui::DragFloat("m_wheelFriction", &m_vehicle->m_wheelFriction, 0.1f))
+        updateWheelInfo();
+    if (ImGui::DragFloat("m_driftFriction", &m_vehicle->m_driftFriction, 0.1f))
         updateWheelInfo();
     if (ImGui::DragFloat("m_suspensionStiffness", &m_vehicle->m_suspensionStiffness, 0.1f))
         updateWheelInfo();
@@ -54,12 +58,19 @@ void VehicleUI::render()
     if (ImGui::DragFloat("m_suspensionRestLength", &m_vehicle->m_suspensionRestLength, 0.01f))
         updateWheelInfo();
     ImGui::Separator();
-    ImGui::DragFloat("steeringClamp", &m_vehicle->steeringClamp, 0.1f);
-    ImGui::DragFloat("maxEngineForce", &m_vehicle->maxEngineForce, 2.0f);
-    ImGui::DragFloat("accelerationVelocity", &m_vehicle->accelerationVelocity, 2.0f);
-    ImGui::DragFloat("decreaseVelocity", &m_vehicle->decreaseVelocity, 2.0f);
-    ImGui::DragFloat("breakingVelocity", &m_vehicle->breakingVelocity, 2.0f);
+    ImGui::DragFloat("steeringLimit", &m_vehicle->steeringLimit, 0.1f);
+    ImGui::DragFloat("maxEngineForce", &m_vehicle->maxEngineForce, 100.0f);
+    ImGui::DragFloat("minEngineForce", &m_vehicle->minEngineForce, 100.0f);
+    ImGui::DragFloat("accelerationVelocity", &m_vehicle->accelerationVelocity, 100.0f);
+    ImGui::DragFloat("decreaseVelocity", &m_vehicle->decreaseVelocity, 100.0f);
+    ImGui::DragFloat("breakingVelocity", &m_vehicle->breakingVelocity, 100.0f);
+    ImGui::DragFloat("handBreakingVelocity", &m_vehicle->handBreakingVelocity, 100.0f);
     ImGui::DragFloat("steeringIncrement", &m_vehicle->steeringIncrement, 0.2f);
+    ImGui::DragFloat("m_returnIdleFactor", &m_vehicle->m_returnIdleFactor, 0.2f);
+    ImGui::DragFloat("m_maxSteerSpeed", &m_vehicle->m_maxSteerSpeed, 1.f);
+    ImGui::DragFloat("m_localVelocity.x", &m_vehicle->m_localVelocity.x, 0.2f);
+    ImGui::DragFloat("m_localVelocity.y", &m_vehicle->m_localVelocity.y, 0.2f);
+    ImGui::DragFloat("m_localVelocity.z", &m_vehicle->m_localVelocity.z, 0.2f);
     ImGui::DragFloat("steeringSpeed", &m_vehicle->steeringSpeed, 0.001f);
     for (int i = 0; i < 4; i++)
         VectorUI::renderVec3((std::to_string(i) + "posOffsets").c_str(), m_vehicle->m_doors[i].posOffset, 0.01f);

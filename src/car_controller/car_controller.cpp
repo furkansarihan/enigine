@@ -7,6 +7,17 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     m_vehicle = new Vehicle(physicsWorld, resourceManager, position);
     m_vehicle->m_carChassis->setUserPointer(this);
 
+    m_follow.offset = glm::vec3(0.0f, 2.5f, 0.0f);
+    m_follow.distance = 15.0f;
+    m_follow.stretch = 0.0f;
+    m_follow.stretchTarget = 0.0f;
+    m_follow.stretchMax = 6.f;
+    m_follow.stretchSpeed = 0.75f;
+    m_follow.stretchSteeringFactor = 4.0f;
+    m_follow.yOffset = 0.2f;
+    m_follow.yStretchFactor = 0.1f;
+    m_follow.angularSpeed = 0.05f;
+
     m_exhausParticle = new ParticleEngine(followCamera);
     m_exhausParticle->m_particlesPerSecond = 100.f;
     m_exhausParticle->m_randomness = 0.5f;
@@ -16,7 +27,24 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     m_exhausParticle->m_maxDuration = 2.0f;
     m_exhausParticle->m_particleScale = 0.1f;
 
+    // TODO: smoke textured particles - no particle sorting
+    for (int i = 0; i < 4; i++)
+    {
+        bool front = i < 2;
+        ParticleEngine *particle = new ParticleEngine(followCamera);
+        particle->m_particlesPerSecond = 0.f;
+        particle->m_randomness = 1.f;
+        particle->m_minVelocity = front ? 0.5f : 1.f;
+        particle->m_maxVelocity = front ? 1.f : 3.f;
+        particle->m_minDuration = 1.f;
+        particle->m_maxDuration = 2.f;
+        particle->m_particleScale = front ? 0.75f : 3.f;
+
+        m_tireSmokeParticles.push_back(particle);
+    }
+
     shaderManager->addShader(ShaderDynamic(&m_exhaustShader, "assets/shaders/smoke.vs", "assets/shaders/exhaust.fs"));
+    shaderManager->addShader(ShaderDynamic(&m_tireSmokeShader, "assets/shaders/smoke.vs", "assets/shaders/tire_smoke.fs"));
 
     // TODO: variable path
     // models
@@ -91,16 +119,33 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
         renderManager->addSource(m_doorSources[i]);
     }
 
+    // exhaust
     transform = eTransform(glm::vec3(0.98f, 0.93f, -4.34f), glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
     TransformLinkRigidBody *linkExhaust = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
     m_exhaustSource = new RenderParticleSource(&m_exhaustShader, m_exhausParticle, linkExhaust);
     renderManager->addParticleSource(m_exhaustSource);
+
+    // tire smoke
+    float wheelGap = 0.2f;
+    glm::vec3 wheelPos[4] = {
+        glm::vec3(-1.5, wheelGap, 2.5),
+        glm::vec3(1.5, wheelGap, 2.5),
+        glm::vec3(1.5, wheelGap, -2.5),
+        glm::vec3(-1.5, wheelGap, -2.5)};
+
+    for (int i = 0; i < 4; i++)
+    {
+        transform = eTransform(wheelPos[i], glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
+        TransformLinkRigidBody *linkTireSmoke = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
+        RenderParticleSource *renderSource = new RenderParticleSource(&m_tireSmokeShader, m_tireSmokeParticles[i], linkTireSmoke);
+        m_tireSmokeSources.push_back(renderSource);
+        renderManager->addParticleSource(renderSource);
+    }
 }
 
 CarController::~CarController()
 {
     delete m_vehicle;
-    delete m_exhausParticle;
 }
 
 void CarController::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -137,54 +182,66 @@ void CarController::update(float deltaTime)
         m_vehicle->m_controlState.back = glfwGetKey(m_window, m_keyBack) == GLFW_PRESS;
         m_vehicle->m_controlState.left = glfwGetKey(m_window, m_keyLeft) == GLFW_PRESS;
         m_vehicle->m_controlState.right = glfwGetKey(m_window, m_keyRight) == GLFW_PRESS;
+        m_vehicle->m_controlState.handbreak = glfwGetKey(m_window, m_keySpace) == GLFW_PRESS;
     }
 
     updateExhaust(deltaTime);
-    followCar();
+    for (int i = 0; i < 4; i++)
+        updateTireSmoke(i, deltaTime);
+
+    followCar(deltaTime);
 }
 
-void CarController::followCar()
+void CarController::followCar(float deltaTime)
 {
     if (!m_followVehicle)
         return;
 
-    float speed = m_vehicle->m_speed;
-    float oneOverSpeed = 1.f / (speed + 1.f);
+    glm::vec2 p0(0, 0);
+    glm::vec2 p1(0.75, 0);
+    glm::vec2 p2(0.55, 1);
+    glm::vec2 p3(1, 1);
+    float cubicBlend = CommonUtil::cubicBezier(p0, p1, p2, p3, m_vehicle->m_speedRate).y;
+
     // udpate follow specs
     Follow &follow = m_follow;
-    follow.gapTarget = speed * follow.gapFactor + std::fabs(m_vehicle->gVehicleSteering) * follow.steeringFactor * oneOverSpeed;
-    follow.gap = CommonUtil::lerp(follow.gap, follow.gapTarget, follow.gapSpeed);
+    follow.stretchTarget = follow.stretchMax * cubicBlend;
+    follow.stretchTarget += std::fabs(m_vehicle->gVehicleSteering) * follow.stretchSteeringFactor * (1.f - cubicBlend);
+    float lerpFactor = std::clamp(follow.stretchSpeed * deltaTime, 0.f, 1.f);
+    follow.stretch = CommonUtil::lerp(follow.stretch, follow.stretchTarget, lerpFactor);
+
     m_pos = CommonUtil::positionFromModel(m_vehicle->m_chassisModel);
-    m_followCamera->position = m_pos - m_followCamera->front * glm::vec3(follow.distance + follow.gap) + follow.offset;
+    m_followCamera->position = m_pos - m_followCamera->front * glm::vec3(follow.distance + follow.stretch) + follow.offset;
 
-    if (!m_followCamera->moving)
-    {
-        glm::vec3 frontTarget = BulletGLM::getGLMVec3(m_vehicle->m_vehicle->getForwardVector());
-        // TODO: lower vertical when too fast
-        frontTarget.y -= follow.angleFactor * (speed / follow.angularSpeedRange);
-        frontTarget = glm::normalize(frontTarget);
-        // TODO: slow angular follow while sudden change
-        if (m_vehicle->m_vehicle->getCurrentSpeedKmHour() < 0.f)
-        {
-            frontTarget.x *= -1.f;
-            frontTarget.z *= -1.f;
-        }
-        float dot = glm::abs(glm::dot(m_followCamera->front, frontTarget));
-        if (dot < 0.999f)
-        {
-            float frontFactor = std::max(0.f, std::min(follow.angleSpeed * follow.angleVelocity * follow.move, 1.0f));
-            m_followCamera->front = glm::normalize(glm::slerp(m_followCamera->front, frontTarget, frontFactor));
-            m_followCamera->up = m_followCamera->worldUp;
-            m_followCamera->right = glm::cross(m_followCamera->front, m_followCamera->up);
-        }
-    }
+    if (m_followCamera->moving)
+        return;
 
-    follow.angleVelocityTarget = m_followCamera->moving ? 0.f : 1.f;
-    follow.angleVelocity = CommonUtil::lerp(follow.angleVelocity, follow.angleVelocityTarget, follow.angleVelocitySpeed);
-    follow.angleVelocity = std::max(0.f, std::min(follow.angleVelocity, 1.f));
-    follow.moveTarget = (m_vehicle->m_inAction ? 1.f : 0.f) * (speed / follow.moveSpeedRange);
-    follow.move = CommonUtil::lerp(follow.move, follow.moveTarget, follow.moveSpeed);
-    follow.move = std::max(0.f, std::min(follow.move, 1.f));
+    glm::vec3 xzTarget;
+    xzTarget.x = m_vehicle->m_vehicle->getForwardVector().getX();
+    xzTarget.z = m_vehicle->m_vehicle->getForwardVector().getZ();
+    float yTarget = m_vehicle->m_vehicle->getForwardVector().getY();
+
+    if (m_vehicle->m_vehicle->getCurrentSpeedKmHour() < 0.f)
+        xzTarget *= -1.f;
+
+    // TODO: early exit?
+
+    yTarget -= follow.yOffset;
+    yTarget += follow.yStretchFactor * cubicBlend;
+
+    // TODO: deltaTime
+    float slerpFactor = std::clamp(cubicBlend * follow.angularSpeed, 0.f, 1.f);
+    glm::vec3 xzFront = glm::vec3(m_followCamera->front.x, 0.f, m_followCamera->front.z);
+    glm::vec3 xzResult = glm::slerp(xzFront, xzTarget, slerpFactor);
+
+    m_followCamera->front.x = xzResult.x;
+    m_followCamera->front.z = xzResult.z;
+    m_followCamera->front.y = glm::mix(m_followCamera->front.y, yTarget, slerpFactor);
+
+    m_followCamera->front = glm::normalize(m_followCamera->front);
+
+    m_followCamera->up = m_followCamera->worldUp;
+    m_followCamera->right = glm::cross(m_followCamera->front, m_followCamera->up);
 }
 
 void CarController::updateExhaust(float deltaTime)
@@ -199,6 +256,21 @@ void CarController::updateExhaust(float deltaTime)
         particlesPerSecond = (1.f - m_vehicle->m_speed / maxSpeed) * maxParticlesPerSecond;
 
     m_exhausParticle->m_particlesPerSecond = particlesPerSecond;
+}
+
+// TODO: check if tire on the ground
+void CarController::updateTireSmoke(int index, float deltaTime)
+{
+    bool front = index < 2;
+    ParticleEngine *tireSmoke = m_tireSmokeParticles[index];
+    tireSmoke->update(deltaTime);
+
+    float maxParticlesPerSecond = front ? 5.f : 20.f;
+
+    float lateralMove = std::abs(m_vehicle->m_localVelocity.x);
+    float particlesPerSecond = lateralMove * maxParticlesPerSecond;
+
+    tireSmoke->m_particlesPerSecond = particlesPerSecond;
 }
 
 glm::mat4 CarController::translateOffset(glm::vec3 offset)

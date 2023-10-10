@@ -26,7 +26,7 @@
 
 struct ControlState
 {
-    bool left, right, forward, back;
+    bool left, right, forward, back, handbreak;
 };
 
 enum Door
@@ -90,6 +90,7 @@ public:
     ControlState m_controlState;
 
     float m_wheelFriction;
+    float m_driftFriction;
     float m_suspensionStiffness;
     float m_suspensionDamping;
     float m_suspensionCompression;
@@ -102,13 +103,22 @@ public:
     float accelerationVelocity;
     float decreaseVelocity;
     float breakingVelocity;
+    float handBreakingVelocity;
     float maxEngineForce;
     float minEngineForce;
     float gVehicleSteering;
     float steeringIncrement;
     float steeringSpeed;
-    float steeringClamp;
+    float steeringLimit;
     float wheelRadius;
+
+    glm::vec3 m_velocity;
+    glm::vec3 m_localVelocity;
+    float m_maxSteerSpeed;
+    float m_returnIdleFactor;
+    float m_speedZ;
+    float m_speedRate;
+    float m_speedSteerFactor;
 
     void update(float deltaTime);
     void resetVehicle(btTransform tr);

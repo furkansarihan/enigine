@@ -1,12 +1,14 @@
 #include "vehicle.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 Vehicle::Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, glm::vec3 position)
     : m_physicsWorld(physicsWorld),
       m_resourceManager(resourceManager),
       m_position(position)
 {
-    this->initDefaultValues();
-    this->initVehicle();
+    initDefaultValues();
+    initVehicle();
 }
 
 Vehicle::~Vehicle()
@@ -17,27 +19,28 @@ Vehicle::~Vehicle()
 
 void Vehicle::initDefaultValues()
 {
-    this->gEngineForce = 0.f;
-    this->accelerationVelocity = 6000.f;
-    this->decreaseVelocity = 3000.f;
-    this->breakingVelocity = 250.f;
-
-    this->maxEngineForce = 7000.f;  // this should be engine/velocity dependent
-    this->minEngineForce = -3000.f; // this should be engine/velocity dependent
-
-    this->gVehicleSteering = 0.f;
-    this->steeringSpeed = 0.15f;
-    this->steeringIncrement = 2.f;
-    this->steeringClamp = 0.5f;
-
-    this->wheelRadius = 0.6f;
+    gEngineForce = 0.f;
+    accelerationVelocity = 10000.f;
+    decreaseVelocity = 30000.f;
+    breakingVelocity = 10000.f;
+    handBreakingVelocity = 25000.f;
+    maxEngineForce = 10000.f;
+    minEngineForce = -10000.f;
+    gVehicleSteering = 0.f;
+    steeringSpeed = 0.3f;
+    steeringIncrement = 20.f;
+    steeringLimit = 0.8f;
+    wheelRadius = 0.6f;
+    m_maxSteerSpeed = 80.f;
+    m_returnIdleFactor = 2.f;
 
     // WheelInfo
-    m_wheelFriction = 4000;
+    m_wheelFriction = 5.f;
+    m_driftFriction = 3.f;
     m_suspensionStiffness = 20.f;
-    m_suspensionDamping = 2.3f;
-    m_suspensionCompression = 4.4f;
-    m_rollInfluence = 0.1f;
+    m_suspensionDamping = 3.f;
+    m_suspensionCompression = 0.5f;
+    m_rollInfluence = 0.5f;
     m_suspensionRestLength = 0.75f;
 
     // doors
@@ -284,9 +287,20 @@ void Vehicle::updateDoorAngles(float deltaTime)
     }
 }
 
+glm::vec3 inverseTransformDirection(const glm::mat4 &transformMatrix, const glm::vec3 &direction)
+{
+    glm::mat4 inverseTransformMatrix = glm::affineInverse(transformMatrix);
+    glm::vec4 transformedDir = inverseTransformMatrix * glm::vec4(direction, 0.0f);
+    return glm::vec3(transformedDir.x, transformedDir.y, transformedDir.z);
+}
+
 void Vehicle::update(float deltaTime)
 {
-    m_speed = m_carChassis->getLinearVelocity().length();
+    m_velocity = BulletGLM::getGLMVec3(m_carChassis->getLinearVelocity());
+    glm::mat4 transform;
+    m_carChassis->getWorldTransform().getOpenGLMatrix((float *)&transform);
+    m_localVelocity = inverseTransformDirection(transform, m_velocity);
+    m_speed = std::abs(m_velocity.length());
 
     btTransform chassisTransform;
     m_carChassis->getMotionState()->getWorldTransform(chassisTransform);
@@ -303,40 +317,29 @@ void Vehicle::update(float deltaTime)
 // TODO: steeringIncrement based on vehicle velocity
 void Vehicle::updateSteering(float deltaTime)
 {
-    float steeringDelta = steeringIncrement * deltaTime;
+    m_speedZ = std::abs(m_localVelocity.z);
+    m_speedRate = std::clamp(m_speedZ / m_maxSteerSpeed, 0.f, 1.f);
+    m_speedSteerFactor = CommonUtil::lerp(1.f, 0.2f, m_speedRate);
 
+    float steeringGoal = 0.f;
     if (m_controlState.left)
-    {
-        gVehicleSteering -= steeringDelta;
-        if (gVehicleSteering < -steeringClamp)
-            gVehicleSteering = -steeringClamp;
-    }
+        steeringGoal += steeringLimit;
     if (m_controlState.right)
-    {
-        gVehicleSteering += steeringDelta;
-        if (gVehicleSteering > steeringClamp)
-            gVehicleSteering = steeringClamp;
-    }
+        steeringGoal -= steeringLimit;
+
     if (!m_controlState.left && !m_controlState.right)
     {
-        if (abs(gVehicleSteering) < steeringDelta)
-        {
-            gVehicleSteering = 0;
-        }
-        else if (gVehicleSteering > 0)
-        {
-            gVehicleSteering -= steeringDelta;
-        }
-        else if (gVehicleSteering < 0)
-        {
-            gVehicleSteering += steeringDelta;
-        }
+        steeringGoal = 0.f;
+        m_speedSteerFactor *= m_returnIdleFactor;
     }
 
-    float steer = CommonUtil::lerp(m_vehicle->getSteeringValue(0), -gVehicleSteering, steeringSpeed);
+    float lerpFactor = steeringIncrement * (m_speedRate + 0.5f) * deltaTime;
+    lerpFactor = std::clamp(lerpFactor, 0.f, 1.f);
 
-    m_vehicle->setSteeringValue(steer, 0);
-    m_vehicle->setSteeringValue(steer, 1);
+    gVehicleSteering = CommonUtil::lerp(gVehicleSteering, steeringGoal * m_speedSteerFactor, lerpFactor);
+
+    m_vehicle->setSteeringValue(gVehicleSteering, 0);
+    m_vehicle->setSteeringValue(gVehicleSteering, 1);
 }
 
 // TODO: cubic curve acceleration, transmission
@@ -402,18 +405,37 @@ void Vehicle::updateAcceleration(float deltaTime)
         gEngineForce = minEngineForce;
     }
 
+    // TODO: front bias
     m_vehicle->applyEngineForce(gEngineForce, 0);
     m_vehicle->applyEngineForce(gEngineForce, 1);
 
     if ((gEngineForce > 0.f && m_controlState.back) ||
         (gEngineForce < 0.f && m_controlState.forward))
     {
-        m_vehicle->setBrake(breakingVelocity, 2);
-        m_vehicle->setBrake(breakingVelocity, 3);
+        for (int i = 0; i < 4; i++)
+            m_vehicle->setBrake(breakingVelocity, i);
     }
     else
     {
-        m_vehicle->setBrake(0, 2);
-        m_vehicle->setBrake(0, 3);
+        for (int i = 0; i < 4; i++)
+            m_vehicle->setBrake(0, i);
+    }
+
+    if (m_controlState.handbreak)
+    {
+        m_vehicle->setBrake(handBreakingVelocity, 2);
+        m_vehicle->setBrake(handBreakingVelocity, 3);
+
+        // TODO: better way?
+        float lateralMove = std::max(0.1f, std::abs(m_localVelocity.x));
+        float lateralFactor = std::clamp(1.f / lateralMove, 0.f, 1.f);
+
+        m_vehicle->getWheelInfo(2).m_frictionSlip = m_driftFriction * lateralFactor * m_speedRate;
+        m_vehicle->getWheelInfo(3).m_frictionSlip = m_driftFriction * lateralFactor * m_speedRate;
+    }
+    else
+    {
+        m_vehicle->getWheelInfo(2).m_frictionSlip = m_wheelFriction;
+        m_vehicle->getWheelInfo(3).m_frictionSlip = m_wheelFriction;
     }
 }
