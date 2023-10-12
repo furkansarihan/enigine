@@ -165,45 +165,8 @@ Mesh *Model::processMesh(aiMesh *mesh)
     }
     // process materials
     aiMaterial *material = m_scene->mMaterials[mesh->mMaterialIndex];
-    // diffuse: texture_diffuseN
-    // specular: texture_specularN
-    // normal: texture_normalN
 
     // TODO: merge detection for metal-rough-ao
-
-    // material properties
-    std::vector<MaterialProperty> properties;
-    for (unsigned int i = 0; i < material->mNumProperties; i++)
-    {
-        const aiMaterialProperty *property = material->mProperties[i];
-        std::string propertyName = property->mKey.C_Str();
-        std::string type = propertyName.substr(1, 3);
-        // TODO: check other properties
-        if (type != "mat")
-            continue;
-
-        // TODO: depends on assimp - don't
-        propertyName = propertyName.substr(5);
-        std::replace(propertyName.begin(), propertyName.end(), '.', '_');
-        std::string propertyValue;
-
-        if (property->mType == aiPTI_Float)
-        {
-            float value = *reinterpret_cast<float *>(property->mData);
-            propertyValue = std::to_string(value);
-        }
-        else if (property->mType == aiPTI_Integer)
-        {
-            int value = *reinterpret_cast<int *>(property->mData);
-            propertyValue = std::to_string(value);
-        }
-        else
-        {
-            propertyValue = "unknown-type";
-        }
-
-        properties.push_back(MaterialProperty(propertyName, property->mType, propertyValue));
-    }
 
     // 1. diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
@@ -230,13 +193,42 @@ Mesh *Model::processMesh(aiMesh *mesh)
     std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
-    // default properties
+    Material mat(material->GetName().C_Str(), textures);
+
+    // material properties
+    for (unsigned int i = 0; i < material->mNumProperties; i++)
+    {
+        const aiMaterialProperty *property = material->mProperties[i];
+        std::string propertyName = property->mKey.C_Str();
+
+        // TODO: depends on assimp - don't
+        propertyName = propertyName.substr(5);
+
+        if (propertyName == "diffuse")
+        {
+            mat.albedo = *reinterpret_cast<glm::vec4 *>(property->mData);
+        }
+        else if (propertyName == "roughnessFactor")
+        {
+            mat.roughness = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "metallicFactor")
+        {
+            mat.metallic = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "transmission.factor")
+        {
+            mat.transmission = *reinterpret_cast<float *>(property->mData);
+        }
+    }
+
+    // default parallax map properties
     if (!heightMaps.empty())
     {
-        properties.push_back(MaterialProperty("parallaxMapMidLevel", aiPTI_Float, "0.5"));
-        properties.push_back(MaterialProperty("parallaxMapScale", aiPTI_Float, "0.05"));
-        properties.push_back(MaterialProperty("parallaxMapSampleCount", aiPTI_Float, "16.0"));
-        properties.push_back(MaterialProperty("parallaxMapScaleMode", aiPTI_Float, "1.0"));
+        mat.parallaxMapMidLevel = 0.5;
+        mat.parallaxMapScale = 0.05;
+        mat.parallaxMapSampleCount = 16.0;
+        mat.parallaxMapScaleMode = 1.0;
     }
 
     // animation
@@ -247,7 +239,7 @@ Mesh *Model::processMesh(aiMesh *mesh)
                     indices,
                     AssimpToGLM::getGLMVec3(mesh->mAABB.mMin),
                     AssimpToGLM::getGLMVec3(mesh->mAABB.mMax),
-                    Material(material->GetName().C_Str(), textures, properties));
+                    mat);
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)

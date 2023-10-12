@@ -21,15 +21,18 @@ in mat3 ViewTBN;
 in mat4 TransformedModel;
 
 struct Material {
-    float ao;
-    float roughnessFactor;
-    float metallicFactor;
-    float transmission_factor;
+    vec4 albedo;
+    float roughness;
+    float metallic;
+    float transmission;
+
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;
     float parallaxMapScaleMode;
+
     //
+    bool albedoMap;
     bool normalMap;
     bool heightMap;
     bool aoMap;
@@ -337,8 +340,14 @@ void main()
     }
 
     // TODO: preprocessor texture read - material properties
-    vec3 albedo = texture(texture_diffuse1, pTexCoords).rgb;
-    float metallic, roughness, ao;
+    vec3 albedo;
+    float ao, roughness, metallic;
+
+    if (material.albedoMap) {
+        albedo = texture(texture_diffuse1, pTexCoords).rgb;
+    } else {
+        albedo = material.albedo.xyz;
+    }
 
     // TODO: merge detection
     if (material.aoRoughMetalMap) {
@@ -357,12 +366,12 @@ void main()
         if (material.roughMap) {
             roughness = texture(texture_rough1, pTexCoords).r;
         } else {
-            roughness = material.roughnessFactor;
+            roughness = material.roughness;
         }
         if (material.metalMap) {
             metallic = texture(texture_metal1, pTexCoords).r;
         } else {
-            metallic = material.metallicFactor;
+            metallic = material.metallic;
         }
     }
 

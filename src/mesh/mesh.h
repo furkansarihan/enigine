@@ -31,27 +31,24 @@ struct Texture
     std::string type;
 };
 
-struct MaterialProperty
-{
-    std::string name;
-    int type;
-    std::string value;
-
-    MaterialProperty(const std::string &name, int type, const std::string &value)
-        : name(name), type(type), value(value) {}
-};
-
+// TODO: same instance inside model
 class Material
 {
 public:
     std::string name;
     std::vector<Texture> textures;
-    std::vector<MaterialProperty> properties;
 
-    Material(const std::string &name, std::vector<Texture> &textures, std::vector<MaterialProperty> &properties)
-        : name(name), textures(textures), properties(properties) {}
+    glm::vec4 albedo;
+    float roughness;
+    float metallic;
+    float transmission;
 
-    void updateProperty(const std::string &name, const std::string &value);
+    float parallaxMapMidLevel;
+    float parallaxMapScale;
+    float parallaxMapSampleCount;
+    float parallaxMapScaleMode;
+
+    Material(const std::string &name, std::vector<Texture> &textures);
 };
 
 class Mesh

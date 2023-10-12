@@ -16,33 +16,20 @@ void ResourceUI::render()
 
                 if (ImGui::TreeNode(std::string(mesh.name + ":" + mesh.material.name).c_str()))
                 {
+                    VectorUI::renderVec4("albedo", mesh.material.albedo, 0.1f);
+                    ImGui::DragFloat("metallic", &mesh.material.metallic, 0.1f);
+                    ImGui::DragFloat("roughness", &mesh.material.roughness, 0.1f);
+                    ImGui::DragFloat("transmission", &mesh.material.transmission, 0.1f);
+                    ImGui::DragFloat("parallaxMapMidLevel", &mesh.material.parallaxMapMidLevel, 0.1f);
+                    ImGui::DragFloat("parallaxMapSampleCount", &mesh.material.parallaxMapSampleCount, 0.1f);
+                    ImGui::DragFloat("parallaxMapScale", &mesh.material.parallaxMapScale, 0.1f);
+                    ImGui::DragFloat("parallaxMapScaleMode", &mesh.material.parallaxMapScaleMode, 0.1f);
+
                     ImGui::BeginTable("material_properties_table", 3, ImGuiTableFlags_Borders);
                     ImGui::TableSetupColumn("Name");
                     ImGui::TableSetupColumn("Type");
                     ImGui::TableSetupColumn("Value");
                     ImGui::TableHeadersRow();
-
-                    for (auto &property : mesh.material.properties)
-                    {
-                        ImGui::TableNextRow();
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%s", property.name.c_str());
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%d", property.type);
-                        ImGui::TableNextColumn();
-                        if (property.type == aiPTI_Float)
-                        {
-                            float value = std::stof(property.value);
-                            if (ImGui::DragFloat(property.name.c_str(), &value, 0.1f))
-                                property.value = std::to_string(value);
-                        }
-                        else if (property.type == aiPTI_Integer)
-                        {
-                            int value = std::stoi(property.value);
-                            if (ImGui::DragInt(property.name.c_str(), &value))
-                                property.value = std::to_string(value);
-                        }
-                    }
 
                     for (const auto &texture : mesh.material.textures)
                     {

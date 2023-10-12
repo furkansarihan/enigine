@@ -12,6 +12,20 @@ Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned 
     updateTransmission();
 }
 
+Material::Material(const std::string &name, std::vector<Texture> &textures)
+    : name(name),
+      textures(textures),
+      albedo(glm::vec4(0.f)),
+      metallic(0.f),
+      roughness(0.f),
+      transmission(0.f),
+      parallaxMapMidLevel(0.f),
+      parallaxMapScale(0.f),
+      parallaxMapSampleCount(0.f),
+      parallaxMapScaleMode(0.f)
+{
+}
+
 Mesh::~Mesh()
 {
     glDeleteVertexArrays(1, &VAO);
@@ -83,6 +97,7 @@ void Mesh::bindTextures(Shader shader)
         glBindTexture(GL_TEXTURE_2D, material.textures[i].id);
     }
 
+    shader.setBool("material.albedoMap", diffuseNr > 1);
     shader.setBool("material.normalMap", normalNr > 1);
     shader.setBool("material.heightMap", heightNr > 1);
     shader.setBool("material.aoMap", aoNr > 1);
@@ -98,6 +113,7 @@ void Mesh::unbindTextures(Shader shader)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    shader.setBool("material.albedoMap", false);
     shader.setBool("material.normalMap", false);
     shader.setBool("material.heightMap", false);
     shader.setBool("material.aoMap", false);
@@ -107,35 +123,28 @@ void Mesh::unbindTextures(Shader shader)
 
 void Mesh::bindProperties(Shader shader)
 {
-    for (int i = 0; i < material.properties.size(); i++)
-    {
-        MaterialProperty &property = material.properties[i];
+    shader.setVec4("material.albedo", material.albedo);
+    shader.setFloat("material.metallic", material.metallic);
+    shader.setFloat("material.roughness", material.roughness);
+    shader.setFloat("material.transmission", material.transmission);
 
-        // TODO: better way without casting?
-        if (property.type == aiPTI_Float)
-        {
-            float value = std::stof(property.value);
-            shader.setFloat("material." + property.name, value);
-        }
-        else if (property.type == aiPTI_Integer)
-        {
-            int value = std::stoi(property.value);
-            shader.setInt("material." + property.name, value);
-        }
-    }
+    shader.setFloat("material.parallaxMapMidLevel", material.parallaxMapMidLevel);
+    shader.setFloat("material.parallaxMapScale", material.parallaxMapScale);
+    shader.setFloat("material.parallaxMapSampleCount", material.parallaxMapSampleCount);
+    shader.setFloat("material.parallaxMapScaleMode", material.parallaxMapScaleMode);
 }
 
 void Mesh::unbindProperties(Shader shader)
 {
-    for (int i = 0; i < material.properties.size(); i++)
-    {
-        MaterialProperty &property = material.properties[i];
+    shader.setVec4("material.albedo", glm::vec4(0.f));
+    shader.setFloat("material.metallic", 0.f);
+    shader.setFloat("material.roughness", 0.f);
+    shader.setFloat("material.transmission", 0.f);
 
-        if (property.type == aiPTI_Float)
-            shader.setFloat("material." + property.name, 0.f);
-        else if (property.type == aiPTI_Integer)
-            shader.setInt("material." + property.name, 0);
-    }
+    shader.setFloat("material.parallaxMapMidLevel", 0.f);
+    shader.setFloat("material.parallaxMapScale", 0.f);
+    shader.setFloat("material.parallaxMapSampleCount", 0.f);
+    shader.setFloat("material.parallaxMapScaleMode", 0.f);
 }
 
 void Mesh::setupMesh()
@@ -182,33 +191,7 @@ void Mesh::setupMesh()
     glBindVertexArray(0);
 }
 
-// TODO: updateProperty
 void Mesh::updateTransmission()
 {
-    for (int i = 0; i < material.properties.size(); i++)
-    {
-        MaterialProperty &property = material.properties[i];
-        if (property.name == "transmission_factor")
-        {
-            float value = std::stof(property.value);
-            if (value > 0.f)
-            {
-                opaque = false;
-                return;
-            }
-        }
-    }
-}
-
-// TODO: O(1) - enum name - float value
-void Material::updateProperty(const std::string &name, const std::string &value)
-{
-    for (auto &property : properties)
-    {
-        if (property.name == name)
-        {
-            property.value = value;
-            return;
-        }
-    }
+    opaque = material.transmission == 0.f;
 }

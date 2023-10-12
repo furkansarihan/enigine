@@ -22,7 +22,7 @@ uniform float ao;
 //
 struct Material {
     float opacity;
-    float transmission_factor;
+    float transmission;
     //
     bool aoRoughMetalMap;
 };
@@ -317,7 +317,7 @@ void main()
     // TODO: 
     // TODO: correct? - variable material properties
 // #ifdef MATERIAL_TRANSMISSION
-    if (material.transmission_factor > 0) {
+    if (material.transmission > 0) {
         albedo = vec3(0);
         metallic = 0;
         roughness = 0;
@@ -400,7 +400,7 @@ void main()
         // transmission
         // TODO: preprocessor
 // #ifdef MATERIAL_TRANSMISSION
-    if (material.transmission_factor > 0) {
+    if (material.transmission > 0) {
         // If the light ray travels through the geometry, use the point it exits the geometry again.
         // That will change the angle to the light source, if the material refracts the light ray.
         vec3 n = N;
@@ -447,8 +447,8 @@ void main()
 // #endif
 
 // #ifdef MATERIAL_TRANSMISSION
-    if (material.transmission_factor > 0) {
-        diffuse = mix(diffuse, f_transmission, material.transmission_factor);
+    if (material.transmission > 0) {
+        diffuse = mix(diffuse, f_transmission, material.transmission);
     }
 // #endif
 
@@ -482,7 +482,7 @@ void main()
     vec3 color = ambient + Lo;
 
 // #ifdef MATERIAL_TRANSMISSION
-    if (material.transmission_factor > 0) {
+    if (material.transmission > 0) {
         FragColor = vec4(color , 1.0);
     }
 // #else
