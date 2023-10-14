@@ -328,9 +328,7 @@ void RenderManager::renderOpaque()
         renderable->renderColor();
     }
 
-    glEnable(GL_CULL_FACE);
     glFrontFace(GL_CCW);
-    glCullFace(GL_BACK);
 
     // setup pbr shader
     pbrDeferredPre.use();
@@ -350,6 +348,17 @@ void RenderManager::renderOpaque()
         RenderSource *source = m_visiblePbrSources[i];
         pbrDeferredPre.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
         pbrDeferredPre.setMat4("model", m_originTransform * source->transform.getModelMatrix());
+
+        if (source->faceCullType == FaceCullType::none)
+            glDisable(GL_CULL_FACE);
+        else
+            glEnable(GL_CULL_FACE);
+
+        if (source->faceCullType == FaceCullType::backFaces)
+            glCullFace(GL_BACK);
+        else if (source->faceCullType == FaceCullType::frontFaces)
+            glCullFace(GL_FRONT);
+
         source->model->draw(pbrDeferredPre, true);
     }
 
@@ -380,6 +389,17 @@ void RenderManager::renderOpaque()
 
         pbrDeferredPreAnim.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
         pbrDeferredPreAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
+
+        if (source->faceCullType == FaceCullType::none)
+            glDisable(GL_CULL_FACE);
+        else
+            glEnable(GL_CULL_FACE);
+
+        if (source->faceCullType == FaceCullType::backFaces)
+            glCullFace(GL_BACK);
+        else if (source->faceCullType == FaceCullType::frontFaces)
+            glCullFace(GL_FRONT);
+
         source->model->draw(pbrDeferredPreAnim, true);
     }
 

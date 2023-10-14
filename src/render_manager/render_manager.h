@@ -27,10 +27,11 @@
 #include "g_buffer.h"
 #include "ssao.h"
 
-enum ShaderType
+enum FaceCullType
 {
-    pbr,
-    basic
+    backFaces,
+    frontFaces,
+    none,
 };
 
 class RenderManager;
@@ -40,6 +41,7 @@ public:
     RenderManager *m_renderManager = nullptr;
     eTransform transform;
     eTransform offset;
+    FaceCullType faceCullType;
     Model *model = nullptr;
     Animator *animator = nullptr;
     TransformLink *transformLink = nullptr;
@@ -47,9 +49,10 @@ public:
     bool aoRoughMetalMap = false;
     int cullIndex = -1;
 
-    RenderSource(eTransform transform, eTransform offset, Model *model, Animator *animator, TransformLink *transformLink, bool aoRoughMetalMap)
+    RenderSource(eTransform transform, eTransform offset, FaceCullType faceCullType, Model *model, Animator *animator, TransformLink *transformLink, bool aoRoughMetalMap)
         : transform(transform),
           offset(offset),
+          faceCullType(faceCullType),
           model(model),
           animator(animator),
           transformLink(transformLink),
@@ -97,6 +100,12 @@ public:
         return *this;
     }
 
+    RenderSourceBuilder &setFaceCullType(FaceCullType faceCullType)
+    {
+        facecullType = faceCullType;
+        return *this;
+    }
+
     RenderSourceBuilder &setModel(Model *model)
     {
         m_model = model;
@@ -123,12 +132,13 @@ public:
 
     RenderSource *build()
     {
-        return new RenderSource(m_transform, m_offset, m_model, m_animator, m_transformLink, m_aoRoughMetalMap);
+        return new RenderSource(m_transform, m_offset, facecullType, m_model, m_animator, m_transformLink, m_aoRoughMetalMap);
     }
 
 private:
     eTransform m_transform;
     eTransform m_offset;
+    FaceCullType facecullType = FaceCullType::backFaces;
     Model *m_model = nullptr;
     Animator *m_animator = nullptr;
     TransformLink *m_transformLink = nullptr;
