@@ -26,12 +26,8 @@ glm::mat4 TransformLinkDoor::getModelMatrix()
     }
     else
     {
-        // TODO: remove this workaround
         btTransform transform;
-        if (m_vehicle->m_speed > 10.f)
-            m_vehicle->m_doors[m_doorIndex].body->getMotionState()->getWorldTransform(transform);
-        else
-            transform = m_vehicle->m_doors[m_doorIndex].body->getWorldTransform();
+        m_vehicle->m_doors[m_doorIndex].body->getMotionState()->getWorldTransform(transform);
 
         glm::mat4 model;
         transform.getOpenGLMatrix((btScalar *)&model);

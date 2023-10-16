@@ -14,6 +14,14 @@ void VehicleUI::render()
     if (!ImGui::CollapsingHeader("Vehicle", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    glm::vec3 pos = BulletGLM::getGLMVec3(m_vehicle->m_carChassis->getWorldTransform().getOrigin());
+    if (VectorUI::renderVec3("position", pos, 0.1f))
+    {
+        btTransform tr;
+        tr.setIdentity();
+        tr.setOrigin(BulletGLM::getBulletVec3(pos));
+        m_vehicle->resetVehicle(tr);
+    }
     Follow &m_follow = m_cController->m_follow;
     ImGui::Checkbox("m_controlVehicle", &m_cController->m_controlVehicle);
     ImGui::Checkbox("m_followVehicle", &m_cController->m_followVehicle);
@@ -31,8 +39,8 @@ void VehicleUI::render()
     VectorUI::renderVec2("m_doorOffset", m_cController->m_doorOffset, 0.01f);
     VectorUI::renderVec3("m_animDoorOffset", m_cController->m_animDoorOffset, 0.01f);
     renderCompoundShapeEditor("compound shapes", m_cController->m_vehicle->m_compoundShape);
-    for (int i = 0; i < 4; i++)
-        VectorUI::renderVec3((std::string("m_doorPosOffsets:") + std::to_string(i)).c_str(), m_cController->m_vehicle->m_doors[i].posOffset, 0.01f);
+    VectorUI::renderTransform("m_linkBody->m_offset", m_cController->m_linkBody->m_offset, 0.1f, 0.01f, 0.1f);
+
     ImGui::Text("gVehicleSteering = %f", m_vehicle->gVehicleSteering);
     ImGui::Text("m_speed = %f", m_vehicle->m_speed);
     ImGui::Text("m_vehicle.speedKmHour = %f", m_vehicle->m_vehicle->getCurrentSpeedKmHour());
@@ -72,10 +80,6 @@ void VehicleUI::render()
     ImGui::DragFloat("m_localVelocity.y", &m_vehicle->m_localVelocity.y, 0.2f);
     ImGui::DragFloat("m_localVelocity.z", &m_vehicle->m_localVelocity.z, 0.2f);
     ImGui::DragFloat("steeringSpeed", &m_vehicle->steeringSpeed, 0.001f);
-    for (int i = 0; i < 4; i++)
-        VectorUI::renderVec3((std::to_string(i) + "posOffsets").c_str(), m_vehicle->m_doors[i].posOffset, 0.01f);
-
-    VectorUI::renderNormalizedQuat("m_doorRotate", m_vehicle->m_doorRotate, 0.01f);
 
     float mass = m_vehicle->m_carChassis->getMass();
     if (ImGui::DragFloat("m_carChassis.mass", &mass, 1.0f, 1, 10000))
@@ -85,7 +89,71 @@ void VehicleUI::render()
         m_vehicle->m_carChassis->setMassProps(mass, interia);
     }
 
-    ImGui::BeginTable("Doors", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::Text("Wheels");
+    ImGui::BeginTable("Wheels", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::TableSetupColumn("Position");
+    ImGui::TableSetupColumn("Radius");
+    ImGui::TableSetupColumn("inContact");
+    for (int i = 0; i < 4; i++)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        VectorUI::renderVec3((std::to_string(i) + ":position").c_str(), m_vehicle->m_vehicle->getWheelInfo(i).m_chassisConnectionPointCS, 0.01f);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::DragFloat((std::to_string(i) + ":radius").c_str(), &m_vehicle->m_vehicle->getWheelInfo(i).m_wheelsRadius, 0.01f);
+        ImGui::TableSetColumnIndex(2);
+        ImGui::Checkbox((std::to_string(i) + ":inContact").c_str(), &m_vehicle->m_wheelInContact[i]);
+    }
+    ImGui::EndTable();
+
+    ImGui::Text("Doors");
+    ImGui::BeginTable("Doors", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::TableSetupColumn("Position Offset");
+    ImGui::TableSetupColumn("Rigidbody Offset");
+    int doorCount = m_vehicle->m_type == VehicleType::coupe ? 2 : 4;
+    for (int i = 0; i < doorCount; i++)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        VectorUI::renderVec3((std::string("posOffset:") + std::to_string(i)).c_str(), m_vehicle->m_doors[i].posOffset, 0.01f);
+        ImGui::TableSetColumnIndex(1);
+        VectorUI::renderTransform((std::string("rigidbodyOffset:") + std::to_string(i)).c_str(), m_vehicle->m_doors[i].rigidbodyOffset, 0.01f, 0.01f, 0.01f);
+    }
+    ImGui::EndTable();
+
+    ImGui::Text("Exhaust");
+    for (int i = 0; i < m_cController->m_linkExhausts.size(); i++)
+    {
+        VectorUI::renderTransform((std::string("exhaustOffset:") + std::to_string(i)).c_str(), m_cController->m_linkExhausts[i]->m_offset, 0.01f, 0.01f, 0.01f);
+    }
+
+    ImGui::Text("Door Hinge Positions");
+    ImGui::BeginTable("Door Hinge Positions", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::TableSetupColumn("Index");
+    ImGui::TableSetupColumn("Active offset");
+    ImGui::TableSetupColumn("Deactive offset");
+    ImGui::TableSetupColumn("Door Shape Size");
+    ImGui::TableHeadersRow();
+    for (int i = 0; i < doorCount; i++)
+    {
+        ImGui::TableNextRow();
+
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("%d", i);
+        ImGui::TableSetColumnIndex(1);
+        VectorUI::renderTransform((std::string("m_offsetActive##") + std::to_string(i)).c_str(), m_cController->m_linkDoors[i]->m_offsetActive, 0.001f, 0.001f, 0.001f);
+        ImGui::TableSetColumnIndex(2);
+        VectorUI::renderTransform((std::string("m_offsetDeactive##") + std::to_string(i)).c_str(), m_cController->m_linkDoors[i]->m_offsetDeactive, 0.001f, 0.001f, 0.001f);
+
+        ImGui::TableSetColumnIndex(3);
+        btVector3 size = m_vehicle->m_doors[i].body->getCollisionShape()->getLocalScaling();
+        if (VectorUI::renderVec3((std::string("localScalingSize##") + std::to_string(i)).c_str(), size, 0.1f))
+            m_vehicle->m_doors[i].body->getCollisionShape()->setLocalScaling(size);
+    }
+    ImGui::EndTable();
+
+    ImGui::Text("Door Hinges");
+    ImGui::BeginTable("Door Hinges", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
     ImGui::TableSetupColumn("Name");
     ImGui::TableSetupColumn("Type");
     ImGui::TableSetupColumn("Motor");
@@ -94,7 +162,7 @@ void VehicleUI::render()
     ImGui::TableSetupColumn("Frames");
     ImGui::TableSetupColumn("State");
     ImGui::TableHeadersRow();
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < doorCount; i++)
     {
         ImGui::TableNextRow();
 
@@ -107,12 +175,13 @@ void VehicleUI::render()
     }
     ImGui::EndTable();
 
-    ImGui::BeginTable("HingeTargetsTable", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::Text("Door Hinge Targets");
+    ImGui::BeginTable("Door Hinge Targets", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None);
     ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_None);
     ImGui::TableSetupColumn("Force", ImGuiTableColumnFlags_None);
     ImGui::TableHeadersRow();
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < doorCount; i++)
     {
         HingeTarget &target = m_vehicle->m_doors[i].hingeTarget;
 
@@ -128,7 +197,7 @@ void VehicleUI::render()
     }
     ImGui::EndTable();
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < doorCount; i++)
     {
         if (ImGui::Button((std::to_string(i) + ":open door").c_str()))
             m_vehicle->openDoor(i);

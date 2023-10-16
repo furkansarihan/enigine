@@ -43,31 +43,31 @@ struct Models
     Model *carBody;
     Model *carHood;
     Model *carTrunk;
-    Model *carWheelFL;
-    Model *carWheelFR;
-    Model *carWheelRL;
-    Model *carWheelRR;
-    Model *wheelModels[4];
-    Model *carDoorFL;
-    Model *carDoorFR;
-    Model *carDoorRL;
-    Model *carDoorRR;
-    Model *doorModels[4];
+    Model *wheelBase;
+    Model *doorFront;
+    Model *doorRear;
+    Model *smokeParticleModel;
 };
 
 class CarController : public Updatable
 {
 public:
-    CarController(GLFWwindow *window, ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position);
+    CarController(GLFWwindow *window,
+                  ShaderManager *shaderManager,
+                  RenderManager *renderManager,
+                  Vehicle *vehicle,
+                  Camera *followCamera,
+                  Models models,
+                  int exhaustCount);
     ~CarController();
 
     GLFWwindow *m_window;
     Vehicle *m_vehicle;
     Camera *m_followCamera;
-    ParticleEngine *m_exhausParticle;
-    std::vector<ParticleEngine *> m_tireSmokeParticles;
     Models m_models;
-    Model *m_smokeParticleModel;
+    int m_exhaustCount;
+    std::vector<ParticleEngine *> m_exhausParticles;
+    std::vector<ParticleEngine *> m_tireSmokeParticles;
     Shader m_exhaustShader;
     Shader m_tireSmokeShader;
 
@@ -90,11 +90,19 @@ public:
     RenderSource *m_bodyTrunk;
     RenderSource *m_wheelSources[4];
     RenderSource *m_doorSources[4];
-    RenderParticleSource *m_exhaustSource;
+    std::vector<RenderParticleSource *> m_exhaustSources;
     std::vector<RenderParticleSource *> m_tireSmokeSources;
 
+    TransformLinkRigidBody *m_linkBody;
+    TransformLinkRigidBody *m_linkHood;
+    TransformLinkRigidBody *m_linkTrunk;
+    std::vector<TransformLinkWheel *> m_linkWheels;
+    std::vector<TransformLinkDoor *> m_linkDoors;
+    std::vector<TransformLinkRigidBody *> m_linkExhausts;
+    std::vector<TransformLinkRigidBody *> m_linkTireSmokes;
+
     void update(float deltaTime);
-    void updateExhaust(float deltaTime);
+    void updateExhaust(int index, float deltaTime);
     void updateTireSmoke(int index, float deltaTime);
     glm::mat4 translateOffset(glm::vec3 offset);
     void followCar(float deltaTime);

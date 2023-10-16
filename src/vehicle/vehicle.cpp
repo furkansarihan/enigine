@@ -2,9 +2,15 @@
 
 #include <glm/gtc/matrix_inverse.hpp>
 
-Vehicle::Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, glm::vec3 position)
+Vehicle::Vehicle(PhysicsWorld *physicsWorld,
+                 VehicleType type,
+                 Model *collider,
+                 eTransform offset,
+                 glm::vec3 position)
     : m_physicsWorld(physicsWorld),
-      m_resourceManager(resourceManager),
+      m_type(type),
+      m_collider(collider),
+      m_offset(offset),
       m_position(position)
 {
     initDefaultValues();
@@ -13,6 +19,13 @@ Vehicle::Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, g
 
 Vehicle::~Vehicle()
 {
+    int doorCount = m_type == VehicleType::coupe ? 2 : 4;
+    for (int i = 0; i < doorCount; i++)
+    {
+        m_physicsWorld->m_dynamicsWorld->removeConstraint(m_doors[i].joint);
+        delete m_doors[i].joint;
+    }
+
     delete m_vehicleRayCaster;
     delete m_vehicle;
 }
@@ -24,13 +37,12 @@ void Vehicle::initDefaultValues()
     decreaseVelocity = 30000.f;
     breakingVelocity = 10000.f;
     handBreakingVelocity = 25000.f;
-    maxEngineForce = 10000.f;
-    minEngineForce = -10000.f;
+    maxEngineForce = 5000.f;
+    minEngineForce = -5000.f;
     gVehicleSteering = 0.f;
     steeringSpeed = 0.3f;
     steeringIncrement = 20.f;
     steeringLimit = 0.8f;
-    wheelRadius = 0.6f;
     m_maxSteerSpeed = 80.f;
     m_returnIdleFactor = 2.f;
 
@@ -41,23 +53,7 @@ void Vehicle::initDefaultValues()
     m_suspensionDamping = 3.f;
     m_suspensionCompression = 0.5f;
     m_rollInfluence = 0.5f;
-    m_suspensionRestLength = 0.75f;
-
-    // doors
-    m_doors[0].aFrame = btVector3(1.5f, 2.9f, 1.6f);
-    m_doors[1].aFrame = btVector3(-1.5f, 2.9f, 1.6f);
-    m_doors[2].aFrame = btVector3(1.5f, 2.9f, -0.6f);
-    m_doors[3].aFrame = btVector3(-1.5f, 2.9f, -0.6f);
-
-    m_doors[0].bFrame = btVector3(0.98f, -0.01f, 0.95f);
-    m_doors[1].bFrame = btVector3(0.98f, -0.04f, 0.95f);
-    m_doors[2].bFrame = btVector3(0.728f, 0.03f, 0.89f);
-    m_doors[3].bFrame = btVector3(0.728f, -0.04f, 0.89f);
-
-    m_doors[0].posOffset = btVector3(1.51f, 1.95f, 0.62);
-    m_doors[1].posOffset = btVector3(-1.46f, 1.95f, 0.62);
-    m_doors[2].posOffset = btVector3(1.46f, 2.01f, -1.33);
-    m_doors[3].posOffset = btVector3(-1.46f, 2.01f, -1.32);
+    m_suspensionRestLength = 0.62f;
 }
 
 void Vehicle::initVehicle()
@@ -69,15 +65,8 @@ void Vehicle::initVehicle()
     tr.setOrigin(BulletGLM::getBulletVec3(m_position));
 
     const btScalar chassisMass = 1000.f;
-    m_carChassis = m_physicsWorld->createRigidBody(m_compoundShape, chassisMass, tr.getOrigin());
+    m_carChassis = m_physicsWorld->createRigidBody(m_compoundShape, chassisMass, tr);
     m_carChassis->setDamping(0.2, 0.2);
-
-    float wheelGap = 1.4f;
-    btVector3 wheelPos[4] = {
-        btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(2.5)),
-        btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(2.5)),
-        btVector3(btScalar(1.5), btScalar(wheelGap), btScalar(-2.5)),
-        btVector3(btScalar(-1.5), btScalar(wheelGap), btScalar(-2.5))};
 
     m_vehicleRayCaster = new btDefaultVehicleRaycaster(m_physicsWorld->m_dynamicsWorld);
     m_vehicle = new btRaycastVehicle(m_tuning, m_carChassis, m_vehicleRayCaster);
@@ -91,9 +80,66 @@ void Vehicle::initVehicle()
     int forwardIndex = 2;
     m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
 
+    setupWheels();
+    setupDoors();
+}
+
+void Vehicle::setWheelPosition(int wheel, glm::vec3 position)
+{
+    // TODO: check wheel count
+    m_vehicle->getWheelInfo(wheel).m_chassisConnectionPointCS = BulletGLM::getBulletVec3(position);
+}
+
+void Vehicle::setWheelRadius(int wheel, float radius)
+{
+    // TODO: check wheel count
+    m_vehicle->getWheelInfo(wheel).m_wheelsRadius = radius;
+}
+
+void Vehicle::setupCollider()
+{
+    m_compoundShape = new btCompoundShape();
+
+    for (int i = 0; i < m_collider->meshes.size(); i++)
+    {
+        Mesh &mesh = *m_collider->meshes[i];
+
+        btConvexHullShape *shape = getBodyShape(mesh);
+
+        btTransform localTrans;
+        glm::mat4 transform = m_offset.getModelMatrix();
+        localTrans.setFromOpenGLMatrix((float *)&transform);
+
+        m_compoundShape->addChildShape(localTrans, shape);
+    }
+}
+
+btConvexHullShape *Vehicle::getBodyShape(Mesh &mesh)
+{
+    btConvexHullShape *convexShape = new btConvexHullShape();
+
+    for (int i = 0; i < mesh.vertices.size(); ++i)
+        convexShape->addPoint(BulletGLM::getBulletVec3(mesh.vertices[i].position));
+
+    // Optional: Enable margin for better collision detection
+    convexShape->setMargin(0.04f);
+
+    return convexShape;
+}
+
+void Vehicle::setupWheels()
+{
     btVector3 wheelDirectionCS0(0, -1, 0);
     btVector3 wheelAxleCS(-1, 0, 0);
+    // TODO: setup with suspension rest length - single parameter
+    float wheelHeight = 0.8f;
+    btVector3 wheelPos[4] = {
+        btVector3(btScalar(-0.8), btScalar(wheelHeight), btScalar(1.2)),
+        btVector3(btScalar(0.8), btScalar(wheelHeight), btScalar(1.2)),
+        btVector3(btScalar(-0.8), btScalar(wheelHeight), btScalar(-1.2)),
+        btVector3(btScalar(0.8), btScalar(wheelHeight), btScalar(-1.2))};
 
+    float wheelRadius = 0.3f;
     m_vehicle->addWheel(wheelPos[0], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, true);
     m_vehicle->addWheel(wheelPos[1], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, true);
     m_vehicle->addWheel(wheelPos[2], wheelDirectionCS0, wheelAxleCS, m_suspensionRestLength, wheelRadius, m_tuning, false);
@@ -108,61 +154,57 @@ void Vehicle::initVehicle()
         wheel.m_frictionSlip = m_wheelFriction;
         wheel.m_rollInfluence = m_rollInfluence;
     }
-
-    setupDoors();
-}
-
-// TODO: variable path
-void Vehicle::setupCollider()
-{
-    m_compoundShape = new btCompoundShape();
-
-    m_collider = m_resourceManager->getModel("assets/car/car-collider.obj");
-
-    for (int i = 0; i < m_collider->meshes.size(); i++)
-    {
-        Mesh &mesh = *m_collider->meshes[i];
-
-        btConvexHullShape *shape = getBodyShape(mesh);
-
-        btTransform localTrans;
-        localTrans.setIdentity();
-        localTrans.setOrigin(btVector3(0.f, 0.3f, -0.35f));
-        // Same with car rotation
-        localTrans.setRotation(btQuaternion(0.f, -0.707f, 0.f, 0.707f));
-
-        m_compoundShape->addChildShape(localTrans, shape);
-    }
-}
-
-btConvexHullShape *Vehicle::getBodyShape(Mesh &mesh)
-{
-    btConvexHullShape *convexShape = new btConvexHullShape();
-
-    for (int i = 0; i < mesh.vertices.size(); ++i)
-        convexShape->addPoint(BulletGLM::getBulletVec3(mesh.vertices[i].position));
-
-    // Optional: Enable margin for better collision detection
-    convexShape->setMargin(0.04f); // Set an appropriate margin value
-    // Same with car scale
-    convexShape->setLocalScaling(btVector3(0.028f, 0.028f, 0.028f));
-
-    return convexShape;
 }
 
 void Vehicle::setupDoors()
 {
-    btBoxShape *shape = new btBoxShape(btVector3(0.7f, 0.15f, 0.8f));
+    btBoxShape *shape = new btBoxShape(btVector3(1.f, 1.f, 1.f));
     float doorMass = 20.f;
 
-    for (int i = 0; i < 4; i++)
+    int doorCount = m_type == VehicleType::coupe ? 2 : 4;
+
+    // default values
+    for (int i = 0; i < doorCount; i++)
+    {
+        VehicleDoor door;
+        m_doors.push_back(door);
+    }
+
+    m_doors[0].aFrame = btVector3(1.5f, 2.9f, 1.6f) / 2.f;
+    m_doors[1].aFrame = btVector3(-1.5f, 2.9f, 1.6f) / 2.f;
+    if (m_type == VehicleType::sedan)
+    {
+
+        m_doors[2].aFrame = btVector3(1.5f, 2.9f, -0.6f) / 2.f;
+        m_doors[3].aFrame = btVector3(-1.5f, 2.9f, -0.6f) / 2.f;
+    }
+
+    m_doors[0].bFrame = btVector3(0.98f, -0.01f, 0.95f) / 2.f;
+    m_doors[1].bFrame = btVector3(0.98f, -0.04f, 0.95f) / 2.f;
+    if (m_type == VehicleType::sedan)
+    {
+        m_doors[2].bFrame = btVector3(0.728f, 0.03f, 0.89f) / 2.f;
+        m_doors[3].bFrame = btVector3(0.728f, -0.04f, 0.89f) / 2.f;
+    }
+
+    m_doors[0].posOffset = btVector3(0.f, 0.f, 0.);
+    m_doors[1].posOffset = btVector3(0.f, 0.f, 0.);
+    if (m_type == VehicleType::sedan)
+    {
+        m_doors[2].posOffset = btVector3(0.f, 0.f, 0.);
+        m_doors[3].posOffset = btVector3(0.f, 0.f, 0.);
+    }
+
+    for (int i = 0; i < doorCount; i++)
     {
         m_doors[i].body = m_physicsWorld->createRigidBody(shape, doorMass, getDoorTransform(i));
 
         btVector3 yAxis(0, 1, 0);
         btVector3 zAxis(0, 0, 1);
+        // TODO: should not slide on any axis
         m_doors[i].joint = new btHingeConstraint(*m_carChassis, *m_doors[i].body, m_doors[i].aFrame, m_doors[i].bFrame, yAxis, zAxis, true);
 
+        // TODO:
         if (i % 2 == 0)
             m_doors[i].joint->setLimit(-M_PI_2 - M_PI_4 - M_PI_4 * 0.2f, -M_PI_2);
         else
@@ -174,6 +216,28 @@ void Vehicle::setupDoors()
         m_doors[i].hingeState = HingeState::active; // for replace logic
         updateHingeState(i, HingeState::deactive);
     }
+}
+
+void Vehicle::setActiveDoorHingeOffsetFront(glm::vec3 aFrame, glm::vec3 bFrame)
+{
+    btHingeConstraint *constraint = m_doors[0].joint;
+    btVector3 &originA = constraint->getAFrame().getOrigin();
+    btVector3 &originB = constraint->getBFrame().getOrigin();
+    originA.setX(aFrame.x);
+    originA.setY(aFrame.y);
+    originA.setZ(aFrame.z);
+    originB.setX(bFrame.x);
+    originB.setY(bFrame.y);
+    originB.setZ(bFrame.z);
+    btHingeConstraint *constraint1 = m_doors[1].joint;
+    btVector3 &originA1 = constraint1->getAFrame().getOrigin();
+    btVector3 &originB1 = constraint1->getBFrame().getOrigin();
+    originA1.setX(-aFrame.x);
+    originA1.setY(aFrame.y);
+    originA1.setZ(aFrame.z);
+    originB1.setX(bFrame.x);
+    originB1.setY(bFrame.y);
+    originB1.setZ(bFrame.z);
 }
 
 void Vehicle::updateHingeState(int door, HingeState newState)
@@ -195,13 +259,8 @@ void Vehicle::updateHingeState(int door, HingeState newState)
     }
     else
     {
-        // TODO: fix teleport
         btTransform transform = getDoorTransform(door);
         m_doors[door].body->setWorldTransform(transform);
-        // m_doors[door].body->getMotionState()->setWorldTransform(transform);
-
-        m_doors[door].body->setLinearVelocity(btVector3(0, 0, 0));
-        m_doors[door].body->setAngularVelocity(btVector3(0, 0, 0));
 
         m_physicsWorld->m_dynamicsWorld->addRigidBody(m_doors[door].body);
 
@@ -216,19 +275,17 @@ void Vehicle::updateHingeState(int door, HingeState newState)
 btTransform Vehicle::getDoorTransform(int door)
 {
     btTransform transform;
-    m_carChassis->getMotionState()->getWorldTransform(transform);
+    transform = m_carChassis->getWorldTransform();
 
     btTransform doorTransform;
-    doorTransform.setIdentity();
-    doorTransform.setOrigin(m_doors[door].posOffset);
-    doorTransform.setRotation(BulletGLM::getBulletQuat(m_doorRotate));
+    glm::mat4 model = m_doors[door].rigidbodyOffset.getModelMatrix();
+    doorTransform.setFromOpenGLMatrix((float *)&model);
 
     btTransform bodyTransform;
-    bodyTransform.setIdentity();
-    // TODO: from car body rotation - fix body rotation align
-    bodyTransform.setRotation(BulletGLM::getBulletQuat(glm::quat(glm::vec3(0.f, 0.f, 0.02f))));
+    glm::mat4 bodyModel = m_offset.getModelMatrix();
+    bodyTransform.setFromOpenGLMatrix((float *)&bodyModel);
+
     transform = transform * doorTransform * bodyTransform;
-    // transform = transform * doorTransform;
 
     return transform;
 }
@@ -259,11 +316,27 @@ void Vehicle::resetVehicle(btTransform tr)
     m_carChassis->setLinearVelocity(btVector3(0, 0, 0));
     m_carChassis->setAngularVelocity(btVector3(0, 0, 0));
     m_physicsWorld->m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis->getBroadphaseHandle(), m_physicsWorld->m_dynamicsWorld->getDispatcher());
+
+    // sync active doors
+    int doorCount = m_type == VehicleType::coupe ? 2 : 4;
+    for (int i = 0; i < doorCount; i++)
+    {
+        if (m_doors[i].hingeState != HingeState::active)
+            continue;
+
+        btTransform transform = getDoorTransform(i);
+        m_doors[i].body->setCenterOfMassTransform(transform);
+        m_doors[i].body->setLinearVelocity(btVector3(0, 0, 0));
+        m_doors[i].body->setAngularVelocity(btVector3(0, 0, 0));
+        m_physicsWorld->m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_doors[i].body->getBroadphaseHandle(), m_physicsWorld->m_dynamicsWorld->getDispatcher());
+    }
 }
 
+// TODO: breaking force when door is open
 void Vehicle::updateDoorAngles(float deltaTime)
 {
-    for (int i = 0; i < 4; i++)
+    int doorCount = m_type == VehicleType::coupe ? 2 : 4;
+    for (int i = 0; i < doorCount; i++)
     {
         if (m_doors[i].hingeState == HingeState::deactive)
             continue;
@@ -306,8 +379,14 @@ void Vehicle::update(float deltaTime)
     m_carChassis->getMotionState()->getWorldTransform(chassisTransform);
     chassisTransform.getOpenGLMatrix((btScalar *)&m_chassisModel);
 
+    m_vehicle->updateVehicle(deltaTime);
+    // TODO: interpolatedTransform = true, why not in updateVehicle?
     for (int i = 0; i < 4; i++)
+    {
+        // TODO: must be saved before updateTransform
+        m_wheelInContact[i] = m_vehicle->getWheelInfo(i).m_raycastInfo.m_isInContact;
         m_vehicle->updateWheelTransform(i, true);
+    }
 
     updateSteering(deltaTime);
     updateAcceleration(deltaTime);
@@ -430,6 +509,7 @@ void Vehicle::updateAcceleration(float deltaTime)
         float lateralMove = std::max(0.1f, std::abs(m_localVelocity.x));
         float lateralFactor = std::clamp(1.f / lateralMove, 0.f, 1.f);
 
+        // TODO: better speed rate
         m_vehicle->getWheelInfo(2).m_frictionSlip = m_driftFriction * lateralFactor * m_speedRate;
         m_vehicle->getWheelInfo(3).m_frictionSlip = m_driftFriction * lateralFactor * m_speedRate;
     }

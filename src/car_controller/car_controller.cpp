@@ -1,14 +1,22 @@
 #include "car_controller.h"
 
-CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, RenderManager *renderManager, PhysicsWorld *physicsWorld, ResourceManager *resourceManager, Camera *followCamera, glm::vec3 position)
+CarController::CarController(GLFWwindow *window,
+                             ShaderManager *shaderManager,
+                             RenderManager *renderManager,
+                             Vehicle *vehicle,
+                             Camera *followCamera,
+                             Models models,
+                             int exhaustCount)
     : m_window(window),
-      m_followCamera(followCamera)
+      m_vehicle(vehicle),
+      m_followCamera(followCamera),
+      m_models(models),
+      m_exhaustCount(exhaustCount)
 {
-    m_vehicle = new Vehicle(physicsWorld, resourceManager, position);
     m_vehicle->m_carChassis->setUserPointer(this);
 
-    m_follow.offset = glm::vec3(0.0f, 2.5f, 0.0f);
-    m_follow.distance = 15.0f;
+    m_follow.offset = glm::vec3(0.0f, 1.f, 0.0f);
+    m_follow.distance = 6.0f;
     m_follow.stretch = 0.0f;
     m_follow.stretchTarget = 0.0f;
     m_follow.stretchMax = 6.f;
@@ -18,14 +26,19 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     m_follow.yStretchFactor = 0.1f;
     m_follow.angularSpeed = 0.05f;
 
-    m_exhausParticle = new ParticleEngine(followCamera);
-    m_exhausParticle->m_particlesPerSecond = 100.f;
-    m_exhausParticle->m_randomness = 0.5f;
-    m_exhausParticle->m_minVelocity = 0.1f;
-    m_exhausParticle->m_maxVelocity = 0.35f;
-    m_exhausParticle->m_minDuration = 1.0f;
-    m_exhausParticle->m_maxDuration = 2.0f;
-    m_exhausParticle->m_particleScale = 0.1f;
+    for (int i = 0; i < exhaustCount; i++)
+    {
+        ParticleEngine *particle = new ParticleEngine(followCamera);
+        particle->m_particlesPerSecond = 100.f;
+        particle->m_randomness = 0.5f;
+        particle->m_minVelocity = 0.1f;
+        particle->m_maxVelocity = 0.35f;
+        particle->m_minDuration = 1.0f;
+        particle->m_maxDuration = 2.0f;
+        particle->m_particleScale = 0.1f;
+
+        m_exhausParticles.push_back(particle);
+    }
 
     for (int i = 0; i < 4; i++)
     {
@@ -33,11 +46,11 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
         ParticleEngine *particle = new ParticleEngine(followCamera);
         particle->m_particlesPerSecond = 0.f;
         particle->m_randomness = 1.f;
-        particle->m_minVelocity = front ? 0.5f : 1.f;
-        particle->m_maxVelocity = front ? 1.f : 3.f;
+        particle->m_minVelocity = front ? 0.2f : 0.4f;
+        particle->m_maxVelocity = front ? 0.3f : 1.f;
         particle->m_minDuration = 2.f;
         particle->m_maxDuration = 3.f;
-        particle->m_particleScale = front ? 0.75f : 3.f;
+        particle->m_particleScale = front ? 0.5f : 1.2f;
 
         m_tireSmokeParticles.push_back(particle);
     }
@@ -45,101 +58,78 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
     shaderManager->addShader(ShaderDynamic(&m_exhaustShader, "assets/shaders/smoke.vs", "assets/shaders/exhaust.fs"));
     shaderManager->addShader(ShaderDynamic(&m_tireSmokeShader, "assets/shaders/tire-smoke.vs", "assets/shaders/tire-smoke.fs"));
 
-    // TODO: variable path
-    // models
-    m_models.carBody = resourceManager->getModel("assets/car/body.gltf", false);
-    m_models.carHood = resourceManager->getModel("assets/car/hood.gltf", false);
-    m_models.carTrunk = resourceManager->getModel("assets/car/trunk.gltf", false);
-    // TODO: single wheel with rotation offset transform
-    m_models.wheelModels[0] = m_models.carWheelFL = resourceManager->getModel("assets/car/wheel-fl.gltf", false);
-    m_models.wheelModels[1] = m_models.carWheelFR = resourceManager->getModel("assets/car/wheel-fr.gltf", false);
-    m_models.wheelModels[2] = m_models.carWheelRL = resourceManager->getModel("assets/car/wheel-rl.gltf", false);
-    m_models.wheelModels[3] = m_models.carWheelRR = resourceManager->getModel("assets/car/wheel-rr.gltf", false);
-    m_models.doorModels[0] = m_models.carDoorFL = resourceManager->getModel("assets/car/door-fl.gltf", false);
-    m_models.doorModels[1] = m_models.carDoorFR = resourceManager->getModel("assets/car/door-fr.gltf", false);
-    m_models.doorModels[2] = m_models.carDoorRL = resourceManager->getModel("assets/car/door-rl.gltf", false);
-    m_models.doorModels[3] = m_models.carDoorRR = resourceManager->getModel("assets/car/door-rr.gltf", false);
-
-    eTransform transform = eTransform(glm::vec3(0.f, 2.07f, -0.14f), glm::quat(0.707f, 0.f, -0.707f, 0.f), glm::vec3(0.028f));
-    TransformLinkRigidBody *linkBody = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-
-    transform.setPosition(glm::vec3(0.f, 1.933f, 3.112f));
-    TransformLinkRigidBody *linkHood = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-
-    transform.setPosition(glm::vec3(0.f, 2.07f, -3.89f));
-    TransformLinkRigidBody *linkTrunk = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-
+    eTransform offset;
+    m_linkBody = new TransformLinkRigidBody(m_vehicle->m_carChassis, offset);
     m_bodySource = RenderSourceBuilder()
                        .setModel(m_models.carBody)
-                       .setTransformLink(linkBody)
-                       .setAoRoughMetalMap(true)
+                       .setTransformLink(m_linkBody)
                        .build();
     renderManager->addSource(m_bodySource);
 
-    m_bodyHood = RenderSourceBuilder()
-                     .setModel(m_models.carHood)
-                     .setTransformLink(linkHood)
-                     .setAoRoughMetalMap(true)
-                     .build();
-    renderManager->addSource(m_bodyHood);
+    if (m_models.carHood)
+    {
+        m_linkHood = new TransformLinkRigidBody(m_vehicle->m_carChassis, offset);
+        m_bodyHood = RenderSourceBuilder()
+                         .setModel(m_models.carHood)
+                         .setTransformLink(m_linkHood)
+                         .build();
+        renderManager->addSource(m_bodyHood);
+    }
 
-    m_bodyTrunk = RenderSourceBuilder()
-                      .setModel(m_models.carTrunk)
-                      .setTransformLink(linkTrunk)
-                      .setAoRoughMetalMap(true)
-                      .build();
-    renderManager->addSource(m_bodyTrunk);
+    if (m_models.carTrunk)
+    {
+        m_linkTrunk = new TransformLinkRigidBody(m_vehicle->m_carChassis, offset);
+        m_bodyTrunk = RenderSourceBuilder()
+                          .setModel(m_models.carTrunk)
+                          .setTransformLink(m_linkTrunk)
+                          .build();
+        renderManager->addSource(m_bodyTrunk);
+    }
 
-    transform.setPosition(glm::vec3(0.f, 0.f, 0.f));
     for (int i = 0; i < 4; i++)
     {
-        TransformLinkWheel *link = new TransformLinkWheel(m_vehicle->m_vehicle, i, transform);
+        eTransform offset;
+        // TODO: better - rotate right wheels
+        if (i == 1 || i == 3)
+            offset.setRotation(glm::quat(0.f, 0.f, 0.f, -1.f));
 
+        m_linkWheels.push_back(new TransformLinkWheel(m_vehicle->m_vehicle, i, offset));
         m_wheelSources[i] = RenderSourceBuilder()
-                                .setModel(m_models.wheelModels[i])
-                                .setTransformLink(link)
-                                .setAoRoughMetalMap(true)
+                                .setModel(m_models.wheelBase)
+                                .setTransformLink(m_linkWheels[i])
                                 .build();
         renderManager->addSource(m_wheelSources[i]);
     }
 
-    eTransform transformActive = transform;
-    transformActive.setRotation(glm::quat(0.707f, 0.707f, 0.f, 0.f));
-    for (int i = 0; i < 4; i++)
+    int doorCount = m_vehicle->m_type == VehicleType::coupe ? 2 : 4;
+    for (int i = 0; i < doorCount; i++)
     {
-        transform.setPosition(BulletGLM::getGLMVec3(m_vehicle->m_doors[i].posOffset));
-        TransformLinkDoor *link = new TransformLinkDoor(m_vehicle, i, transformActive, transform);
-
+        eTransform offsetD;
+        offsetD.setPosition(BulletGLM::getGLMVec3(m_vehicle->m_doors[i].posOffset));
+        m_linkDoors.push_back(new TransformLinkDoor(m_vehicle, i, offset, offsetD));
         m_doorSources[i] = RenderSourceBuilder()
-                               .setModel(m_models.doorModels[i])
-                               .setTransformLink(link)
-                               .setAoRoughMetalMap(true)
+                               .setModel(m_models.doorFront)
+                               .setFaceCullType(i % 2 == 0 ? FaceCullType::backFaces : FaceCullType::frontFaces)
+                               .setTransformLink(m_linkDoors[i])
                                .build();
         renderManager->addSource(m_doorSources[i]);
     }
 
     // exhaust
-    transform = eTransform(glm::vec3(0.98f, 0.93f, -4.34f), glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
-    TransformLinkRigidBody *linkExhaust = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-    m_exhaustSource = new RenderParticleSource(&m_exhaustShader, renderManager->quad, m_exhausParticle, linkExhaust);
-    renderManager->addParticleSource(m_exhaustSource);
+    for (size_t i = 0; i < exhaustCount; i++)
+    {
+        m_linkExhausts.push_back(new TransformLinkRigidBody(m_vehicle->m_carChassis, offset));
+        m_exhaustSources.push_back(new RenderParticleSource(&m_exhaustShader, renderManager->quad, m_exhausParticles[i], m_linkExhausts[i]));
+        renderManager->addParticleSource(m_exhaustSources[i]);
+    }
 
     // tire smoke
-    float wheelGap = 0.2f;
-    glm::vec3 wheelPos[4] = {
-        glm::vec3(-1.5, wheelGap, 2.5),
-        glm::vec3(1.5, wheelGap, 2.5),
-        glm::vec3(1.5, wheelGap, -2.5),
-        glm::vec3(-1.5, wheelGap, -2.5)};
-
-    m_smokeParticleModel = resourceManager->getModel("assets/car/smoke.obj", false);
-
     for (int i = 0; i < 4; i++)
     {
-        transform = eTransform(wheelPos[i], glm::quat(0.381f, -0.186f, -0.813f, 0.394f), glm::vec3(1.f));
-        TransformLinkRigidBody *linkTireSmoke = new TransformLinkRigidBody(m_vehicle->m_carChassis, transform);
-        RenderParticleSource *renderSource = new RenderParticleSource(&m_tireSmokeShader, m_smokeParticleModel,
-                                                                      m_tireSmokeParticles[i], linkTireSmoke);
+        // TODO: use wheel link with offset
+        m_linkTireSmokes.push_back(new TransformLinkRigidBody(m_vehicle->m_carChassis, offset));
+        RenderParticleSource *renderSource = new RenderParticleSource(&m_tireSmokeShader, m_models.smokeParticleModel,
+                                                                      m_tireSmokeParticles[i], m_linkTireSmokes[i]);
         m_tireSmokeSources.push_back(renderSource);
         renderManager->addParticleSource(renderSource);
     }
@@ -147,8 +137,8 @@ CarController::CarController(GLFWwindow *window, ShaderManager *shaderManager, R
 
 CarController::~CarController()
 {
-    delete m_vehicle;
-    delete m_exhausParticle;
+    for (int i = 0; i < m_exhaustCount; i++)
+        delete m_exhausParticles[i];
     for (int i = 0; i < 4; i++)
         delete m_tireSmokeParticles[i];
 }
@@ -168,6 +158,14 @@ void CarController::keyCallback(GLFWwindow *window, int key, int scancode, int a
         tr.setIdentity();
         tr.setOrigin(m_vehicle->m_carChassis->getWorldTransform().getOrigin() + btVector3(0, 5, 0));
         m_vehicle->resetVehicle(tr);
+    }
+    else if ((key == GLFW_KEY_3 || key == GLFW_KEY_4) && action == GLFW_PRESS)
+    {
+        int doorIndex = key == GLFW_KEY_3 ? 0 : 1;
+        if (m_vehicle->m_doors[doorIndex].hingeState == HingeState::active)
+            m_vehicle->closeDoor(doorIndex);
+        else
+            m_vehicle->openDoor(doorIndex);
     }
 }
 
@@ -190,7 +188,9 @@ void CarController::update(float deltaTime)
         m_vehicle->m_controlState.handbreak = glfwGetKey(m_window, m_keySpace) == GLFW_PRESS;
     }
 
-    updateExhaust(deltaTime);
+    for (int i = 0; i < m_exhaustCount; i++)
+        updateExhaust(i, deltaTime);
+
     for (int i = 0; i < 4; i++)
         updateTireSmoke(i, deltaTime);
 
@@ -249,27 +249,32 @@ void CarController::followCar(float deltaTime)
     m_followCamera->right = glm::cross(m_followCamera->front, m_followCamera->up);
 }
 
-// TODO: fix
-void CarController::updateExhaust(float deltaTime)
+// TODO: sync with engine force
+void CarController::updateExhaust(int index, float deltaTime)
 {
-    m_exhausParticle->update(deltaTime);
+    m_exhausParticles[index]->update(deltaTime);
 
     float maxParticlesPerSecond = 250.0f;
-    float maxSpeed = 10.0f;
+    float maxSpeed = 25.0f;
 
     float particlesPerSecond = 0.0f;
-    if (m_vehicle->m_speed <= maxSpeed)
+    if (std::abs(m_vehicle->m_vehicle->getCurrentSpeedKmHour()) <= maxSpeed)
         particlesPerSecond = (1.f - m_vehicle->m_speed / maxSpeed) * maxParticlesPerSecond;
 
-    m_exhausParticle->m_particlesPerSecond = particlesPerSecond;
+    m_exhausParticles[index]->m_particlesPerSecond = particlesPerSecond;
 }
 
-// TODO: check if tire on the ground
 void CarController::updateTireSmoke(int index, float deltaTime)
 {
     bool front = index < 2;
     ParticleEngine *tireSmoke = m_tireSmokeParticles[index];
     tireSmoke->update(deltaTime);
+
+    if (!m_vehicle->m_wheelInContact[index])
+    {
+        tireSmoke->m_particlesPerSecond = 0.f;
+        return;
+    }
 
     float maxParticlesPerSecond = front ? 5.f : 20.f;
 

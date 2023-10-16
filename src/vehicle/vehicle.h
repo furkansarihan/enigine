@@ -7,8 +7,8 @@
 #include <iostream>
 
 #include "../physics_world/physics_world.h"
-#include "../resource_manager/resource_manager.h"
 #include "../model/model.h"
+#include "../transform/transform.h"
 #include "../utils/common.h"
 #include "../utils/bullet_glm.h"
 
@@ -33,8 +33,8 @@ enum Door
 {
     frontLeft,
     frontRight,
-    fbackLeft,
-    backRight
+    rearLeft,
+    rearRight
 };
 
 enum HingeState
@@ -48,6 +48,12 @@ enum DoorState
 {
     open,
     closed
+};
+
+enum VehicleType
+{
+    sedan,
+    coupe
 };
 
 struct HingeTarget
@@ -64,25 +70,30 @@ struct VehicleDoor
     DoorState doorState;
     HingeTarget hingeTarget;
     btVector3 aFrame, bFrame, posOffset;
+    eTransform rigidbodyOffset;
     float doorClosedAt = 0.f;
 };
 
 class Vehicle
 {
 public:
-    Vehicle(PhysicsWorld *physicsWorld, ResourceManager *resourceManager, glm::vec3 position);
+    Vehicle(PhysicsWorld *physicsWorld,
+            VehicleType type,
+            Model *collider,
+            eTransform offset,
+            glm::vec3 position);
     ~Vehicle();
 
     PhysicsWorld *m_physicsWorld;
-    ResourceManager *m_resourceManager;
+    VehicleType m_type;
+    Model *m_collider;
+    eTransform m_offset;
     glm::vec3 m_position;
     btRigidBody *m_carChassis;
     glm::mat4 m_chassisModel;
-
     btCompoundShape *m_compoundShape;
-    Model *m_collider;
-    VehicleDoor m_doors[4];
-    glm::quat m_doorRotate = glm::quat(0.5f, -0.5f, -0.5f, -0.5f);
+    std::vector<VehicleDoor> m_doors;
+    bool m_wheelInContact[4];
 
     btDefaultVehicleRaycaster *m_vehicleRayCaster;
     btRaycastVehicle *m_vehicle;
@@ -110,7 +121,6 @@ public:
     float steeringIncrement;
     float steeringSpeed;
     float steeringLimit;
-    float wheelRadius;
 
     glm::vec3 m_velocity;
     glm::vec3 m_localVelocity;
@@ -126,12 +136,16 @@ public:
     void openDoor(int door);
     void closeDoor(int door);
     bool isDoorOpen(int door);
+    void setWheelPosition(int wheel, glm::vec3 position);
+    void setWheelRadius(int wheel, float radius);
+    void setActiveDoorHingeOffsetFront(glm::vec3 aFrame, glm::vec3 bFrame);
 
 private:
     void initDefaultValues();
     void initVehicle();
     void setupCollider();
     btConvexHullShape *getBodyShape(Mesh &mesh);
+    void setupWheels();
     void setupDoors();
     btTransform getDoorTransform(int door);
     void updateSteering(float deltaTime);
