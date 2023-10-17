@@ -1,9 +1,8 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path, bool useOffset)
+Model::Model(ResourceManager *resourceManager, std::string const &path)
     : m_resourceManager(resourceManager),
-      m_path(path),
-      m_useOffset(useOffset)
+      m_path(path)
 {
     m_importer = new Assimp::Importer();
 
@@ -73,9 +72,15 @@ void Model::loadModel(std::string const &path)
     }
 
     // process ASSIMP's root node recursively
-    processNode(m_scene->mRootNode);
+    processNode(m_scene->mRootNode, glm::mat4(1.0));
 
-    for (int i = 0; i < meshes.size(); i++)
+    if (meshes.size() > 0)
+    {
+        aabbMin = meshes[0]->aabbMin;
+        aabbMax = meshes[0]->aabbMax;
+    }
+
+    for (int i = 1; i < meshes.size(); i++)
     {
         aabbMin.x = std::min(aabbMin.x, meshes[i]->aabbMin.x);
         aabbMin.y = std::min(aabbMin.y, meshes[i]->aabbMin.y);
@@ -87,15 +92,24 @@ void Model::loadModel(std::string const &path)
     }
 }
 
-void Model::processNode(aiNode *node)
+void Model::processNode(aiNode *node, glm::mat4 parentTransform)
 {
+    glm::mat4 meshTransform = AssimpToGLM::getGLMMat4(node->mTransformation);
+    glm::mat4 transform = parentTransform * meshTransform;
+
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh *assimpMesh = m_scene->mMeshes[node->mMeshes[i]];
 
         Mesh *mesh = processMesh(assimpMesh);
-        if (m_useOffset)
-            mesh->offset = AssimpToGLM::getGLMMat4(node->mTransformation);
+        mesh->offset = transform;
+
+        // TODO: negative scale?
+        glm::vec4 aabbMin = transform * glm::vec4(mesh->aabbMin, 1.f);
+        glm::vec4 aabbMax = transform * glm::vec4(mesh->aabbMax, 1.f);
+
+        mesh->aabbMin = glm::vec3(aabbMin.x, aabbMin.y, aabbMin.z);
+        mesh->aabbMax = glm::vec3(aabbMax.x, aabbMax.y, aabbMax.z);
 
         meshes.push_back(mesh);
         if (mesh->opaque)
@@ -105,7 +119,7 @@ void Model::processNode(aiNode *node)
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++)
-        processNode(node->mChildren[i]);
+        processNode(node->mChildren[i], transform);
 }
 
 Mesh *Model::processMesh(aiMesh *mesh)

@@ -20,7 +20,7 @@ ResourceManager::~ResourceManager()
     m_textures.clear();
 }
 
-Model *ResourceManager::getModel(const std::string &path, bool useOffset)
+Model *ResourceManager::getModel(const std::string &path)
 {
     std::string fullPath = m_executablePath + '/' + path;
     // TODO: sharing same model object is safe?
@@ -30,7 +30,7 @@ Model *ResourceManager::getModel(const std::string &path, bool useOffset)
         return m_models[fullPath];
     }
 
-    Model *model = new Model(this, fullPath, useOffset);
+    Model *model = new Model(this, fullPath);
     m_models[fullPath] = model;
 
     return model;

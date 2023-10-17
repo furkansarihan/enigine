@@ -850,7 +850,14 @@ void RenderManager::addSource(RenderSource *source)
         m_linkSources.push_back(source);
 
     glm::vec3 size = (source->model->aabbMax - source->model->aabbMin) / 2.0f;
-    m_cullingManager->addObject(source, size, m_originTransform * source->transform.getModelMatrix());
+    glm::vec3 aabbCenter = (source->model->aabbMax + source->model->aabbMin) / 2.0f;
+
+    eTransform aabbTransform;
+    aabbTransform.setPosition(aabbCenter);
+
+    glm::mat4 result = source->transform.getModelMatrix() * aabbTransform.getModelMatrix();
+
+    m_cullingManager->addObject(source, size, m_originTransform * result);
 }
 
 void RenderManager::removeSource(RenderSource *source)
@@ -916,6 +923,13 @@ void RenderSource::setModelMatrix(glm::mat4 modelMatrix)
 
     if (!m_renderManager->m_cullingManager)
         return;
+
+    glm::vec3 aabbCenter = (model->aabbMax + model->aabbMin) / 2.0f;
+
+    eTransform aabbTransform;
+    aabbTransform.setPosition(aabbCenter);
+
+    modelMatrix = modelMatrix * aabbTransform.getModelMatrix();
 
     m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * modelMatrix);
 }

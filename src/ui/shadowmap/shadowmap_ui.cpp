@@ -7,6 +7,7 @@ void ShadowmapUI::render()
 
     ImGui::Checkbox("drawShadowmap", &m_drawShadowmap);
     ImGui::Checkbox("drawFrustum", &m_drawFrustum);
+    ImGui::Checkbox("drawFrustumAABB", &m_drawFrustumAABB);
     ImGui::Checkbox("drawAABB", &m_drawAABB);
     ImGui::DragFloat("quadScale", &m_quadScale, 0.1f);
     ImGui::DragFloat("splitWeight", &m_shadowManager->m_splitWeight, 0.01f);
@@ -61,12 +62,77 @@ void ShadowmapUI::drawFrustum(Shader &simpleShader, glm::mat4 mvp, unsigned int 
 
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp);
+        simpleShader.setMat4("u_meshOffset", glm::mat4(1.0));
         simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 1.0, 1.0, 1.0f));
 
         glBindVertexArray(c_vao);
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
+}
+
+void ShadowmapUI::drawFrustumAABB(Shader &simpleShader, glm::mat4 mvp, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo)
+{
+    if (!m_drawFrustumAABB)
+        return;
+
+    for (int i = 0; i < m_shadowManager->m_splitCount; i++)
+    {
+        glm::vec3 minPoint = m_shadowManager->m_aabb.min;
+        glm::vec3 maxPoint = m_shadowManager->m_aabb.max;
+
+        glm::vec3 vertices[] = {
+            glm::vec3(minPoint.x, minPoint.y, minPoint.z),
+            glm::vec3(maxPoint.x, minPoint.y, minPoint.z),
+            glm::vec3(maxPoint.x, maxPoint.y, minPoint.z),
+            glm::vec3(minPoint.x, maxPoint.y, minPoint.z),
+            glm::vec3(minPoint.x, minPoint.y, maxPoint.z),
+            glm::vec3(maxPoint.x, minPoint.y, maxPoint.z),
+            glm::vec3(maxPoint.x, maxPoint.y, maxPoint.z),
+            glm::vec3(minPoint.x, maxPoint.y, maxPoint.z)};
+
+        int indices[] = {
+            0, 1, 2, 2, 3, 0, // Front face
+            1, 5, 6, 6, 2, 1, // Right face
+            5, 4, 7, 7, 6, 5, // Back face
+            4, 0, 3, 3, 7, 4, // Left face
+            3, 2, 6, 6, 7, 3, // Top face
+            4, 5, 1, 1, 0, 4, // Bottom face
+        };
+
+        glBindVertexArray(c_vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, c_vbo);
+        glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(float), vertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c_ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(float), indices, GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+
+        simpleShader.use();
+        simpleShader.setMat4("MVP", mvp);
+        simpleShader.setMat4("u_meshOffset", glm::mat4(1.0));
+        simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 0.0, 1.0, 0.2f));
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glBindVertexArray(c_vao);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+        glDisable(GL_BLEND);
+
+        simpleShader.setVec4("DiffuseColor", glm::vec4(0.0, 0.0, 0.0, 1.0f));
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+        glBindVertexArray(0);
+    }
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void ShadowmapUI::drawLightAABB(Shader &simpleShader, glm::mat4 mvp, glm::mat4 inverseDepthViewMatrix, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo)
@@ -99,6 +165,7 @@ void ShadowmapUI::drawLightAABB(Shader &simpleShader, glm::mat4 mvp, glm::mat4 i
 
         simpleShader.use();
         simpleShader.setMat4("MVP", mvp * inverseDepthViewMatrix);
+        simpleShader.setMat4("u_meshOffset", glm::mat4(1.0));
         glm::vec4 color = glm::vec4(1.0, 1.0, 1.0, 0.2f);
         color[i] *= 0.7;
         simpleShader.setVec4("DiffuseColor", color);

@@ -22,11 +22,13 @@ public:
 
     float m_quadScale = 0.2f;
     bool m_drawFrustum = false;
+    bool m_drawFrustumAABB = false;
     bool m_drawAABB = false;
     bool m_drawShadowmap = false;
 
     void render() override;
     void drawFrustum(Shader &simpleShader, glm::mat4 mvp, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo);
+    void drawFrustumAABB(Shader &simpleShader, glm::mat4 mvp, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo);
     void drawLightAABB(Shader &simpleShader, glm::mat4 mvp, glm::mat4 inverseDepthViewMatrix, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo);
     void drawShadowmap(Shader &textureArrayShader, float screenWidth, float screenHeight, unsigned int q_vao);
 };

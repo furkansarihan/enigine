@@ -30,6 +30,7 @@ Enigine::~Enigine()
     delete rootUI;
 }
 
+// TODO: return init result enum
 int Enigine::init()
 {
     CommonUtil::printStartInfo();
@@ -59,7 +60,7 @@ int Enigine::init()
 
     // Create window with graphics context
     // TODO: EnigineBuilder()
-    window = glfwCreateWindow(1500, 1000, "enigine", NULL, NULL);
+    window = glfwCreateWindow(1500, 1200, "enigine", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -86,7 +87,7 @@ int Enigine::init()
     if (!soundEngine->init())
     {
         fprintf(stderr, "Failed to initialize OpenAL!\n");
-        return 0;
+        return 1;
     }
     soundEngine->setListenerPosition(4.0f, 4.0f, 4.0f);
 
@@ -126,6 +127,7 @@ int Enigine::init()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
+    io.IniFilename = NULL;
     ImGui::StyleColorsDark();
 
     // Setup Dear ImGui Platform/Renderer backends
@@ -151,6 +153,8 @@ int Enigine::init()
     rootUI->m_uiList.push_back(resourceUI);
     rootUI->m_uiList.push_back(renderUI);
     rootUI->m_uiList.push_back(tempUI);
+
+    return 0;
 }
 
 void Enigine::start()
@@ -216,6 +220,7 @@ void Enigine::start()
 
         // Shadowmap debug
         shadowmapUI->drawFrustum(simpleShader, mvp, vbo, vao, ebo);
+        shadowmapUI->drawFrustumAABB(simpleShader, mvp, vbo, vao, ebo);
         shadowmapUI->drawLightAABB(simpleShader, mvp, renderManager->m_inverseDepthViewMatrix, vbo, vao, ebo);
 
         // render manager - end
