@@ -2,6 +2,8 @@
 
 is a 3D game engine.
 
+![5](showcase/5.jpg)
+
 ## 🚧 Work In Progress
 
 Documents, API and files possibly have conflicts. Some parts are designed to be a part of the final product and some not. This section will be removed when it's time.
@@ -21,15 +23,9 @@ If you're not unlucky, enigine is installed on your machine at the conan cache. 
 
 There is a playground project for library development at [dev](dev). Acts as a client project but enigine linked as a source rather than a library. Modify any source and run the project.
 
-## Showcase
+## Videos
 
-![4](showcase/4.jpg)
-![1](showcase/1.jpg)
-![2](showcase/2.jpg)
-![3](showcase/3.jpg)
-
-## Videos from YouTube
-
-[![Character controller](https://img.youtube.com/vi/1h7jF8Wdc1I/0.jpg)](https://www.youtube.com/shorts/1h7jF8Wdc1I)
-[![Ragdoll activation](https://img.youtube.com/vi/V6gx4lv9K6Y/0.jpg)](https://www.youtube.com/shorts/V6gx4lv9K6Y)
-[![Exhaust smoke](https://img.youtube.com/vi/kTJfZHLzAQo/0.jpg)](https://www.youtube.com/shorts/kTJfZHLzAQo)
+[![Drifting](https://img.youtube.com/vi/G3zdnXcK1r0/0.jpg)](https://www.youtube.com/shorts/G3zdnXcK1r0)
+[![Watermelons](https://img.youtube.com/vi/Fay0oSuhUVA/0.jpg)](https://www.youtube.com/shorts/Fay0oSuhUVA)
+[![Deferred Lighting](https://img.youtube.com/vi/EUUhGQD2OSU/0.jpg)](https://www.youtube.com/shorts/EUUhGQD2OSU)
+[![Parallax Occlusion Mapping](https://img.youtube.com/vi/cMjfwCiVaWk/0.jpg)](https://www.youtube.com/watch?v=cMjfwCiVaWk)
