@@ -17,9 +17,14 @@ void ResourceUI::render()
                 if (ImGui::TreeNode(std::string(mesh.name + ":" + mesh.material.name).c_str()))
                 {
                     VectorUI::renderVec4("albedo", mesh.material.albedo, 0.1f);
-                    ImGui::DragFloat("metallic", &mesh.material.metallic, 0.1f);
-                    ImGui::DragFloat("roughness", &mesh.material.roughness, 0.1f);
-                    ImGui::DragFloat("transmission", &mesh.material.transmission, 0.1f);
+                    ImGui::DragFloat("metallic", &mesh.material.metallic, 0.1f, 0.f, 1.f);
+                    ImGui::DragFloat("roughness", &mesh.material.roughness, 0.1f, 0.f, 1.f);
+                    ImGui::DragFloat("transmission", &mesh.material.transmission, 0.1f, 0.f, 1.f);
+                    ImGui::DragFloat("opacity", &mesh.material.opacity, 0.1f, 0.f, 1.f);
+                    ImGui::DragFloat("ior", &mesh.material.ior, 0.1f);
+                    VectorUI::renderVec4("emissiveColor", mesh.material.emissiveColor, 0.1f);
+                    ImGui::DragFloat("emissiveStrength", &mesh.material.emissiveStrength, 0.1f);
+                    ImGui::DragFloat("thickness", &mesh.material.thickness, 0.1f);
                     ImGui::DragFloat("parallaxMapMidLevel", &mesh.material.parallaxMapMidLevel, 0.1f);
                     ImGui::DragFloat("parallaxMapSampleCount", &mesh.material.parallaxMapSampleCount, 0.1f);
                     ImGui::DragFloat("parallaxMapScale", &mesh.material.parallaxMapScale, 0.1f);

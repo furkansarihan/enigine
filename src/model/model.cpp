@@ -180,7 +180,11 @@ Mesh *Model::processMesh(aiMesh *mesh)
     // process materials
     aiMaterial *material = m_scene->mMaterials[mesh->mMaterialIndex];
 
-    // TODO: merge detection for metal-rough-ao
+    // TODO: merge detection for ao-rought-metal - validate unknown_map
+    // TODO: transmission - thickness map
+    // TODO: emissive map
+    // TODO: material properties for use_ao-metal-rough map
+    // TODO: opacity map - fix
 
     // 1. diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
@@ -203,7 +207,10 @@ Mesh *Model::processMesh(aiMesh *mesh)
     // 7. metalness maps
     std::vector<Texture> metalMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metal");
     textures.insert(textures.end(), metalMaps.begin(), metalMaps.end());
-    // 8. unknown maps
+    // 8. opacity maps
+    std::vector<Texture> opacityMaps = loadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity");
+    textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
+    // unknown maps
     std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
@@ -213,26 +220,46 @@ Mesh *Model::processMesh(aiMesh *mesh)
     for (unsigned int i = 0; i < material->mNumProperties; i++)
     {
         const aiMaterialProperty *property = material->mProperties[i];
+        // TODO: depends on assimp - don't
         std::string propertyName = property->mKey.C_Str();
 
-        // TODO: depends on assimp - don't
-        propertyName = propertyName.substr(5);
-
-        if (propertyName == "diffuse")
+        // TODO: enum instead of direct string?
+        if (propertyName == "$clr.diffuse")
         {
             mat.albedo = *reinterpret_cast<glm::vec4 *>(property->mData);
         }
-        else if (propertyName == "roughnessFactor")
+        else if (propertyName == "$mat.roughnessFactor")
         {
             mat.roughness = *reinterpret_cast<float *>(property->mData);
         }
-        else if (propertyName == "metallicFactor")
+        else if (propertyName == "$mat.metallicFactor")
         {
             mat.metallic = *reinterpret_cast<float *>(property->mData);
         }
-        else if (propertyName == "transmission.factor")
+        else if (propertyName == "$mat.transmission.factor")
         {
             mat.transmission = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "$mat.opacity")
+        {
+            mat.opacity = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "$clr.emissive")
+        {
+            mat.emissiveColor = *reinterpret_cast<glm::vec4 *>(property->mData);
+        }
+        // TODO: update to assimp 5.3.1
+        else if (propertyName == "$mat.emissiveIntensity")
+        {
+            mat.emissiveStrength = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "$mat.volume.thicknessFactor")
+        {
+            mat.thickness = *reinterpret_cast<float *>(property->mData);
+        }
+        else if (propertyName == "$mat.refracti")
+        {
+            mat.ior = *reinterpret_cast<float *>(property->mData);
         }
     }
 

@@ -19,6 +19,11 @@ Material::Material(const std::string &name, std::vector<Texture> &textures)
       metallic(0.f),
       roughness(0.f),
       transmission(0.f),
+      opacity(1.f),
+      ior(1.45f),
+      emissiveColor(glm::vec4(0.f)),
+      emissiveStrength(0.f),
+      thickness(0.f),
       parallaxMapMidLevel(0.f),
       parallaxMapScale(0.f),
       parallaxMapSampleCount(0.f),
@@ -69,6 +74,7 @@ void Mesh::bindTextures(Shader shader)
     unsigned int roughNr = 1;
     unsigned int aoNr = 1;
     unsigned int metalNr = 1;
+    unsigned int opacityNr = 1;
     unsigned int unknownNr = 1;
     for (unsigned int i = 0; i < material.textures.size(); i++)
     {
@@ -90,6 +96,8 @@ void Mesh::bindTextures(Shader shader)
             number = std::to_string(aoNr++);
         else if (name == "texture_metal")
             number = std::to_string(metalNr++);
+        else if (name == "texture_opacity")
+            number = std::to_string(opacityNr++);
         else if (name == "texture_unknown")
             number = std::to_string(unknownNr++);
 
@@ -103,6 +111,8 @@ void Mesh::bindTextures(Shader shader)
     shader.setBool("material.aoMap", aoNr > 1);
     shader.setBool("material.roughMap", roughNr > 1);
     shader.setBool("material.metalMap", metalNr > 1);
+    shader.setBool("material.opacityMap", opacityNr > 1);
+    shader.setBool("material.aoRoughMetalMap", unknownNr > 1);
 }
 
 void Mesh::unbindTextures(Shader shader)
@@ -119,6 +129,8 @@ void Mesh::unbindTextures(Shader shader)
     shader.setBool("material.aoMap", false);
     shader.setBool("material.roughMap", false);
     shader.setBool("material.metalMap", false);
+    shader.setBool("material.opacityMap", false);
+    shader.setBool("material.aoRoughMetalMap", false);
 }
 
 void Mesh::bindProperties(Shader shader)
@@ -127,6 +139,13 @@ void Mesh::bindProperties(Shader shader)
     shader.setFloat("material.metallic", material.metallic);
     shader.setFloat("material.roughness", material.roughness);
     shader.setFloat("material.transmission", material.transmission);
+    shader.setFloat("material.opacity", material.opacity);
+    shader.setFloat("material.ior", material.ior);
+
+    shader.setVec4("material.emissiveColor", material.emissiveColor);
+    shader.setFloat("material.emissiveStrength", material.emissiveStrength);
+
+    shader.setFloat("material.thickness", material.thickness);
 
     shader.setFloat("material.parallaxMapMidLevel", material.parallaxMapMidLevel);
     shader.setFloat("material.parallaxMapScale", material.parallaxMapScale);
@@ -134,12 +153,20 @@ void Mesh::bindProperties(Shader shader)
     shader.setFloat("material.parallaxMapScaleMode", material.parallaxMapScaleMode);
 }
 
+// TODO: remove?
 void Mesh::unbindProperties(Shader shader)
 {
     shader.setVec4("material.albedo", glm::vec4(0.f));
     shader.setFloat("material.metallic", 0.f);
     shader.setFloat("material.roughness", 0.f);
     shader.setFloat("material.transmission", 0.f);
+    shader.setFloat("material.opacity", 0.f);
+    shader.setFloat("material.ior", 0.f);
+
+    shader.setVec4("material.emissiveColor", glm::vec4(0.f));
+    shader.setFloat("material.emissiveStrength", 0.f);
+
+    shader.setFloat("material.thickness", 0.f);
 
     shader.setFloat("material.parallaxMapMidLevel", 0.f);
     shader.setFloat("material.parallaxMapScale", 0.f);
@@ -193,5 +220,6 @@ void Mesh::setupMesh()
 
 void Mesh::updateTransmission()
 {
-    opaque = material.transmission == 0.f;
+    opaque = material.transmission == 0.f &&
+             material.opacity == 1.f;
 }

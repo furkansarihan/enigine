@@ -346,7 +346,6 @@ void RenderManager::renderOpaque()
     for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
         RenderSource *source = m_visiblePbrSources[i];
-        pbrDeferredPre.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
         pbrDeferredPre.setMat4("model", m_originTransform * source->transform.getModelMatrix());
 
         if (source->faceCullType == FaceCullType::none)
@@ -387,7 +386,6 @@ void RenderManager::renderOpaque()
                 pbrDeferredPreAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
         }
 
-        pbrDeferredPreAnim.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
         pbrDeferredPreAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
 
         if (source->faceCullType == FaceCullType::none)
@@ -789,14 +787,20 @@ void RenderManager::renderTransmission()
     glUniform1i(glGetUniformLocation(pbrTransmission.id, "u_TransmissionFramebufferSampler"), 12);
     glBindTexture(GL_TEXTURE_2D, m_postProcess->m_texture);
 
+    // TODO: only blend transparent meshes
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // render each transmission mesh
     for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
         RenderSource *source = m_visiblePbrSources[i];
-        pbrTransmission.setBool("material.aoRoughMetalMap", source->aoRoughMetalMap);
         pbrTransmission.setMat4("model", m_originTransform * source->transform.getModelMatrix());
         source->model->draw(pbrTransmission, false);
     }
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
 }
 
 void RenderManager::renderPostProcess()

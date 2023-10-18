@@ -26,6 +26,9 @@ struct Material {
     float metallic;
     float transmission;
 
+    vec4 emissiveColor;
+    float emissiveStrength;
+
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;
@@ -345,23 +348,27 @@ void main()
 
     if (material.albedoMap) {
         albedo = texture(texture_diffuse1, pTexCoords).rgb;
+        // TODO: validate
+        albedo *= material.albedo.rgb;
     } else {
-        albedo = material.albedo.xyz;
+        albedo = material.albedo.rgb;
     }
+
+    vec3 emissive = material.emissiveColor.xyz * material.emissiveStrength;
+    albedo += emissive;
 
     // TODO: merge detection
     if (material.aoRoughMetalMap) {
         // TODO: individual present
         vec3 merged = texture(texture_unknown1, pTexCoords).rgb;
-        ao = merged.r;
+        ao = 1.0; // TODO: useAOMAP
         roughness = merged.g;
         metallic = merged.b;
     } else {
         if (material.aoMap) {
             ao = texture(texture_ao1, pTexCoords).r;
         } else {
-            // TODO:
-            ao = 1;
+            ao = 1.0;
         }
         if (material.roughMap) {
             roughness = texture(texture_rough1, pTexCoords).r;

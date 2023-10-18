@@ -111,16 +111,13 @@ int main()
     Model &shelter = *resourceManager->getModel("assets/gltf/shelter1.glb");
     renderManager->addSource(RenderSourceBuilder()
                                  .setTransform(transform)
-                                 .setAoRoughMetalMap(true)
                                  .setModel(&shelter)
                                  .build());
 
     transform.setPosition(glm::vec3(112.f, 18.2f, 233.f));
-    transform.setScale(glm::vec3(.1f, .1f, .1f));
     Model &tower = *resourceManager->getModel("assets/gltf/old-water-tower.glb");
     renderManager->addSource(RenderSourceBuilder()
                                  .setTransform(transform)
-                                 .setAoRoughMetalMap(true)
                                  .setModel(&tower)
                                  .build());
 

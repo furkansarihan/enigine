@@ -21,9 +21,30 @@ uniform float roughness;
 uniform float ao;
 //
 struct Material {
-    float opacity;
+    vec4 albedo;
+    float roughness;
+    float metallic;
     float transmission;
+    float opacity;
+    float ior;
+
+    vec4 emissiveColor;
+    float emissiveStrength;
+    float thickness;
+
+    float parallaxMapMidLevel;
+    float parallaxMapScale;
+    float parallaxMapSampleCount;
+    float parallaxMapScaleMode;
+
     //
+    bool albedoMap;
+    bool normalMap;
+    bool heightMap;
+    bool aoMap;
+    bool roughMap;
+    bool metalMap;
+    bool opacityMap;
     bool aoRoughMetalMap;
 };
 
@@ -39,6 +60,7 @@ uniform sampler2D texture_normal1;
 uniform sampler2D texture_height1;
 uniform sampler2D texture_rough1;
 uniform sampler2D texture_ao1;
+uniform sampler2D texture_opacity1;
 uniform sampler2D texture_unknown1;
 
 uniform samplerCube irradianceMap;
@@ -255,6 +277,7 @@ vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior)
     // return textureLod(u_TransmissionFramebufferSampler, fragCoord.xy, 4).rgb;
     // return texture(u_TransmissionFramebufferSampler, fragCoord.xy).rgb;
     float framebufferLod = log2(float(u_TransmissionFramebufferSize.x)) * applyIorToRoughness(roughness, ior);
+    framebufferLod = max(framebufferLod, 1); // artifacts when lower than 1
     vec3 transmittedLight = textureLod(u_TransmissionFramebufferSampler, fragCoord.xy, framebufferLod).rgb;
     return transmittedLight;
 }
@@ -292,48 +315,67 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 void main()
 {
     // TODO: preprocessor texture read - material properties
-    vec3 albedo     = pow(texture(texture_diffuse1, TexCoords).rgb, vec3(2.2));
-    float metallic, roughness, ao;
+    vec3 albedo;
+    float ao, roughness, metallic, opacity;
 
-    // TODO: merge detection
-    // ao-rough-metal
-    if (material.aoRoughMetalMap) {
-        vec3 merged = texture(texture_unknown1, TexCoords).rgb;
-        ao = merged.r;
-        roughness = merged.g;
-        metallic = merged.b;
+    if (material.albedoMap) {
+        vec4 diffuse = texture(texture_diffuse1, TexCoords);
+        albedo = diffuse.rgb;
+        albedo *= material.albedo.rgb; // TODO: validate
+        opacity = diffuse.a; // TODO: validate
     } else {
-        metallic = texture(texture_metal1, TexCoords).r;
-        roughness = texture(texture_rough1, TexCoords).r;
-        ao = texture(texture_ao1, TexCoords).r;
+        albedo = material.albedo.rgb;
+        opacity = 1.0;
     }
 
-    // TODO: variable ao-rough-metal
-    // TODO: default values if not exist
+    // TODO: validate
+    if (material.opacityMap) {
+        opacity *= texture(texture_opacity1, TexCoords).r;
+    } else {
+        opacity *= material.opacity;
+    }
+
+    vec3 emissive = material.emissiveColor.xyz * material.emissiveStrength;
+    albedo += emissive;
+
+    if (material.aoRoughMetalMap) {
+        // TODO: individual present
+        vec3 merged = texture(texture_unknown1, TexCoords).rgb;
+        ao = 1.0; // TODO: useAOMAP
+        roughness = merged.g * material.roughness;
+        metallic = merged.b * material.metallic;
+    } else {
+        if (material.aoMap) {
+            ao = texture(texture_ao1, TexCoords).r;
+        } else {
+            ao = 1.0;
+        }
+        if (material.roughMap) {
+            roughness = texture(texture_rough1, TexCoords).r * material.roughness;
+        } else {
+            roughness = material.roughness;
+        }
+        if (material.metalMap) {
+            metallic = texture(texture_metal1, TexCoords).r * material.metallic;
+        } else {
+            metallic = material.metallic;
+        }
+    }
 
     vec3 N;
     vec3 V = normalize(camPos - WorldPos);
 
-    // TODO: 
-    // TODO: correct? - variable material properties
-// #ifdef MATERIAL_TRANSMISSION
-    if (material.transmission > 0) {
-        albedo = vec3(0);
-        metallic = 0;
-        roughness = 0;
-        ao = 1;
-
-        N = normalize(Normal);
-    }
-// #else
-    else {
+    if (material.normalMap) {
         vec3 tangentNormal = texture(texture_normal1, TexCoords).xyz * 2.0 - 1.0;
+        // TODO: pom tangent and bitangent?
         mat3 TBN = mat3(
             Tangent,
             Bitangent,
             Normal
         );
         N = normalize(TBN * tangentNormal);
+    } else {
+        N = normalize(Normal);
     }
 
     // TODO: debug frustumIndex
@@ -406,25 +448,28 @@ void main()
         vec3 n = N;
         vec3 v = V;
 
-        vec3 pointToLight = normalize(lightDirection);
+        vec3 pointToLight = normalize(lightDirection); // negative?
         vec3 light = lightColor;
 
-        float alphaRoughness = 0.9;
-        vec3 f0 = F0;
         vec3 f90 = vec3(1.0);
         vec3 c_diff = vec3(0.4);
-        float thickness = 0.0;
-        float ior = 1.45;
+        float thickness = material.thickness;
+        float ior = material.ior;
 
-        float perceptualRoughness = 0.05;
+        c_diff = mix(albedo, vec3(0), metallic);
+
+        float perceptualRoughness = roughness;
+        // Roughness is authored as perceptual roughness; as is convention,
+        // convert to material roughness by squaring the perceptual roughness.
+        float alphaRoughness = perceptualRoughness * perceptualRoughness;
         vec3 attenuationColor = vec3(1.0);
-        float attenuationDistance = 1.0;
+        float attenuationDistance = 0.0;
 
         //
         f_transmission += getIBLVolumeRefraction(
             n, v,
             perceptualRoughness,
-            c_diff, f0, f90,
+            c_diff, F0, f90,
             WorldPos, TransformedModel, view, projection,
             ior, thickness, attenuationColor, attenuationDistance);
 
@@ -432,10 +477,9 @@ void main()
         pointToLight -= transmissionRay;
         vec3 l = normalize(pointToLight);
 
-        // vec3 intensity = getLighIntensity(light, pointToLight);
-        vec3 intensity = lightColor * 0.2;
+        vec3 intensity = lightColor;
         vec3 transmittedLight = intensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, 
-                                                f0, f90, c_diff, ior);
+                                                F0, f90, c_diff, ior);
 
 // #ifdef MATERIAL_VOLUME
         transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
@@ -452,11 +496,6 @@ void main()
     }
 // #endif
 
-    // ambient lighting (note that the next IBL tutorial will replace 
-    // this ambient lighting with environment lighting).
-    // vec3 ambient = vec3(0.03) * albedo * ao;
-
-    // ----
     vec3 R = reflect(-V, N);   
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
@@ -471,24 +510,23 @@ void main()
     
     vec3 ambient = (kD * diffuse + specular) * ao; 
 
-    // ----
-    // vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
-    // vec3 kD = vec3(1.0) - kS;
-    // kD *= 1.0 - metallic;
-    // vec3 irradiance = texture(irradianceMap, N).rgb;
-    // vec3 diffuse    = irradiance * albedo;
-    // vec3 ambient    = (kD * diffuse) * ao; 
-
     vec3 color = ambient + Lo;
 
 // #ifdef MATERIAL_TRANSMISSION
     if (material.transmission > 0) {
-        FragColor = vec4(color , 1.0);
+        FragColor = vec4(color, opacity);
     }
 // #else
     else {
-        FragColor = vec4(color * getVisibility(), 1.0);
+        // TODO: visiblity - when?
+        FragColor = vec4(color * getVisibility(), opacity);
     }
+
+    // TODO: only if alphamode is mask
+    // const float alphaCutoff = 0.5;
+    // if (opacity < alphaCutoff) {
+    //     discard;
+    // }
 
     // FragColor = vec4(WorldPos, 1.0);
     // FragColor = vec4(vec3(albedo), 1.0);
@@ -496,6 +534,12 @@ void main()
     // FragColor = vec4(vec3(roughness), 1.0);
     // FragColor = vec4(vec3(lightColor), 1.0);
     // FragColor = vec4(vec3(ao), 1.0);
+    // FragColor = vec4(diffuse, 1.0);
+    // FragColor = vec4(ambient, 1.0);
+    // FragColor = vec4(vec3(opacity), 1.0);
+    // FragColor = vec4(f_transmission, 1.0);
+    // FragColor = vec4(vec3(material.transmission), 1.0);
+    // FragColor = vec4(color, 1.0);
     // FragColor = vec4(N, 1.0);
     // FragColor = vec4(irradiance, 1.0);
     // FragColor = vec4(texture(texture_diffuse1, TexCoords).rgb, 1.0);
@@ -505,6 +549,7 @@ void main()
     // FragColor = vec4(texture(texture_height1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_rough1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_ao1, TexCoords).rgb, 1.0);
+    // FragColor = vec4(texture(texture_opacity1, TexCoords).rgb, 1.0);
     // FragColor = vec4(texture(texture_unknown1, TexCoords).ggg, 1.0);
     // FragColor = vec4(texture(irradianceMap, N).rgb, 1.0);
     // FragColor = vec4(textureLod(prefilterMap, N, 0).rgb, 1.0);

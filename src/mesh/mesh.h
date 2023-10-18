@@ -42,7 +42,17 @@ public:
     float roughness;
     float metallic;
     float transmission;
+    float opacity;
+    float ior;
 
+    // emissive
+    glm::vec4 emissiveColor;
+    float emissiveStrength;
+
+    // volume
+    float thickness;
+
+    // parallax map
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;
