@@ -2,19 +2,63 @@
 
 float randomFloat(float min, float max);
 
-ParticleEngine::ParticleEngine(Camera *viewCamera)
+ParticleEngine::ParticleEngine(ResourceManager *resourceManager, Model *particleCopy, Camera *viewCamera)
     : m_viewCamera(viewCamera)
 {
+    m_model = resourceManager->getModel(particleCopy->m_pathRelative, true);
+    setupBuffer();
 }
 
 ParticleEngine::~ParticleEngine()
 {
+    delete m_model;
+}
+
+void ParticleEngine::setupBuffer()
+{
+    glGenBuffers(1, &m_arrayBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, m_arrayBuffer);
+
+    for (size_t i = 0; i < m_model->meshes.size(); i++)
+    {
+        unsigned int VAO = m_model->meshes[i]->VAO;
+        glBindVertexArray(VAO);
+
+        float size = sizeof(Particle);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, size, (void *)0);
+
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, size, (void *)offsetof(Particle, emitPosition));
+
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, size, (void *)offsetof(Particle, velocity));
+
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(Particle, duration));
+
+        glEnableVertexAttribArray(7);
+        glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(Particle, maxDuration));
+
+        glEnableVertexAttribArray(8);
+        glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, size, (void *)offsetof(Particle, distance));
+
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+        glVertexAttribDivisor(7, 1);
+        glVertexAttribDivisor(8, 1);
+    }
+
+    glBindVertexArray(0);
 }
 
 void ParticleEngine::update(float deltaTime)
 {
-    updateParticles(deltaTime);
     emitParticles(deltaTime);
+    updateParticles(deltaTime);
 
     // TODO: optional - when?
     // std::sort(m_particles.begin(), m_particles.end(), [](Particle a, Particle b)
@@ -44,6 +88,9 @@ void ParticleEngine::updateParticles(float deltaTime)
         else
             ++i;
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_arrayBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_particles.size() * sizeof(Particle), m_particles.data(), GL_STATIC_DRAW);
 }
 
 void ParticleEngine::emitParticles(float deltaTime)
@@ -74,35 +121,18 @@ void ParticleEngine::emitParticles(float deltaTime)
 }
 
 // TODO: instancing - compute shaders
-void ParticleEngine::drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection, glm::vec3 worldOrigin)
+void ParticleEngine::drawParticles(Shader *shader, glm::mat4 viewProjection, glm::vec3 worldOrigin)
 {
     if (m_particles.empty())
         return;
 
     shader->use();
-    shader->setFloat("particleScale", m_particleScale);
-    for (int i = 0; i < m_particles.size(); i++)
-    {
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, m_particles[i].position + worldOrigin);
+    shader->setMat4("u_viewProjection", viewProjection);
+    shader->setVec3("u_worldOrigin", worldOrigin);
+    shader->setVec3("u_viewPosition", m_viewCamera->position);
+    shader->setFloat("u_particleScale", m_particleScale);
 
-        // bilboarding
-        glm::vec3 camToParticle = glm::normalize(m_particles[i].position - m_viewCamera->position);
-        glm::vec3 rotation(0.f);
-        rotation.y = glm::atan(camToParticle.x, camToParticle.z) + M_PI_2;
-        rotation.z = -glm::atan(camToParticle.y, glm::length(glm::vec2(camToParticle.x, camToParticle.z)));
-        // model = glm::rotate(model, rotation.x, glm::vec3(1, 0, 0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0, 1, 0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0, 0, 1));
-
-        model = glm::scale(model, glm::vec3(m_particleScale));
-
-        shader->setFloat("emitDistance", glm::distance(m_particles[i].position, m_particles[i].emitPosition));
-        shader->setFloat("duration", m_particles[i].duration);
-        shader->setFloat("maxDuration", m_particles[i].maxDuration);
-        shader->setMat4("MVP", viewProjection * model);
-        quad->draw(*shader);
-    }
+    m_model->drawInstanced(*shader, m_particles.size());
 }
 
 float randomFloat(float min, float max)

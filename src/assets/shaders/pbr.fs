@@ -14,12 +14,6 @@ in mat4 TransformedModel;
 uniform mat4 view;
 uniform mat4 projection;
 
-// material properties
-uniform vec3 albedo;
-uniform float metallic;
-uniform float roughness;
-uniform float ao;
-//
 struct Material {
     vec4 albedo;
     float roughness;
@@ -27,11 +21,12 @@ struct Material {
     float transmission;
     float opacity;
     float ior;
-
+    // emissive
     vec4 emissiveColor;
     float emissiveStrength;
+    // volume
     float thickness;
-
+    // parallax occlusion mapping
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;

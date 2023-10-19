@@ -45,18 +45,15 @@ public:
     Model *model = nullptr;
     Animator *animator = nullptr;
     TransformLink *transformLink = nullptr;
-    // TODO: auto detect
-    bool aoRoughMetalMap = false;
     int cullIndex = -1;
 
-    RenderSource(eTransform transform, eTransform offset, FaceCullType faceCullType, Model *model, Animator *animator, TransformLink *transformLink, bool aoRoughMetalMap)
+    RenderSource(eTransform transform, eTransform offset, FaceCullType faceCullType, Model *model, Animator *animator, TransformLink *transformLink)
         : transform(transform),
           offset(offset),
           faceCullType(faceCullType),
           model(model),
           animator(animator),
-          transformLink(transformLink),
-          aoRoughMetalMap(aoRoughMetalMap){};
+          transformLink(transformLink){};
 
     void setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
     void setModelMatrix(glm::mat4 modelMatrix);
@@ -124,15 +121,9 @@ public:
         return *this;
     }
 
-    RenderSourceBuilder &setAoRoughMetalMap(bool aoRoughMetalMap)
-    {
-        m_aoRoughMetalMap = aoRoughMetalMap;
-        return *this;
-    }
-
     RenderSource *build()
     {
-        return new RenderSource(m_transform, m_offset, facecullType, m_model, m_animator, m_transformLink, m_aoRoughMetalMap);
+        return new RenderSource(m_transform, m_offset, facecullType, m_model, m_animator, m_transformLink);
     }
 
 private:
@@ -142,7 +133,6 @@ private:
     Model *m_model = nullptr;
     Animator *m_animator = nullptr;
     TransformLink *m_transformLink = nullptr;
-    bool m_aoRoughMetalMap;
 };
 
 // TODO: as stride

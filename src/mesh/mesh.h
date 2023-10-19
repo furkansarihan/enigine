@@ -44,15 +44,13 @@ public:
     float transmission;
     float opacity;
     float ior;
-
     // emissive
     glm::vec4 emissiveColor;
     float emissiveStrength;
-
     // volume
     float thickness;
 
-    // parallax map
+    // parallax occlusion mapping
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;

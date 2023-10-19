@@ -24,11 +24,10 @@ struct Material {
     vec4 albedo;
     float roughness;
     float metallic;
-    float transmission;
-
+    // emissive
     vec4 emissiveColor;
     float emissiveStrength;
-
+    // parallax occlusion mapping
     float parallaxMapMidLevel;
     float parallaxMapScale;
     float parallaxMapSampleCount;

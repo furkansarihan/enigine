@@ -34,13 +34,14 @@ struct Particle
 class ParticleEngine
 {
 public:
-    ParticleEngine(Camera *viewCamera);
+    ParticleEngine(ResourceManager *resourceManager, Model *particleCopy, Camera *viewCamera);
     ~ParticleEngine();
     void update(float deltaTime);
-    void drawParticles(Shader *shader, Model *quad, glm::mat4 viewProjection, glm::vec3 worldOrigin);
+    void drawParticles(Shader *shader, glm::mat4 viewProjection, glm::vec3 worldOrigin);
 
     // TODO: getAABB
 
+    Model *m_model;
     Camera *m_viewCamera;
     std::vector<Particle> m_particles;
     glm::vec3 m_position = glm::vec3(0.f, 0.f, 0.f);
@@ -54,6 +55,9 @@ public:
     float m_particleScale = 0.1f;
 
 private:
+    unsigned int m_arrayBuffer;
+
+    void setupBuffer();
     void updateParticles(float deltaTime);
     void emitParticles(float deltaTime);
 };

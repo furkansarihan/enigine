@@ -22,7 +22,7 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     for (int i = 0; i < m_concurrentSoundCount; i++)
         m_soundEngine->setSourceLooping(m_fireSounds[i], AL_FALSE);
 
-    m_smokeParticle = new ParticleEngine(followCamera);
+    m_smokeParticle = new ParticleEngine(resourceManager, renderManager->quad, followCamera);
     m_smokeParticle->m_particlesPerSecond = 100.f;
     m_smokeParticle->m_randomness = 0.5f;
     m_smokeParticle->m_minVelocity = 0.1f;
@@ -31,7 +31,7 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     m_smokeParticle->m_maxDuration = 3.0f;
     m_smokeParticle->m_particleScale = 4.0f;
 
-    m_muzzleFlash = new ParticleEngine(followCamera);
+    m_muzzleFlash = new ParticleEngine(resourceManager, renderManager->quad, followCamera);
     m_muzzleFlash->m_particlesPerSecond = 250.f;
     m_muzzleFlash->m_randomness = 1.0f;
     m_muzzleFlash->m_minVelocity = 0.1f;
@@ -54,7 +54,6 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
 
     m_pistolSource = RenderSourceBuilder()
                          .setModel(m_pistolModel)
-                         .setAoRoughMetalMap(true)
                          .build();
     renderManager->addSource(m_pistolSource);
 

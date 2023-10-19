@@ -55,6 +55,7 @@ public:
     CarController(GLFWwindow *window,
                   ShaderManager *shaderManager,
                   RenderManager *renderManager,
+                  ResourceManager *resourceManager,
                   Vehicle *vehicle,
                   Camera *followCamera,
                   Models models,

@@ -211,7 +211,6 @@ void Character::init()
     m_renderSource = RenderSourceBuilder()
                          .setTransform(transform)
                          .setModel(m_model)
-                         .setAoRoughMetalMap(true)
                          .setAnimator(m_animator)
                          .build();
     m_renderManager->addSource(m_renderSource);

@@ -20,18 +20,19 @@ ResourceManager::~ResourceManager()
     m_textures.clear();
 }
 
-Model *ResourceManager::getModel(const std::string &path)
+Model *ResourceManager::getModel(const std::string &path, bool isCopy)
 {
     std::string fullPath = m_executablePath + '/' + path;
     // TODO: sharing same model object is safe?
-    if (m_models.find(fullPath) != m_models.end())
+    if (!isCopy && m_models.find(fullPath) != m_models.end())
     {
         // std::cout << "ResourceManager: found loaded model: path: " << path << std::endl;
         return m_models[fullPath];
     }
 
-    Model *model = new Model(this, fullPath);
-    m_models[fullPath] = model;
+    Model *model = new Model(this, fullPath, path);
+    if (!isCopy)
+        m_models[fullPath] = model;
 
     return model;
 }

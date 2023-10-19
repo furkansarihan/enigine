@@ -1,8 +1,9 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path)
+Model::Model(ResourceManager *resourceManager, std::string const &path, std::string const &pathRelative)
     : m_resourceManager(resourceManager),
-      m_path(path)
+      m_path(path),
+      m_pathRelative(pathRelative)
 {
     m_importer = new Assimp::Importer();
 

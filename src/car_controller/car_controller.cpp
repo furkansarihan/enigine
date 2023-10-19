@@ -3,6 +3,7 @@
 CarController::CarController(GLFWwindow *window,
                              ShaderManager *shaderManager,
                              RenderManager *renderManager,
+                             ResourceManager *resourceManager,
                              Vehicle *vehicle,
                              Camera *followCamera,
                              Models models,
@@ -28,7 +29,7 @@ CarController::CarController(GLFWwindow *window,
 
     for (int i = 0; i < exhaustCount; i++)
     {
-        ParticleEngine *particle = new ParticleEngine(followCamera);
+        ParticleEngine *particle = new ParticleEngine(resourceManager, renderManager->quad, followCamera);
         particle->m_particlesPerSecond = 100.f;
         particle->m_randomness = 0.5f;
         particle->m_minVelocity = 0.1f;
@@ -43,7 +44,7 @@ CarController::CarController(GLFWwindow *window,
     for (int i = 0; i < 4; i++)
     {
         bool front = i < 2;
-        ParticleEngine *particle = new ParticleEngine(followCamera);
+        ParticleEngine *particle = new ParticleEngine(resourceManager,m_models.smokeParticleModel, followCamera);
         particle->m_particlesPerSecond = 0.f;
         particle->m_randomness = 1.f;
         particle->m_minVelocity = front ? 0.2f : 0.4f;

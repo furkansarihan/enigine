@@ -691,6 +691,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
     sphere->drawInstanced(lightVolume, lights.size());
 }
 
+// TODO: only update changed
 void RenderManager::updateLightBuffer(std::vector<LightSource> &lights)
 {
     m_lightBufferList.clear();
@@ -724,16 +725,16 @@ void RenderManager::renderBlend()
     // render particle engines
     for (int i = 0; i < m_particleSources.size(); i++)
     {
+        ParticleEngine *particle = m_particleSources[i]->particleEngine;
         if (m_particleSources[i]->transformLink)
         {
             // TODO: refactor
             glm::mat4 model = m_particleSources[i]->transformLink->getModelMatrix();
-            m_particleSources[i]->particleEngine->m_position = CommonUtil::positionFromModel(model);
-            m_particleSources[i]->particleEngine->m_direction = glm::normalize(glm::mat3(model) * glm::vec3(0.f, 0.f, 1.f));
+            particle->m_position = CommonUtil::positionFromModel(model);
+            particle->m_direction = glm::normalize(glm::mat3(model) * glm::vec3(0.f, 0.f, 1.f));
         }
 
-        m_particleSources[i]->particleEngine->drawParticles(m_particleSources[i]->shader, m_particleSources[i]->model,
-                                                            m_viewProjection, m_worldOrigin);
+        particle->drawParticles(m_particleSources[i]->shader, m_viewProjection, m_worldOrigin);
     }
 
     glDisable(GL_BLEND);

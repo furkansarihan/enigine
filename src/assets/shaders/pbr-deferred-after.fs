@@ -140,11 +140,6 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }
 
-    // ambient lighting (note that the next IBL tutorial will replace 
-    // this ambient lighting with environment lighting).
-    // vec3 ambient = vec3(0.03) * albedo * ao;
-
-    // ----
     vec3 R = reflect(-V, N);   
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
@@ -158,14 +153,6 @@ void main()
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
     
     vec3 ambient = (kD * diffuse + specular) * ao; 
-
-    // ----
-    // vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
-    // vec3 kD = vec3(1.0) - kS;
-    // kD *= 1.0 - metallic;
-    // vec3 irradiance = texture(irradianceMap, N).rgb;
-    // vec3 diffuse    = irradiance * albedo;
-    // vec3 ambient    = (kD * diffuse) * ao; 
 
     vec3 color = ambient + Lo;
 
