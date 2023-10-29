@@ -35,8 +35,7 @@ out vec3 LightDirection_cameraspace;
 out vec3 EyeDirection_cameraspace;
 out vec3 Normal_cameraspace;
 
-vec3 computeNormal(vec2 uv, float texelSize, float texelAspect, float scale)
-{
+vec3 computeNormal(vec2 uv, float texelSize, float texelAspect) {
     vec4 h;
     h[0] = texture(elevationSampler, uv + texelSize * vec2(0, -1)).r * texelAspect;
     h[1] = texture(elevationSampler, uv + texelSize * vec2(-1, 0)).r * texelAspect;
@@ -45,7 +44,7 @@ vec3 computeNormal(vec2 uv, float texelSize, float texelAspect, float scale)
     vec3 n;
     n.z = h[0] - h[3];
     n.x = h[1] - h[2];
-    n.y = 2 * scale;
+    n.y = 2;
 
     return normalize(n);
 }
@@ -76,18 +75,14 @@ void main()
 
     vec3 position_worldspace = vec3(worldPos.x, height, worldPos.y);
     position_worldspace += vec3(worldOrigin.x, 0, worldOrigin.y);
+    Position_worldspace = position_worldspace;
 
     gl_Position = worldViewProjMatrix * vec4(position_worldspace, 1);
-
-    float x = uv.x * terrainSize.x;
-    float y = uv.y * terrainSize.y;
 
     _height = height;
     _tuv = worldPos * 1 + vec2(0.5) * 1;
     _tuv += worldOrigin;
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
-
-    Position_worldspace = position_worldspace;
 
     vec3 vertexPosition_cameraspace = (V * vec4(lightDirection, 0)).xyz;
     EyeDirection_cameraspace = vec3(0, 0, 0) - vertexPosition_cameraspace;
@@ -96,13 +91,14 @@ void main()
     LightDirection_cameraspace = LightPosition_cameraspace + EyeDirection_cameraspace;
 
     // compute normal
-    float texelSize = fineTextureBlockOrigin.x * scaleFactor.x;
-    float scale = scaleFactor.x;
+    // float texelSize = (fineTextureBlockOrigin.x * scaleFactor.x) / scaleHoriz;
+    float texelSize = fineTextureBlockOrigin.x / scaleHoriz;
     float texelAspect = yScaleFactor;
 
-    _normal = computeNormal(uv, texelSize, texelAspect, scale);
+    _normal = computeNormal(uv, texelSize, texelAspect);
 
-    ViewPos = (V * vec4(position_worldspace, 1.0)).xyz;
+    vec4 viewPos = V * vec4(position_worldspace, 1.0);
+    ViewPos = viewPos.xyz / viewPos.w;
     // TODO?
     ViewNormal = mat3(transpose(inverse(V))) * _normal;
 

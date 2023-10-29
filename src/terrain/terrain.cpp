@@ -5,7 +5,7 @@
 // TODO: change asset path at runtime
 Terrain::Terrain(RenderManager *renderManager, ResourceManager *resourceManager, ShaderManager *shaderManager,
                  PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight,
-                 float scaleHoriz, bool PBR)
+                 float scaleHoriz)
     : m_renderManager(renderManager),
       m_resourceManager(resourceManager),
       m_shaderManager(shaderManager),
@@ -13,8 +13,7 @@ Terrain::Terrain(RenderManager *renderManager, ResourceManager *resourceManager,
       m_heightmapFilename(heightmapFilename),
       m_minHeight(minHeight),
       m_maxHeight(maxHeight),
-      m_scaleHoriz(scaleHoriz),
-      m_PBR(PBR)
+      m_scaleHoriz(scaleHoriz)
 {
     init();
 }
@@ -101,51 +100,6 @@ void Terrain::init()
 
     updateHorizontalScale();
 
-    // TODO: variable path
-    // texture arrays
-    if (m_PBR)
-    {
-        // TODO: same order with fragment shader - samplerNames
-        std::string textureTypes[] = {
-            "albedo",
-            "ao",
-            "metallic",
-            "normal",
-            "rough",
-        };
-        std::string fileTextenstions[] = {
-            ".jpg",
-            ".jpg",
-            ".jpg",
-            ".png",
-            ".jpg",
-        };
-        for (int i = 0; i < 5; i++)
-        {
-            std::vector<std::string> texturePaths;
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/water" + fileTextenstions[i]);
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/sand" + fileTextenstions[i]);
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/rock" + fileTextenstions[i]);
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/grass" + fileTextenstions[i]);
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/stone" + fileTextenstions[i]);
-            texturePaths.push_back("assets/terrain/pbr-texture-2/" + textureTypes[i] + "/snow" + fileTextenstions[i]);
-
-            PBRTextureArrayIds[i] = m_resourceManager->textureArrayFromFile(texturePaths, true);
-        }
-    }
-    else
-    {
-        std::vector<std::string> texturePaths;
-        texturePaths.push_back("assets/images/water-1.jpg");
-        texturePaths.push_back("assets/images/sand-1.jpg");
-        texturePaths.push_back("assets/images/stone-1.jpg");
-        texturePaths.push_back("assets/images/grass-1.jpg");
-        texturePaths.push_back("assets/images/rock-1.jpg");
-        texturePaths.push_back("assets/images/snow-1.jpg");
-
-        normalTextureArrayId = m_resourceManager->textureArrayFromFile(texturePaths, true);
-    }
-
     m_grass = m_resourceManager->getModel("assets/terrain/grass.obj");
     m_stone = m_resourceManager->getModel("assets/terrain/stone.obj");
 
@@ -153,7 +107,6 @@ void Terrain::init()
     m_shaderManager->addShader(ShaderDynamic(&m_stoneShader, "assets/shaders/stone.vs", "assets/shaders/stone.fs"));
 
     m_shaderManager->addShader(ShaderDynamic(&terrainPBRShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-pbr-deferred-pre.fs"));
-    m_shaderManager->addShader(ShaderDynamic(&terrainBasicShader, "assets/shaders/terrain-shader.vs", "assets/shaders/terrain-shader.fs"));
     m_shaderManager->addShader(ShaderDynamic(&terrainDepthShader, "assets/shaders/terrain-shadow.vs", "assets/shaders/depth-shader.fs"));
 }
 
@@ -385,6 +338,7 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     terrainShader.setMat4("worldViewProjMatrix", projection * view);
     terrainShader.setMat4("M", glm::mat4(1.0f));
     terrainShader.setMat4("V", view);
+    terrainShader.setMat4("P", projection);
 
     terrainShader.setVec3("CamPos", camPos);
     terrainShader.setVec3("CamView", camView);
@@ -392,50 +346,45 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     terrainShader.setBool("ShowCascade", showCascade);
     terrainShader.setVec3("Bias", shadowBias);
 
+    // elevation
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(terrainShader.id, "elevationSampler"), 0);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
+    // shadowmap
     glActiveTexture(GL_TEXTURE0 + 1);
     glUniform1i(glGetUniformLocation(terrainShader.id, "ShadowMap"), 1);
     glBindTexture(GL_TEXTURE_2D_ARRAY, shadowmapId);
 
-    if (m_PBR)
-    {
-        std::string samplerNames[] = {
-            "texture_diffuse1",
-            "texture_ao1",
-            "texture_metal1",
-            "texture_normal1",
-            "texture_rough1",
-        };
-        for (int i = 0; i < 5; i++)
-        {
-            glActiveTexture(GL_TEXTURE0 + 2 + i);
-            glUniform1i(glGetUniformLocation(terrainShader.id, samplerNames[i].c_str()), 2 + i);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, PBRTextureArrayIds[i]);
-        }
+    // texture arrays
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "texture_diffuse1"), 2);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_diffuseArray.id);
+    glActiveTexture(GL_TEXTURE0 + 3);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "texture_normal1"), 3);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_normalArray.id);
+    glActiveTexture(GL_TEXTURE0 + 4);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "texture_ao1"), 4);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_aoArray.id);
+    glActiveTexture(GL_TEXTURE0 + 5);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "texture_rough1"), 5);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_roughArray.id);
+    glActiveTexture(GL_TEXTURE0 + 6);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "texture_height1"), 6);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, m_heightArray.id);
 
-        glActiveTexture(GL_TEXTURE0 + 7);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "irradianceMap"), 7);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->irradianceMap);
+    // pbr
+    glActiveTexture(GL_TEXTURE0 + 7);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "irradianceMap"), 7);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->irradianceMap);
+    glActiveTexture(GL_TEXTURE0 + 8);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "prefilterMap"), 8);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->prefilterMap);
+    glActiveTexture(GL_TEXTURE0 + 9);
+    glUniform1i(glGetUniformLocation(terrainShader.id, "brdfLUT"), 9);
+    glBindTexture(GL_TEXTURE_2D, pbrManager->brdfLUTTexture);
 
-        glActiveTexture(GL_TEXTURE0 + 8);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "prefilterMap"), 8);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, pbrManager->prefilterMap);
-
-        glActiveTexture(GL_TEXTURE0 + 9);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "brdfLUT"), 9);
-        glBindTexture(GL_TEXTURE_2D, pbrManager->brdfLUTTexture);
-    }
-    else
-    {
-        glActiveTexture(GL_TEXTURE0 + 2);
-        glUniform1i(glGetUniformLocation(terrainShader.id, "textureSampler"), 2);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, normalTextureArrayId);
-    }
-
-    this->draw(terrainShader, cullViewPos, ortho);
+    draw(terrainShader, cullViewPos, ortho);
 
     // TODO:
     drawInstance(m_grassColorFactor, m_playerPos, m_grassShader, m_grass, m_grassTileSize, m_grassDensity, projection, view, viewPos);
@@ -475,7 +424,7 @@ void Terrain::drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projecti
     glUniform1i(glGetUniformLocation(terrainShadow.id, "elevationSampler"), 0);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    this->draw(terrainShadow, viewPos, true);
+    draw(terrainShadow, viewPos, true);
 }
 
 void Terrain::draw(Shader terrainShader, glm::vec3 viewPos, bool ortho)

@@ -38,7 +38,7 @@ public:
     Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
     void textureFromMemory(Texture &texture, const aiTexture *embeddedTexture);
     void textureFromFile(Texture &texture, const char *path, const std::string &directory);
-    unsigned int textureArrayFromFile(std::vector<std::string> texturePaths, bool anisotropicFiltering = false);
+    Texture getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering = false);
     unsigned int loadTexture(TextureLoadParams params);
     unsigned int loadTextureArray(TextureLoadParams params);
 

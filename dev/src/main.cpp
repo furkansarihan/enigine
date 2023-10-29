@@ -1,5 +1,39 @@
 #include "../../src/enigine.h"
 
+void setupTerrainTextures(ResourceManager *resourceManager, Terrain &terrain)
+{
+    std::string folders[] = {
+        "Ground037_1K-JPG",
+        "Ground052_1K-JPG",
+        "Ground054_1K-JPG",
+        "Rock030_1K-JPG",
+        "Foam003_1K-JPG",
+    };
+    std::string files[] = {
+        "_Color.jpg",
+        "_NormalGL.jpg",
+        "_AmbientOcclusion.jpg",
+        "_Roughness.jpg",
+        "_Displacement.jpg",
+    };
+    std::vector<Texture> terrainTextures;
+    for (int i = 0; i < 5; i++)
+    {
+        std::vector<std::string> texturePaths;
+        texturePaths.push_back("assets/terrain/pbr-texture-3/" + folders[0] + "/" + folders[0] + files[i]);
+        texturePaths.push_back("assets/terrain/pbr-texture-3/" + folders[1] + "/" + folders[1] + files[i]);
+        texturePaths.push_back("assets/terrain/pbr-texture-3/" + folders[2] + "/" + folders[2] + files[i]);
+        texturePaths.push_back("assets/terrain/pbr-texture-3/" + folders[3] + "/" + folders[3] + files[i]);
+        texturePaths.push_back("assets/terrain/pbr-texture-3/" + folders[4] + "/" + folders[4] + files[i]);
+        terrainTextures.push_back(resourceManager->getTextureArray(texturePaths, true));
+    }
+    terrain.m_diffuseArray = terrainTextures[0];
+    terrain.m_normalArray = terrainTextures[1];
+    terrain.m_aoArray = terrainTextures[2];
+    terrain.m_roughArray = terrainTextures[3];
+    terrain.m_heightArray = terrainTextures[4];
+}
+
 int main()
 {
     Enigine enigine;
@@ -43,7 +77,7 @@ int main()
     eTransform bodyOffset;
 
     Vehicle vehicle(physicsWorld, VehicleType::coupe, collider, bodyOffset, glm::vec3(205.f, 2.f, 255.f));
-    CarController car(window, shaderManager, renderManager, &vehicle, mainCamera, models, 2);
+    CarController car(window, shaderManager, renderManager, resourceManager, &vehicle, mainCamera, models, 2);
 
     float wheelSize[4] = {0.36f, 0.36f, 0.38f, 0.38f};
     glm::vec3 wheelPos[4] = {
@@ -108,20 +142,27 @@ int main()
     // create the scene
     eTransform transform;
     transform.setPosition(glm::vec3(103.f, 1.8f, 260.f));
+    transform.setScale(glm::vec3(.7f));
     Model &shelter = *resourceManager->getModel("assets/gltf/shelter1.glb");
     renderManager->addSource(RenderSourceBuilder()
                                  .setTransform(transform)
                                  .setModel(&shelter)
                                  .build());
 
-    transform.setPosition(glm::vec3(112.f, 18.2f, 233.f));
+    transform.setPosition(glm::vec3(112.f, 0.f, 233.f));
+    transform.setScale(glm::vec3(.7f));
     Model &tower = *resourceManager->getModel("assets/gltf/old-water-tower.glb");
     renderManager->addSource(RenderSourceBuilder()
                                  .setTransform(transform)
                                  .setModel(&tower)
                                  .build());
 
-    Terrain terrain(renderManager, resourceManager, shaderManager, physicsWorld, "/assets/images/test-5.png", -1.0f, 517.0f, 6.0f, true);
+    Terrain terrain(renderManager, resourceManager, shaderManager, physicsWorld, "/assets/images/test-5.png", -1.0f, 517.0f, 6.0f);
+    setupTerrainTextures(resourceManager, terrain);
+
+    TerrainUI *terrainUI = new TerrainUI(&terrain);
+    enigine.rootUI->m_uiList.push_back(terrainUI);
+
     // TODO: update
     // terrain.m_playerPos = character.m_position;
     renderManager->addRenderable(&terrain);

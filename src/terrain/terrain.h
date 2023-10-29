@@ -35,7 +35,7 @@ class Terrain : public Renderable
 public:
     Terrain(RenderManager *renderManager, ResourceManager *resourceManager, ShaderManager *shaderManager,
             PhysicsWorld *physicsWorld, const std::string &heightmapFilename, float minHeight, float maxHeight,
-            float scaleHoriz, bool PBR);
+            float scaleHoriz);
     ~Terrain();
 
     RenderManager *m_renderManager;
@@ -49,11 +49,16 @@ public:
 
     int resolution = 128;
     float m_minHeight, m_maxHeight, m_scaleHoriz;
-    bool m_PBR;
 
     Shader terrainPBRShader;
-    Shader terrainBasicShader;
     Shader terrainDepthShader;
+
+    // TODO: ?
+    Texture m_diffuseArray;
+    Texture m_normalArray;
+    Texture m_aoArray;
+    Texture m_roughArray;
+    Texture m_heightArray;
 
     int level = 9;
     glm::vec2 m_worldOrigin = glm::vec2(0.0f, 0.0f);
@@ -104,8 +109,6 @@ public:
 private:
     unsigned int vao_mxm, vao_3xm, vao_2m1x2, vao_2x2m1, vao_0, vao_tf, vao_3x3;
     unsigned int textureID;
-    unsigned int normalTextureArrayId;
-    unsigned int PBRTextureArrayIds[5];
     float *data;
 
     void init();

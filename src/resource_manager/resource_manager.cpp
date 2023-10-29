@@ -123,8 +123,9 @@ void ResourceManager::textureFromFile(Texture &texture, const char *path, const 
     stbi_image_free(data);
 }
 
-unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> texturePaths, bool anisotropicFiltering)
+Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering)
 {
+    Texture texture;
     int nrTextures = texturePaths.size();
     int twidth[nrTextures];
     int theight[nrTextures];
@@ -140,7 +141,7 @@ unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> text
         if (tdata[i] == nullptr)
         {
             std::cout << "ResourceManager: textureArrayFromFile: can not read the texture at: " << texturePaths[i] << std::endl;
-            return -1; // TODO: correct?
+            return texture; // TODO: correct? - could be default failed texture
         }
     }
 
@@ -150,15 +151,16 @@ unsigned int ResourceManager::textureArrayFromFile(std::vector<std::string> text
     float tHeight = theight[0];
     int tNrComponents = tnrComponents[0];
 
-    unsigned int textureId = 0;
-    textureId = loadTextureArray(TextureLoadParams(tdata, tWidth, tHeight, tNrComponents, anisotropicFiltering));
-
-    std::cout << "ResourceManager: loaded texture: " << textureId << std::endl;
+    texture.width = tWidth;
+    texture.height = tHeight;
+    texture.nrComponents = tNrComponents;
+    texture.id = loadTextureArray(TextureLoadParams(tdata, tWidth, tHeight, tNrComponents, anisotropicFiltering));
+    std::cout << "ResourceManager: loaded texture: " << texture.id << std::endl;
 
     for (int i = 0; i < nrTextures; i++)
         stbi_image_free(tdata[i]);
 
-    return textureId;
+    return texture;
 }
 
 unsigned int ResourceManager::loadTextureArray(TextureLoadParams params)
