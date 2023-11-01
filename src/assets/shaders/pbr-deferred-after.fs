@@ -107,9 +107,12 @@ void main()
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
+    vec3 L = normalize(light.direction);
+    float NdotL = max(dot(N, L), 0.0);
+
+    if (NdotL > 0.0)
     {
         // directional light - sun
-        vec3 L = normalize(light.direction);
         vec3 H = normalize(V + L);
         vec3 radiance = light.color;
 
@@ -134,8 +137,6 @@ void main()
         kD *= 1.0 - metallic;  
 
         // scale light by NdotL
-        float NdotL = max(dot(N, L), 0.0);        
-
         // add to outgoing radiance Lo
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }
@@ -154,9 +155,9 @@ void main()
     
     vec3 ambient = (kD * diffuse + specular) * ao; 
 
-    vec3 color = ambient + Lo;
+    vec3 color = ambient + Lo * shadow;
 
-    FragColor = vec4(color * shadow, 1.0);
+    FragColor = vec4(color, 1.0);
 
     // fog
     float _distance = -(view * vec4(WorldPos, 1.0)).z;

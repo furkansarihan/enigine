@@ -2,7 +2,12 @@
 
 SSAO::SSAO(int width, int heigth)
     : m_width(width),
-      m_height(heigth)
+      m_height(heigth),
+      noiseSize(4),
+      kernelSize(32),
+      radius(1.0f),
+      bias(0.050f),
+      strength(2.5f)
 {
     glGenFramebuffers(1, &ssaoFBO);
     glGenFramebuffers(1, &ssaoBlurFBO);

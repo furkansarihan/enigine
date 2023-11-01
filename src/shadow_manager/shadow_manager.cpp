@@ -123,10 +123,6 @@ glm::mat4 ShadowManager::applyCropMatrix(int frustumIndex, glm::mat4 lightView)
     }
 
     // extend borders with scene objects
-    float objMinX = minX;
-    float objMaxX = maxX;
-    float objMinY = minY;
-    float objMaxY = maxY;
     float objMinZ = minZ;
     float objMaxZ = maxZ;
     for (int i = 0; i < m_sceneObjects.size(); i++)
@@ -142,22 +138,11 @@ glm::mat4 ShadowManager::applyCropMatrix(int frustumIndex, glm::mat4 lightView)
             // mark object with frustum index
             object.frustumIndexes.push_back(frustumIndex);
 
-            objMinX = std::min(center.x - radius, objMinX);
-            objMinY = std::min(center.y - radius, objMinY);
             objMinZ = std::min(center.z - radius, objMinZ);
-
-            objMaxX = std::max(center.x + radius, objMaxX);
-            objMaxY = std::max(center.y + radius, objMaxY);
             objMaxZ = std::max(center.z + radius, objMaxZ);
         }
     }
-
-    minX = std::min(minX, objMinX);
-    minY = std::min(minY, objMinY);
     minZ = std::min(minZ, objMinZ);
-
-    maxX = std::max(maxX, objMaxX);
-    maxY = std::max(maxY, objMaxY);
     maxZ = std::max(maxZ, objMaxZ);
 
     f.lightAABB[0] = glm::vec3(minX, minY, maxZ);

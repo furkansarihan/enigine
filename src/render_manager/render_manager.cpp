@@ -7,7 +7,8 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
       quad(quad),
       sphere(sphere),
       quad_vao(quad_vao),
-      m_worldOrigin(glm::vec3(0.f))
+      m_worldOrigin(glm::vec3(0.f)),
+      m_shadowBias(glm::vec3(0.015, 0.050, 0.200))
 {
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPre, "assets/shaders/pbr.vs", "assets/shaders/pbr-deferred-pre.fs"));
     shaderManager->addShader(ShaderDynamic(&pbrDeferredPreAnim, "assets/shaders/anim.vs", "assets/shaders/pbr-deferred-pre.fs"));
@@ -336,6 +337,8 @@ void RenderManager::renderOpaque()
     pbrDeferredPre.setMat4("projection", m_projection);
     pbrDeferredPre.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrDeferredPre.setVec4("FrustumDistances", m_frustumDistances);
+    pbrDeferredPre.setVec3("u_camPosition", m_camera->position);
+    pbrDeferredPre.setFloat("u_shadowFar", m_shadowManager->m_far);
     pbrDeferredPre.setVec3("Bias", m_shadowBias);
 
     glActiveTexture(GL_TEXTURE0 + 8);
@@ -367,6 +370,8 @@ void RenderManager::renderOpaque()
     pbrDeferredPreAnim.setMat4("projection", m_projection);
     pbrDeferredPreAnim.setVec3("lightDirection", m_shadowManager->m_lightPos);
     pbrDeferredPreAnim.setVec4("FrustumDistances", m_frustumDistances);
+    pbrDeferredPreAnim.setVec3("u_camPosition", m_camera->position);
+    pbrDeferredPreAnim.setFloat("u_shadowFar", m_shadowManager->m_far);
     pbrDeferredPreAnim.setVec3("Bias", m_shadowBias);
 
     glActiveTexture(GL_TEXTURE0 + 8);
@@ -765,6 +770,8 @@ void RenderManager::renderTransmission()
     pbrTransmission.setVec3("lightColor", m_sunColor * m_sunIntensity);
     pbrTransmission.setVec3("CamView", m_shadowManager->m_camera->front);
     pbrTransmission.setVec4("FrustumDistances", m_frustumDistances);
+    pbrTransmission.setVec3("u_camPosition", m_camera->position);
+    pbrTransmission.setFloat("u_shadowFar", m_shadowManager->m_far);
     pbrTransmission.setVec3("Bias", m_shadowBias);
     pbrTransmission.setVec2("u_TransmissionFramebufferSize", glm::vec2(m_screenW, m_screenH));
 

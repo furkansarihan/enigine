@@ -258,7 +258,7 @@ public:
     float m_sunIntensity = 1.5f;
     float m_lightPower = 10.0;
 
-    glm::vec3 m_shadowBias = glm::vec3(0.020, 0.023, 0.005);
+    glm::vec3 m_shadowBias;
     bool m_cullFront = false;
 
     bool m_lightAreaDebug = false;

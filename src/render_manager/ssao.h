@@ -18,16 +18,16 @@ public:
     unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
 
     unsigned int noiseTexture;
-    int noiseSize = 4;
+    int noiseSize;
     std::vector<glm::vec3> ssaoKernel;
 
     // TODO: adaptive params 
     // outdoor - indoor
     // close - far, from surface
-    int kernelSize = 64;
-    float radius = 0.5f;
-    float bias = 0.050f;
-    float strength = 3.0f;
+    int kernelSize;
+    float radius;
+    float bias;
+    float strength;
 
     int m_width;
     int m_height;
