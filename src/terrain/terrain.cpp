@@ -337,10 +337,11 @@ void Terrain::drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 
     // shadowmap
     terrainShader.setMat4("worldViewProjMatrix", projection * view);
     terrainShader.setMat4("M", glm::mat4(1.0f));
-    terrainShader.setMat4("V", view);
+    terrainShader.setMat4("view", view);
     terrainShader.setMat4("P", projection);
 
-    terrainShader.setVec3("CamPos", camPos);
+    terrainShader.setVec3("u_camPosition", camPos);
+    terrainShader.setFloat("u_shadowFar", m_renderManager->m_shadowManager->m_far);
     terrainShader.setVec3("CamView", camView);
     terrainShader.setVec4("FrustumDistances", frustumDistances);
     terrainShader.setBool("ShowCascade", showCascade);

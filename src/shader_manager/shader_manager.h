@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <regex>
 
 #include "../shader/shader.h"
 #include "../file_manager/file_manager.h"
@@ -34,7 +35,11 @@ public:
 
     void addShader(const ShaderDynamic &shaderDynamic);
     void initShaders();
+    void initShader(const ShaderDynamic &shaderDynamic);
     // TODO: listen file changes on dev mode
+
+private:
+    std::string processIncludes(const std::string &directory, const std::string &input);
 };
 
 #endif /* shader_manager_hpp */

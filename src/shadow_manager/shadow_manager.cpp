@@ -132,8 +132,7 @@ glm::mat4 ShadowManager::applyCropMatrix(int frustumIndex, glm::mat4 lightView)
         float radius = object.radius;
 
         if (!(center.x - radius > maxX || center.x + radius < minX) &&
-            !(center.y - radius > maxY || center.y + radius < minY) &&
-            !(center.z - radius > maxZ || center.z + radius < minZ))
+            !(center.y - radius > maxY || center.y + radius < minY))
         {
             // mark object with frustum index
             object.frustumIndexes.push_back(frustumIndex);

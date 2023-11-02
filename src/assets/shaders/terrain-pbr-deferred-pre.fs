@@ -22,10 +22,11 @@ uniform sampler2DArray texture_height1;
 uniform sampler2DArray ShadowMap;
 
 uniform mat4 M;
-uniform mat4 V;
+uniform mat4 view;
 uniform mat4 P;
 
-uniform vec3 CamPos;
+uniform vec3 u_camPosition;
+uniform float u_shadowFar;
 uniform vec3 CamView;
 uniform vec4 FrustumDistances;
 uniform bool ShowCascade;
@@ -95,25 +96,6 @@ mat3 textureIndexes = mat3(
     vec3(rock, sand, water),
     vec3(rock, stone, grass),
     vec3(rock, snow, snow)
-);
-
-vec2 poissonDisk[16] = vec2[]( 
-   vec2( -0.94201624, -0.39906216 ), 
-   vec2( 0.94558609, -0.76890725 ), 
-   vec2( -0.094184101, -0.92938870 ), 
-   vec2( 0.34495938, 0.29387760 ), 
-   vec2( -0.91588581, 0.45771432 ), 
-   vec2( -0.81544232, -0.87912464 ), 
-   vec2( -0.38277543, 0.27676845 ), 
-   vec2( 0.97484398, 0.75648379 ), 
-   vec2( 0.44323325, -0.97511554 ), 
-   vec2( 0.53742981, -0.47373420 ), 
-   vec2( -0.26496911, -0.41893023 ), 
-   vec2( 0.79197514, 0.19090188 ), 
-   vec2( -0.24188840, 0.99706507 ), 
-   vec2( -0.81409955, 0.91437590 ), 
-   vec2( 0.19984126, 0.78641367 ), 
-   vec2( 0.14383161, -0.14100790 ) 
 );
 
 Mixer calculateSampleMixer(Mixer result, float value, vec4 steps, vec4 transitions) {
@@ -194,37 +176,7 @@ vec3 sampleTexLod(sampler2DArray tex, vec2 hs, vec2 TexCoords, float lod) {
     return mix(mix1, mix2, heightMixer.mixer);
 }
 
-// TODO: include
-float getVisibility()
-{
-    int index = 2;
-    if (gl_FragCoord.z < 0) {
-    } else if (gl_FragCoord.z < FrustumDistances.x) {
-        index = 0;
-    } else if (gl_FragCoord.z < FrustumDistances.y) {
-        index = 1;
-    } else if (gl_FragCoord.z < FrustumDistances.z) {
-        index = 2;
-    }
-
-    vec4 ShadowCoord = DepthBiasVP[index] * vec4(Position_worldspace, 1);
-
-    float visibility = 1.0;
-
-    float nearestOccluderDist = texture(ShadowMap, vec3(ShadowCoord.xy, index)).x;
-
-    for (int i = 0; i < 8; i++) {
-        if (texture(ShadowMap, vec3(ShadowCoord.xy + poissonDisk[i] / 700.0, index)).x < ShadowCoord.z - Bias[index]) {
-            visibility -= 0.08;
-        }
-    }
-
-    if (nearestOccluderDist > 0.9) {
-        visibility = 1.0;
-    }
-
-    return visibility;
-}
+#include <shadowing.fs>
 
 // TODO: include
 // ----------------------------------------------------------------------------
@@ -305,7 +257,7 @@ void node_parallax_occlusion_map(vec2 hs,
   vec3 dPdx = dFdx(viewPosition);
   vec3 dPdy = dFdy(viewPosition);
 
-  mat3 ViewMatrixInverse = mat3(inverse(V));
+  mat3 ViewMatrixInverse = mat3(inverse(view));
   vec3 dWdx = mat3(ViewMatrixInverse) * dPdx;
   vec3 dWdy = mat3(ViewMatrixInverse) * dPdy;
 
@@ -396,7 +348,7 @@ void node_parallax_occlusion_map(vec2 hs,
 
   float dr = dot(dPdu, r1) * radius * 2.0;
   vec3 surfgrad = dHdu * r1 + dHdv * r2;
-  normal = mat3(inverse(V)) * normalize(abs(dr) * N - (sign(dr) * scale) * surfgrad);
+  normal = mat3(inverse(view)) * normalize(abs(dr) * N - (sign(dr) * scale) * surfgrad);
 
   outOfBound = P[3][3] == 0.0 && NdotI > -vz;
   // outOfBound = (P[3][3] == 0.0) ? -NdotI < uvw.z : NdotI > 0;
@@ -437,7 +389,7 @@ void main()
 
     // TODO: variable
     // TODO: transition region with parallaxMapScale
-    const float maxPomDistance = 20.0;
+    const float maxPomDistance = 25.0;
     bool pomActive = _distance < maxPomDistance;
     if (pomActive) {
         vec3 out_co;
@@ -476,7 +428,7 @@ void main()
         
         // TODO: disable option
         // TODO: use depth_offset
-        vec4 v_clip_coord = (P * V * vec4(pWorldPos, 1));
+        vec4 v_clip_coord = (P * view * vec4(pWorldPos, 1));
         float f_ndc_depth = v_clip_coord.z / v_clip_coord.w;
         gl_FragDepth = (1.0 - 0.0) * 0.5 * f_ndc_depth + (1.0 + 0.0) * 0.5;
 
@@ -511,7 +463,7 @@ void main()
     vec3 ViewN = getNormalFromMap(T, tangentNormal, pViewNormal);
 
     gPosition = pWorldPos;
-    gNormalShadow = vec4(N, getVisibility());
+    gNormalShadow = vec4(N, getVisibility(pWorldPos, pNormal));
     // TODO: why bright?
     gAlbedo = sampleTex(texture_diffuse1, hs, pTexCoords) * 0.8;
     gAoRoughMetal.r = sampleTex(texture_ao1, hs, pTexCoords).r;

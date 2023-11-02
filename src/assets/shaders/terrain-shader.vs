@@ -4,7 +4,7 @@ layout (location = 0) in vec2 gridPos;
 
 uniform mat4 worldViewProjMatrix;
 uniform mat4 M;
-uniform mat4 V;
+uniform mat4 view;
 uniform float minHeight;
 uniform float maxHeight;
 uniform float scaleHoriz;
@@ -84,10 +84,10 @@ void main()
     _tuv += worldOrigin;
     _distance = clamp(abs(distance(position_worldspace, viewerPos)), 0, 10000);
 
-    vec3 vertexPosition_cameraspace = (V * vec4(lightDirection, 0)).xyz;
+    vec3 vertexPosition_cameraspace = (view * vec4(lightDirection, 0)).xyz;
     EyeDirection_cameraspace = vec3(0, 0, 0) - vertexPosition_cameraspace;
     
-    vec3 LightPosition_cameraspace = vec3(0, 0, 0) - (V * vec4(position_worldspace, 1)).xyz;
+    vec3 LightPosition_cameraspace = vec3(0, 0, 0) - (view * vec4(position_worldspace, 1)).xyz;
     LightDirection_cameraspace = LightPosition_cameraspace + EyeDirection_cameraspace;
 
     // compute normal
@@ -97,10 +97,10 @@ void main()
 
     _normal = computeNormal(uv, texelSize, texelAspect);
 
-    vec4 viewPos = V * vec4(position_worldspace, 1.0);
+    vec4 viewPos = view * vec4(position_worldspace, 1.0);
     ViewPos = viewPos.xyz / viewPos.w;
     // TODO?
-    ViewNormal = mat3(transpose(inverse(V))) * _normal;
+    ViewNormal = mat3(transpose(inverse(view))) * _normal;
 
     float slope = dot(vec3(0, 1, 0), _normal);
     _heightSlope = calculateHeightSlopeVector(slope);
