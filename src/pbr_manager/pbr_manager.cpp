@@ -3,7 +3,8 @@
 #include "../external/stb_image/stb_image.h"
 
 PbrManager::PbrManager(std::string executablePath)
-    : m_executablePath(executablePath)
+    : m_executablePath(executablePath),
+      m_cubemapFaceSize(1024)
 {
 }
 
@@ -15,15 +16,16 @@ PbrManager::~PbrManager()
 void PbrManager::setupCubemap(Model *cube, Shader hdrToCubemapShader)
 {
     stbi_set_flip_vertically_on_load(true);
-    int faceSize = 512;
+    int faceSize = m_cubemapFaceSize;
     int width, height, nrComponents;
-    float *data = stbi_loadf((m_executablePath + "/assets/hdr_skybox/skybox-7.hdr").c_str(), &width, &height, &nrComponents, 0);
+    std::string filename = "skybox-7.hdr";
+    float *data = stbi_loadf((m_executablePath + "/assets/hdr_skybox/" + filename).c_str(), &width, &height, &nrComponents, 0);
 
     if (data)
     {
         glGenTextures(1, &m_skyboxTexture);
         glBindTexture(GL_TEXTURE_2D, m_skyboxTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -52,7 +54,7 @@ void PbrManager::setupCubemap(Model *cube, Shader hdrToCubemapShader)
     for (unsigned int i = 0; i < 6; ++i)
     {
         // note that we store each face with 16 bit floating point values
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, faceSize, faceSize, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, faceSize, faceSize, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -91,7 +93,7 @@ void PbrManager::setupIrradianceMap(Model *cube, Shader irradianceShader)
     glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, irradianceSize, irradianceSize, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, irradianceSize, irradianceSize, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -134,7 +136,7 @@ void PbrManager::setupPrefilterMap(Model *cube, Shader prefilterShader)
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, prefilterSize, prefilterSize, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, prefilterSize, prefilterSize, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -152,6 +154,7 @@ void PbrManager::setupPrefilterMap(Model *cube, Shader prefilterShader)
 
     prefilterShader.setMat4("projection", captureProjection);
     prefilterShader.setInt("environmentMap", 0);
+    prefilterShader.setInt("u_cubemapFaceSize", m_cubemapFaceSize);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(prefilterShader.id, "environmentMap"), 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);

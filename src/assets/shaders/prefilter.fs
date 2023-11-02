@@ -5,9 +5,9 @@ in vec3 localPos;
 
 uniform samplerCube environmentMap;
 uniform float roughness;
+uniform int u_cubemapFaceSize;
 
 const float PI = 3.14159265359;
-
 
 float VanDerCorput(uint n, uint base)
 {
@@ -112,7 +112,7 @@ void main()
             float D   = DistributionGGX(N, H, roughness);
             float pdf = (D * NdotH / (4.0 * HdotV)) + 0.0001; 
 
-            float resolution = 512.0; // resolution of source cubemap (per face)
+            float resolution = u_cubemapFaceSize; // resolution of source cubemap (per face)
             float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
             float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
 
@@ -120,7 +120,12 @@ void main()
             // ----
 
             // prefilteredColor += texture(environmentMap, L).rgb * NdotL;
-            prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
+            vec3 sampled = textureLod(environmentMap, L, mipLevel).rgb * NdotL;
+
+            // eliminate fireflies
+            sampled = min(sampled, vec3(100.0));
+
+            prefilteredColor += sampled;
             totalWeight      += NdotL;
         }
     }

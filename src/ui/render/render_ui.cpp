@@ -1,5 +1,7 @@
 #include "render_ui.h"
 
+#include <glm/gtc/type_ptr.hpp>
+
 void RenderUI::render()
 {
     if (!ImGui::CollapsingHeader("Render", ImGuiTreeNodeFlags_NoTreePushOnOpen))
@@ -14,7 +16,7 @@ void RenderUI::render()
     ImGui::Text("visible source count: %d", visibleSourceCount);
     ImGui::Checkbox("m_debugCulling", &m_renderManager->m_debugCulling);
     ImGui::Checkbox("m_cullFront", &m_renderManager->m_cullFront);
-    // VectorUI::renderVec3("m_shadowBias", m_renderManager->m_shadowBias, 0.001f);
+    VectorUI::renderVec3("m_shadowBias", m_renderManager->m_shadowBias, 0.001f);
     if (ImGui::Checkbox("m_drawCullingAabb", &m_renderManager->m_drawCullingAabb))
     {
         m_renderManager->m_cullingManager->m_debugDrawer->setDebugMode(m_renderManager->m_drawCullingAabb ? btIDebugDraw::DBG_DrawWireframe
@@ -40,6 +42,15 @@ void RenderUI::render()
     ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
     ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
     ImGui::DragFloat("m_bloomIntensity", &m_renderManager->m_postProcess->m_bloomIntensity, 0.01f);
+    ImGui::Text("Tone mapping");
+    ImGui::DragFloat("m_A", &m_renderManager->m_postProcess->m_A, 0.001f);
+    ImGui::DragFloat("m_B", &m_renderManager->m_postProcess->m_B, 0.001f);
+    ImGui::DragFloat("m_C", &m_renderManager->m_postProcess->m_C, 0.001f);
+    ImGui::DragFloat("m_D", &m_renderManager->m_postProcess->m_D, 0.001f);
+    ImGui::DragFloat("m_E", &m_renderManager->m_postProcess->m_E, 0.001f);
+    ImGui::DragFloat("m_F", &m_renderManager->m_postProcess->m_F, 0.001f);
+    ImGui::DragFloat("m_W", &m_renderManager->m_postProcess->m_W, 0.001f);
+    ImGui::DragFloat("m_exposure", &m_renderManager->m_postProcess->m_exposure, 0.001f);
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
         VectorUI::renderVec3("m_sunColor", m_renderManager->m_sunColor, 1.f);
@@ -111,7 +122,8 @@ void RenderUI::renderSelectedSource()
     if (ImGui::Begin("renderSelectedSource", &m_createNewWindow, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         ImGui::Text("%s", ss.str().c_str());
-        VectorUI::renderTransform((ss.str() + ":transform").c_str(), m_selectedSource->transform, 0.001f, 1.f, 0.001f);
+        if (VectorUI::renderTransform((ss.str() + ":transform").c_str(), m_selectedSource->transform, 0.001f, 0.001f, 0.001f))
+            m_selectedSource->setModelMatrix(m_selectedSource->transform.getModelMatrix());
         ImGui::Separator();
         VectorUI::renderTransform((ss.str() + ":offset").c_str(), m_selectedSource->offset, 0.001f, 1.f, 0.001f);
         if (ImGui::Button("Focus"))

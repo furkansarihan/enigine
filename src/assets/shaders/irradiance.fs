@@ -29,7 +29,12 @@ void main()
             // tangent space to world
             vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * normal; 
 
-            irradiance += texture(environmentMap, sampleVec).rgb * cos(theta) * sin(theta);
+            vec3 sampled = texture(environmentMap, sampleVec).rgb * cos(theta) * sin(theta);
+
+            // eliminate fireflies
+            sampled = min(sampled, vec3(500.0));
+
+            irradiance += sampled;
             nrSamples++;
         }
     }

@@ -14,10 +14,21 @@ uniform float exposure;
 uniform float contrastBright;
 uniform float contrastDark;
 uniform float bloomIntensity;
+uniform float grainAmount;
+
+// tone mapping
+uniform float u_A;
+uniform float u_B;
+uniform float u_C;
+uniform float u_D;
+uniform float u_E;
+uniform float u_F;
+uniform float u_W;
+uniform float u_exposure;
 
 in vec2 UV;
 
-out vec4 fragColor;
+out vec3 fragColor;
 
 vec3 blur(sampler2D tex, vec2 uv) {
     float offset = blurOffset;
@@ -100,46 +111,33 @@ vec3 fxaa(sampler2D tex, vec2 uv) {
     }
 }
 
-vec3 hdr(vec3 color, float exposure)
-{
-    const float gamma = 2.2;
-
-    // reinhard tone mapping
-    // vec3 mapped = hdrColor / (hdrColor + vec3(1.0));
-    // exposure tone mapping
-    vec3 mapped = vec3(1.0) - exp(-color * exposure);
-
-    // gamma correction 
-    mapped = pow(mapped, vec3(1.0 / gamma));
-
-    return mapped;
-}
+#include <tonemapping.fs>
 
 void main(void)
 {
-    // fragColor.xyz = texture(renderedTexture, UV).xyz;
-    // return;
+    // fragColor = blur(renderedTexture, UV);
+    fragColor = fxaa(renderedTexture, UV);
 
-    // fragColor.xyz = blur(renderedTexture, UV);
-    fragColor.xyz = fxaa(renderedTexture, UV);
-
-    float brightness = dot(fragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float brightness = dot(fragColor, vec3(0.2126, 0.7152, 0.0722));
     float darkness = 1 - brightness;
     if (darkness < 0) darkness = 0;
 
-    fragColor.xyz += fragColor.xyz * brightness * brightness * contrastBright;
-    fragColor.xyz -= fragColor.xyz * darkness * darkness * contrastDark;
-    
-    vec3 bloomColor = texture(bloomTexture, UV).rgb;
-    // fragColor.xyz += bloomColor.xyz * bloomIntensity;
-    fragColor.xyz = mix(fragColor.xyz, bloomColor.xyz, bloomIntensity);
-    
-    // debug
-    // fragColor.xyz = bloomColor.xyz;
-    // fragColor.xyz = bloomColor.xyz * bloomIntensity;
-    // fragColor.xyz = mix(vec3(0, 0, 0), bloomColor.xyz, bloomIntensity);
+    fragColor += fragColor * brightness * brightness * contrastBright;
+    fragColor -= fragColor * darkness * darkness * contrastDark;
 
-    // HDR tone mapping - gamma correction
-    fragColor.xyz = hdr(fragColor.xyz, exposure);
-    fragColor.a = 1.0;
+    vec3 bloomColor = texture(bloomTexture, UV).rgb;
+    // fragColor += bloomColor.xyz * bloomIntensity;
+    fragColor = mix(fragColor, bloomColor.xyz, bloomIntensity);
+
+    // tone mapping
+    fragColor = Tonemap_Filmic_UC2(fragColor * u_exposure, u_W, u_A, u_B, u_C, u_D, u_E, u_F);
+
+    // gamma correction 
+    const float gamma = 2.2;
+    fragColor = pow(fragColor, vec3(1.0 / gamma));
+
+    // debug
+    // fragColor = bloomColor.xyz;
+    // fragColor = bloomColor.xyz * bloomIntensity;
+    // fragColor = mix(vec3(0, 0, 0), bloomColor.xyz, bloomIntensity);
 }

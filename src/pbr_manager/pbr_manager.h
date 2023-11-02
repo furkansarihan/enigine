@@ -43,6 +43,9 @@ public:
     void setupIrradianceMap(Model *cube, Shader irradianceShader);
     void setupPrefilterMap(Model *cube, Shader prefilterShader);
     void setupBrdfLUTTexture(unsigned int quadVAO, Shader brdfShader);
+
+private:
+    unsigned int m_cubemapFaceSize;
 };
 
 #endif /* pbr_manager_hpp */

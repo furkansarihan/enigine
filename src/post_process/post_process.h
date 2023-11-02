@@ -23,10 +23,19 @@ public:
     int m_width;
     int m_height;
 
-    float m_exposure;
     float m_contrastBright;
     float m_contrastDark;
     float m_bloomIntensity;
+
+    // tone mapping
+    float m_A; // Shoulder Strength
+    float m_B; // Linear Strength
+    float m_C; // Linear Angle
+    float m_D; // Toe Strength
+    float m_E; // Toe Numerator
+    float m_F; // Toe Denominator
+    float m_W; // Linear White
+    float m_exposure;
 
     void updateResolution(int width, int height);
 
