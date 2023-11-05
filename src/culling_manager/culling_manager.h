@@ -15,10 +15,11 @@
 #include "../physics_world/debug_drawer/debug_drawer.h"
 #include "../camera/camera.h"
 
-struct CulledObject
+struct SelectedObject
 {
     glm::vec3 aabbMin;
     glm::vec3 aabbMax;
+    glm::vec3 hitPointWorld;
     void *userPointer;
 };
 
@@ -36,7 +37,8 @@ public:
     btCollisionObject *addObject(void *userPointer, const glm::vec3 &size, const glm::mat4 &modelMatrix);
     void removeObject(void *userPointer);
     void updateObject(void *userPointer, const glm::mat4 &modelMatrix);
-    std::vector<CulledObject> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
+    std::vector<SelectedObject> getObjects(glm::vec3 rayFrom, glm::vec3 rayTo);
+    std::vector<SelectedObject> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
 
 private:
     btDefaultCollisionConfiguration *m_collisionConfiguration;

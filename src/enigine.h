@@ -72,6 +72,7 @@ public:
     RootUI *rootUI;
     SystemMonitorUI *systemMonitorUI;
     ShadowmapUI *shadowmapUI;
+    RenderUI *renderUI;
 
     int init();
     void start();

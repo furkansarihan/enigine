@@ -5,16 +5,8 @@ void CameraUI::render()
     if (!ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    ImGui::Text("position");
-    ImGui::DragFloat("X##position", &m_camera->position.x, 0.5f);
-    ImGui::DragFloat("Y##position", &m_camera->position.y, 0.5f);
-    ImGui::DragFloat("Z##position", &m_camera->position.z, 0.5f);
-    ImGui::Separator();
-    ImGui::Text("front");
-    ImGui::DragFloat("X##front", &m_camera->front.x, 0.01f);
-    ImGui::DragFloat("Y##front", &m_camera->front.y, 0.01f);
-    ImGui::DragFloat("Z##front", &m_camera->front.z, 0.01f);
-    ImGui::Separator();
+    VectorUI::renderVec3("position##camera", m_camera->position, 0.1f);
+    VectorUI::renderVec3("front##camera", m_camera->front, 0.001f);
     ImGui::DragFloat("near", &m_camera->near, 0.001f);
     ImGui::DragFloat("far", &m_camera->far, 10.0f);
     ImGui::DragFloat("mouseSensitivity", &m_camera->mouseSensitivity, 0.001f);

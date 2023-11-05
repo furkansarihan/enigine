@@ -11,10 +11,7 @@ void ShadowmapUI::render()
     ImGui::Checkbox("drawAABB", &m_drawAABB);
     ImGui::DragFloat("quadScale", &m_quadScale, 0.1f);
     ImGui::DragFloat("splitWeight", &m_shadowManager->m_splitWeight, 0.01f);
-    ImGui::Text("Light Direction");
-    ImGui::DragFloat("X##lightDirection", &m_shadowManager->m_lightPos.x, 0.01f);
-    ImGui::DragFloat("Y##lightDirection", &m_shadowManager->m_lightPos.y, 0.01f);
-    ImGui::DragFloat("Z##lightDirection", &m_shadowManager->m_lightPos.z, 0.01f);
+    VectorUI::renderVec3("Light Direction", m_shadowManager->m_lightPos, 0.01f);
     ImGui::Separator();
     m_shadowManager->m_lightPos = glm::normalize(m_shadowManager->m_lightPos);
     // m_shadowManager->m_camera->front = glm::normalize(m_shadowManager->m_camera->front);

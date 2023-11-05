@@ -145,14 +145,14 @@ int Enigine::init()
     shadowmapUI = new ShadowmapUI(renderManager->m_shadowManager, renderManager->m_shadowmapManager);
     CameraUI *cameraUI = new CameraUI(mainCamera);
     ResourceUI *resourceUI = new ResourceUI(resourceManager);
-    RenderUI *renderUI = new RenderUI(renderManager);
-    TempUI *tempUI = new TempUI(renderManager->m_postProcess, physicsWorld, debugDrawer, shaderManager);
+    renderUI = new RenderUI(window, renderManager, resourceManager);
+    PhysicsWorldUI *physicsWorldUI = new PhysicsWorldUI(physicsWorld, debugDrawer);
     rootUI->m_uiList.push_back(systemMonitorUI);
     rootUI->m_uiList.push_back(shadowmapUI);
     rootUI->m_uiList.push_back(cameraUI);
     rootUI->m_uiList.push_back(resourceUI);
     rootUI->m_uiList.push_back(renderUI);
-    rootUI->m_uiList.push_back(tempUI);
+    rootUI->m_uiList.push_back(physicsWorldUI);
 
     return 0;
 }
@@ -222,6 +222,10 @@ void Enigine::start()
         shadowmapUI->drawFrustum(simpleShader, mvp, vbo, vao, ebo);
         shadowmapUI->drawFrustumAABB(simpleShader, mvp, vbo, vao, ebo);
         shadowmapUI->drawLightAABB(simpleShader, mvp, renderManager->m_inverseDepthViewMatrix, vbo, vao, ebo);
+
+        // render manager debug
+        renderUI->drawSelectedSource(simpleShader, mvp);
+        renderUI->drawSelectedNormals(lineShader, mvp, vbo, vao, ebo);
 
         // render manager - end
         renderManager->renderBlend();

@@ -2,7 +2,7 @@
 
 void SystemMonitorUI::render()
 {
-    if (!ImGui::CollapsingHeader("System Monitor", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    if (!ImGui::CollapsingHeader("System Monitor", ImGuiTreeNodeFlags_DefaultOpen))
         return;
 
     ImGuiIO &io = ImGui::GetIO();

@@ -52,11 +52,12 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         processKeyboard(RIGHT, deltaTime);
-
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    
+    // TODO: move?
+    // if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {

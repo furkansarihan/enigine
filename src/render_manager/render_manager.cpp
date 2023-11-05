@@ -205,14 +205,14 @@ void RenderManager::setupFrame(GLFWwindow *window)
     m_visiblePbrSources.clear();
     m_visiblePbrAnimSources.clear();
 
-    std::vector<CulledObject> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
+    std::vector<SelectedObject> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
                                                                      m_shadowManager->m_aabb.max,
                                                                      m_cullViewPos);
     std::vector<aabb> objectAabbs;
 
     for (int i = 0; i < objects.size(); i++)
     {
-        CulledObject &object = objects[i];
+        SelectedObject &object = objects[i];
         RenderSource *source = static_cast<RenderSource *>(object.userPointer);
 
         source->cullIndex = i;

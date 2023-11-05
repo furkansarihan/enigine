@@ -2,6 +2,14 @@
 
 RootUI::RootUI()
 {
+    ImGuiStyle &style = ImGui::GetStyle();
+
+    // default values
+    style.WindowBorderSize = 0.f;
+    style.ChildBorderSize = 0.f;
+    style.PopupBorderSize = 0.f;
+    style.FrameRounding = 3.0f;
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.7f);
 }
 
 RootUI::~RootUI()
@@ -24,14 +32,16 @@ void RootUI::render()
         ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
     }
-    ImGui::SetNextWindowBgAlpha(0.85f);
+
     bool p_open = true;
-    if (ImGui::Begin("overlay", &p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin("RootUI", &p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         for (int i = 0; i < m_uiList.size(); i++)
             m_uiList.at(i)->render();
     }
     ImGui::End();
+
+    // ImGui::ShowDemoWindow();
 
     // end imgui
     ImGui::Render();

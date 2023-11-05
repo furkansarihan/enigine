@@ -140,7 +140,43 @@ void CullingManager::setupFrame(glm::mat4 viewProjection)
     calculatePlanes(viewProjection);
 }
 
-std::vector<CulledObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos)
+std::vector<SelectedObject> CullingManager::getObjects(glm::vec3 from, glm::vec3 to)
+{
+    std::vector<SelectedObject> selectedObjects;
+
+    btVector3 rayFrom = BulletGLM::getBulletVec3(from);
+    btVector3 rayTo = BulletGLM::getBulletVec3(to);
+
+    btCollisionWorld::AllHitsRayResultCallback rayCallback(rayFrom, rayTo);
+
+    // Perform the ray cast against the collision world (dynamicsWorld or others)
+    m_collisionWorld->rayTest(rayFrom, rayTo, rayCallback);
+
+    // Loop through the ray cast results and collect the selected objects
+    for (int i = 0; i < rayCallback.m_hitFractions.size(); i++)
+    {
+        const btCollisionObject *object = rayCallback.m_collisionObjects[i];
+
+        btTransform t = object->getWorldTransform();
+        btVector3 aabbMin, aabbMax;
+        object->getCollisionShape()->getAabb(t, aabbMin, aabbMax);
+
+        SelectedObject so;
+        so.userPointer = object->getUserPointer();
+        so.aabbMin = BulletGLM::getGLMVec3(aabbMin);
+        so.aabbMax = BulletGLM::getGLMVec3(aabbMax);
+        so.hitPointWorld = BulletGLM::getGLMVec3(rayCallback.m_hitPointWorld[i]);
+        selectedObjects.push_back(so);
+    }
+
+    // Sort selected objects by squared distance
+    std::sort(selectedObjects.begin(), selectedObjects.end(), [&from](const SelectedObject &a, const SelectedObject &b)
+              { return glm::length(a.hitPointWorld - from) < glm::length(b.hitPointWorld - from); });
+
+    return selectedObjects;
+}
+
+std::vector<SelectedObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos)
 {
     // auto start = std::chrono::high_resolution_clock::now();
 
@@ -150,7 +186,7 @@ std::vector<CulledObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec
     m_broadphase->aabbTest(BulletGLM::getBulletVec3(aabbMin), BulletGLM::getBulletVec3(aabbMax), *callback);
 
     // view frustum culling
-    std::vector<CulledObject> visibleObjects;
+    std::vector<SelectedObject> visibleObjects;
     for (int i = 0; i < aabbCallback->m_overlappingObjects->size(); i++)
     {
         btCollisionObject *object = (*aabbCallback->m_overlappingObjects)[i];
@@ -161,11 +197,13 @@ std::vector<CulledObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::vec
 
         if (inFrustum(BulletGLM::getGLMVec3(aabbMin), BulletGLM::getGLMVec3(aabbMax), viewPos))
         {
-            CulledObject co;
-            co.userPointer = object->getUserPointer();
-            co.aabbMin = BulletGLM::getGLMVec3(aabbMin);
-            co.aabbMax = BulletGLM::getGLMVec3(aabbMax);
-            visibleObjects.push_back(co);
+            SelectedObject so;
+            so.userPointer = object->getUserPointer();
+            so.aabbMin = BulletGLM::getGLMVec3(aabbMin);
+            so.aabbMax = BulletGLM::getGLMVec3(aabbMax);
+            // TODO: ?
+            so.hitPointWorld = glm::vec3(0.f);
+            visibleObjects.push_back(so);
         }
     }
 
