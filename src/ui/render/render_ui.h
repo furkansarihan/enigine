@@ -3,39 +3,27 @@
 
 #include "../base_ui.h"
 #include "../../render_manager/render_manager.h"
+#include "../../input_manager/input_manager.h"
+#include "../../external/imfilebrowser/imfilebrowser.h"
 
 #include <sstream>
+#include <functional>
 
 class RenderUI : public BaseUI
 {
-private:
-    GLFWwindow *m_window;
+public:
+    RenderUI(InputManager *inputManager, RenderManager *renderManager, ResourceManager *resourceManager);
+
+    InputManager *m_inputManager;
     RenderManager *m_renderManager;
     ResourceManager *m_resourceManager;
 
-public:
-    RenderUI(GLFWwindow *window, RenderManager *renderManager, ResourceManager *resourceManager)
-        : m_window(window),
-          m_renderManager(renderManager),
-          m_resourceManager(resourceManager),
-          m_selectedSource(nullptr),
-          m_followSelectedSource(false),
-          m_lastSelectScreenPosition(glm::vec2(0.f, 0.f)),
-          m_selectDepth(0),
-          m_lastInputAt(0.f),
-          m_drawNormals(false),
-          m_normalSize(0.01f),
-          m_drawNormalSource(nullptr),
-          m_followDistance(8.f),
-          m_followOffset(glm::vec3(0.f, 2.f, 0.f))
-    {
-    }
+    ImGui::FileBrowser m_fileDialog;
 
     RenderSource *m_selectedSource;
     bool m_followSelectedSource;
     glm::vec2 m_lastSelectScreenPosition;
     int m_selectDepth;
-    float m_lastInputAt;
     // normals
     bool m_drawNormals;
     float m_normalSize;
@@ -47,10 +35,14 @@ public:
     glm::vec3 m_followOffset;
 
     void render() override;
-    void inputListener();
-    bool canProcessInput();
+    void keyListener(GLFWwindow *window, int key, int scancode, int action, int mods);
+    void mouseButtonListener(GLFWwindow *window, int button, int action, int mods);
+    void mouseScrollListener(GLFWwindow *window, double xoffset, double yoffset);
+    void fileDropListener(GLFWwindow *window, int count, const char **paths);
     void mouseSelect(double xpos, double ypos);
     void selectSource(RenderSource *source);
+
+    void renderAddRenderSource();
 
     void drawSelectedSource(Shader &simpleShader, glm::mat4 mvp);
     void drawSelectedNormals(Shader &lineShader, glm::mat4 mvp, unsigned int vbo, unsigned int vao, unsigned int ebo);
@@ -69,6 +61,7 @@ public:
 
 private:
     void setupDrawNormals();
+    void addRenderSource(std::string path);
 };
 
 #endif /* render_ui_hpp */

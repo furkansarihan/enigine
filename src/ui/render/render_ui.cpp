@@ -2,10 +2,32 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, ResourceManager *resourceManager)
+    : m_inputManager(inputManager),
+      m_renderManager(renderManager),
+      m_resourceManager(resourceManager),
+      m_selectedSource(nullptr),
+      m_followSelectedSource(false),
+      m_lastSelectScreenPosition(glm::vec2(0.f, 0.f)),
+      m_selectDepth(0),
+      m_drawNormals(false),
+      m_normalSize(0.01f),
+      m_drawNormalSource(nullptr),
+      m_followDistance(8.f),
+      m_followOffset(glm::vec3(0.f, 2.f, 0.f))
+{
+    m_inputManager->addKeyListener(std::bind(&RenderUI::keyListener, this,
+                                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+    m_inputManager->addMouseButtonListener(std::bind(&RenderUI::mouseButtonListener, this,
+                                                     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+    m_inputManager->addMouseScrollListener(std::bind(&RenderUI::mouseScrollListener, this,
+                                                     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    m_inputManager->addFileDropListener(std::bind(&RenderUI::fileDropListener, this,
+                                                  std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
 void RenderUI::render()
 {
-    inputListener();
-
     if (!ImGui::CollapsingHeader("Render##RenderUI::render", ImGuiTreeNodeFlags_DefaultOpen))
         return;
 
@@ -15,6 +37,7 @@ void RenderUI::render()
         m_renderManager->m_shaderManager->initShaders();
     }
 
+    renderAddRenderSource();
     renderDebug();
     renderGBuffer();
     renderSSAO();
@@ -26,24 +49,22 @@ void RenderUI::render()
     renderSelectedSourceWindow();
 }
 
-// TODO: key callback
-void RenderUI::inputListener()
+void RenderUI::keyListener(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    GLFWwindow *m_window = m_inputManager->m_window;
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     {
         selectSource(nullptr);
     }
-
-    if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS &&
-        glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && canProcessInput())
+    else if (key == GLFW_KEY_DELETE && action == GLFW_PRESS)
     {
-        double xpos, ypos;
-        glfwGetCursorPos(m_window, &xpos, &ypos);
-
-        mouseSelect(xpos, ypos);
+        if (m_selectedSource)
+        {
+            m_renderManager->removeSource(m_selectedSource);
+            selectSource(nullptr);
+        }
     }
-
-    if (glfwGetKey(m_window, GLFW_KEY_F) == GLFW_PRESS && canProcessInput())
+    else if (key == GLFW_KEY_F && action == GLFW_PRESS)
     {
         if (glfwGetKey(m_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
             m_followSelectedSource = false;
@@ -52,26 +73,67 @@ void RenderUI::inputListener()
 
         m_followDistance = 8.0f;
     }
-
-    ImGuiIO &io = ImGui::GetIO();
-
-    if (io.MouseWheel > 0.f)
-        m_followDistance += 1.0f;
-
-    if (io.MouseWheel < 0.f)
-        m_followDistance -= 1.0f;
 }
 
-bool RenderUI::canProcessInput()
+void RenderUI::mouseButtonListener(GLFWwindow *window, int button, int action, int mods)
 {
-    float now = (float)glfwGetTime();
-    float elapsedTime = now - m_lastInputAt;
-    float maxTime = 0.2f;
-    if (elapsedTime < maxTime)
-        return false;
-    m_lastInputAt = now;
+    if (button == GLFW_MOUSE_BUTTON_LEFT && (mods & GLFW_MOD_SHIFT) && action == GLFW_PRESS)
+    {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
 
-    return true;
+        mouseSelect(xpos, ypos);
+    }
+}
+
+void RenderUI::mouseScrollListener(GLFWwindow *window, double xoffset, double yoffset)
+{
+    float factor = 1.f;
+    m_followDistance += yoffset * factor;
+}
+
+void RenderUI::fileDropListener(GLFWwindow *window, int count, const char **paths)
+{
+    for (int i = 0; i < count; i++)
+    {
+        const char *path = paths[i];
+
+        addRenderSource(std::string(path));
+    }
+}
+
+void RenderUI::addRenderSource(std::string path)
+{
+    eTransform transform;
+    transform.setPosition(glm::vec3(0.f, 0.f, 0.f));
+    transform.setScale(glm::vec3(1.f));
+
+    Model &model = *m_resourceManager->getModelFullPath(path);
+    RenderSource *source = RenderSourceBuilder()
+                               .setTransform(transform)
+                               .setModel(&model)
+                               .build();
+    m_renderManager->addSource(source);
+    selectSource(source);
+}
+
+void RenderUI::renderAddRenderSource()
+{
+    if (ImGui::Button("Add Render Source"))
+    {
+        m_fileDialog.Open();
+    }
+
+    m_fileDialog.Display();
+
+    if (m_fileDialog.HasSelected())
+    {
+        std::string path = m_fileDialog.GetSelected().string();
+
+        addRenderSource(path);
+
+        m_fileDialog.ClearSelected();
+    }
 }
 
 void RenderUI::mouseSelect(double xpos, double ypos)
@@ -138,11 +200,12 @@ void RenderUI::drawSelectedSource(Shader &simpleShader, glm::mat4 mvp)
     glm::vec3 center = (m_selectedSource->model->aabbMin + m_selectedSource->model->aabbMax) / 2.f;
     glm::vec3 scale = (m_selectedSource->model->aabbMin - m_selectedSource->model->aabbMax) / 2.f;
 
+    glm::mat4 sourceModel = m_selectedSource->transform.getModelMatrix() * m_selectedSource->offset.getModelMatrix();
     glm::mat4 model = glm::translate(glm::mat4(1.f), center);
     model = glm::scale(model, scale);
 
     simpleShader.use();
-    simpleShader.setMat4("MVP", mvp * m_selectedSource->transform.getModelMatrix() * model);
+    simpleShader.setMat4("MVP", mvp * sourceModel * model);
     simpleShader.setVec4("DiffuseColor", glm::vec4(1.f, 1.f, 1.f, 1.f));
 
     // aabb
@@ -151,16 +214,17 @@ void RenderUI::drawSelectedSource(Shader &simpleShader, glm::mat4 mvp)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // volume
-    simpleShader.setVec4("DiffuseColor", glm::vec4(1.f, 1.f, 1.f, 0.1f));
+    /* simpleShader.setVec4("DiffuseColor", glm::vec4(1.f, 1.f, 1.f, 0.1f));
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     m_renderManager->cube->draw(simpleShader);
-    glDisable(GL_BLEND);
+    glDisable(GL_BLEND); */
 
     // center
-    model = glm::translate(glm::mat4(1.f), center);
+    model = glm::translate(glm::mat4(1.f), CommonUtil::positionFromModel(sourceModel) + center);
     model = glm::scale(model, glm::vec3(0.05));
-    simpleShader.setMat4("MVP", mvp * m_selectedSource->transform.getModelMatrix() * model);
+
+    simpleShader.setMat4("MVP", mvp * model);
     simpleShader.setVec4("DiffuseColor", glm::vec4(1.f, 0.f, 1.f, 1.f));
     glDisable(GL_DEPTH_TEST);
     m_renderManager->sphere->draw(simpleShader);
@@ -178,7 +242,7 @@ void RenderUI::drawSelectedNormals(Shader &lineShader, glm::mat4 mvp, unsigned i
         m_drawNormalSource = m_selectedSource;
     }
 
-    glm::mat4 model = m_selectedSource->transform.getModelMatrix();
+    glm::mat4 model = m_selectedSource->transform.getModelMatrix() * m_selectedSource->offset.getModelMatrix();
     mvp = mvp * model;
 
     glBindVertexArray(vao);
@@ -226,6 +290,8 @@ void addLine(std::vector<GLfloat> &vertices, std::vector<GLuint> &indices,
     indices.push_back(indexI + 1);
 }
 
+// TODO: transform agnostic normal size
+// TODO: animated model normals
 void RenderUI::setupDrawNormals()
 {
     m_normalVertices.clear();
@@ -244,22 +310,24 @@ void RenderUI::setupDrawNormals()
             //     continue;
             // }
 
+            glm::vec3 position = glm::vec3(mesh->offset * glm::vec4(vertex.position, 1.f));
+
             glm::vec3 start, end, color;
             // normal
-            start = glm::vec3(vertex.position);
-            end = glm::vec3(vertex.position + vertex.normal * m_normalSize);
+            start = glm::vec3(position);
+            end = glm::vec3(position + vertex.normal * m_normalSize);
             color = glm::vec3(0, 1, 0);
             addLine(m_normalVertices, m_normalIndices, m_renderManager->getWorldOrigin(), start, end, color, indexI);
             indexI += 2;
             // tangent
-            start = glm::vec3(vertex.position);
-            end = glm::vec3(vertex.position + vertex.tangent * m_normalSize);
+            start = glm::vec3(position);
+            end = glm::vec3(position + vertex.tangent * m_normalSize);
             color = glm::vec3(1, 0, 0);
             addLine(m_normalVertices, m_normalIndices, m_renderManager->getWorldOrigin(), start, end, color, indexI);
             indexI += 2;
             // bitangent
-            start = glm::vec3(vertex.position);
-            end = glm::vec3(vertex.position + vertex.bitangent * m_normalSize);
+            start = glm::vec3(position);
+            end = glm::vec3(position + vertex.bitangent * m_normalSize);
             color = glm::vec3(0, 0, 1);
             addLine(m_normalVertices, m_normalIndices, m_renderManager->getWorldOrigin(), start, end, color, indexI);
             indexI += 2;
@@ -317,8 +385,9 @@ void RenderUI::renderSelectedSourceWindow()
     ImGui::Text("Selected Render Source");
 
     if (VectorUI::renderTransform(("transform##" + ss.str()).c_str(), m_selectedSource->transform, 0.001f, 0.001f, 0.001f))
-        m_selectedSource->setModelMatrix(m_selectedSource->transform.getModelMatrix());
-    // VectorUI::renderTransform(("offset##" + ss.str()).c_str(), m_selectedSource->offset, 0.001f, 1.f, 0.001f);
+        m_selectedSource->updateModelMatrix();
+    if (VectorUI::renderTransform(("offset##" + ss.str()).c_str(), m_selectedSource->offset, 0.001f, 0.001f, 0.001f))
+        m_selectedSource->updateModelMatrix();
 
     ImGui::Checkbox("Follow", &m_followSelectedSource);
     if (m_followSelectedSource)
@@ -339,7 +408,7 @@ void RenderUI::renderSelectedSourceWindow()
         m_renderManager->m_camera->position = glm::mix(m_renderManager->m_camera->position, newPosition, 0.8f);
     }
     ImGui::Checkbox("Draw Normals", &m_drawNormals);
-    if (ImGui::DragFloat("Normal Size", &m_normalSize, 0.01f))
+    if (ImGui::DragFloat("Normal Size", &m_normalSize, 0.001f))
         m_drawNormalSource = nullptr;
 
     // ImGui::End();
