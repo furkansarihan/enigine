@@ -47,6 +47,7 @@ int main()
     DebugDrawer *debugDrawer = enigine.debugDrawer;
     UpdateManager *updateManager = enigine.updateManager;
     TaskManager *taskManager = enigine.taskManager;
+    InputManager *inputManager = enigine.inputManager;
     SoundEngine *soundEngine = enigine.soundEngine;
     Camera *mainCamera = enigine.mainCamera;
 
@@ -129,9 +130,8 @@ int main()
 
     car.m_controlVehicle = true;
     car.m_followVehicle = true;
-    // TODO: input manager
-    glfwSetWindowUserPointer(window, &car);
-    glfwSetKeyCallback(window, car.staticKeyCallback);
+    inputManager->addKeyListener(std::bind(&CarController::keyListener, &car,
+                                           std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 
     // TODO: before character - parent transform - ?
     updateManager->add(&car);

@@ -60,6 +60,7 @@ public:
     RenderManager *renderManager;
     UpdateManager *updateManager;
     TaskManager *taskManager;
+    InputManager *inputManager;
 
     GLFWwindow *window;
     task_basic_info t_info;

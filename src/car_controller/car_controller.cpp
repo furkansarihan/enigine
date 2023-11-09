@@ -144,7 +144,7 @@ CarController::~CarController()
         delete m_tireSmokeParticles[i];
 }
 
-void CarController::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+void CarController::keyListener(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_1 && action == GLFW_PRESS)
     {
@@ -168,12 +168,6 @@ void CarController::keyCallback(GLFWwindow *window, int key, int scancode, int a
         else
             m_vehicle->openDoor(doorIndex);
     }
-}
-
-void CarController::staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    CarController *cc = (CarController *)glfwGetWindowUserPointer(window);
-    cc->keyCallback(window, key, scancode, action, mods);
 }
 
 void CarController::update(float deltaTime)

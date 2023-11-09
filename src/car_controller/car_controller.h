@@ -107,8 +107,7 @@ public:
     void updateTireSmoke(int index, float deltaTime);
     glm::mat4 translateOffset(glm::vec3 offset);
     void followCar(float deltaTime);
-    void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
-    static void staticKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+    void keyListener(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 private:
     int m_keyForward = GLFW_KEY_W;

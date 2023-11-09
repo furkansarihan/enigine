@@ -6,14 +6,6 @@ Enigine::Enigine()
 
 Enigine::~Enigine()
 {
-    // cleanup imgui
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-    // cleanup glfw
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
     // cleanup objects
     delete physicsWorld;
     delete debugDrawer;
@@ -22,12 +14,22 @@ Enigine::~Enigine()
     delete resourceManager;
     delete renderManager;
     delete taskManager;
+    delete inputManager;
     delete mainCamera;
 
     // cleanup ui
     for (int i = 0; i < rootUI->m_uiList.size(); i++)
         delete rootUI->m_uiList[i];
     delete rootUI;
+
+    // cleanup imgui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    // cleanup glfw
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
 
 // TODO: return init result enum
@@ -119,6 +121,7 @@ int Enigine::init()
     renderManager = new RenderManager(shaderManager, mainCamera, &cube, &quad, &icosahedron, q_vao);
     updateManager = new UpdateManager();
     taskManager = new TaskManager();
+    inputManager = new InputManager(window);
 
     // Time
     lastFrame = (float)glfwGetTime();
@@ -145,7 +148,7 @@ int Enigine::init()
     shadowmapUI = new ShadowmapUI(renderManager->m_shadowManager, renderManager->m_shadowmapManager);
     CameraUI *cameraUI = new CameraUI(mainCamera);
     ResourceUI *resourceUI = new ResourceUI(resourceManager);
-    renderUI = new RenderUI(window, renderManager, resourceManager);
+    renderUI = new RenderUI(inputManager, renderManager, resourceManager);
     PhysicsWorldUI *physicsWorldUI = new PhysicsWorldUI(physicsWorld, debugDrawer);
     rootUI->m_uiList.push_back(systemMonitorUI);
     rootUI->m_uiList.push_back(shadowmapUI);
