@@ -41,6 +41,7 @@ public:
     RenderManager *m_renderManager = nullptr;
     eTransform transform;
     eTransform offset;
+    glm::mat4 modelMatrix;
     FaceCullType faceCullType;
     Model *model = nullptr;
     Animator *animator = nullptr;
@@ -50,13 +51,13 @@ public:
     RenderSource(eTransform transform, eTransform offset, FaceCullType faceCullType, Model *model, Animator *animator, TransformLink *transformLink)
         : transform(transform),
           offset(offset),
+          modelMatrix(glm::mat4(1.f)),
           faceCullType(faceCullType),
           model(model),
           animator(animator),
           transformLink(transformLink){};
 
-    void setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale);
-    void setModelMatrix(glm::mat4 modelMatrix);
+    void updateModelMatrix();
 };
 
 // TODO: remove?

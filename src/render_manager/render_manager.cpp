@@ -152,7 +152,10 @@ void RenderManager::updateTransforms()
 {
     // TODO: better way?
     for (int i = 0; i < m_linkSources.size(); i++)
-        m_linkSources[i]->setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
+    {
+        m_linkSources[i]->transform.setModelMatrix(m_linkSources[i]->transformLink->getModelMatrix());
+        m_linkSources[i]->updateModelMatrix();
+    }
 }
 
 void RenderManager::addLight(LightSource light)
@@ -206,8 +209,8 @@ void RenderManager::setupFrame(GLFWwindow *window)
     m_visiblePbrAnimSources.clear();
 
     std::vector<SelectedObject> objects = m_cullingManager->getObjects(m_shadowManager->m_aabb.min,
-                                                                     m_shadowManager->m_aabb.max,
-                                                                     m_cullViewPos);
+                                                                       m_shadowManager->m_aabb.max,
+                                                                       m_cullViewPos);
     std::vector<aabb> objectAabbs;
 
     for (int i = 0; i < objects.size(); i++)
@@ -279,7 +282,7 @@ void RenderManager::renderDepth()
                 continue;
 
             depthShader.use();
-            depthShader.setMat4("MVP", m_depthVP * m_originTransform * source->transform.getModelMatrix());
+            depthShader.setMat4("MVP", m_depthVP * m_originTransform * source->modelMatrix);
             source->model->draw(depthShader, true);
         }
         for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
@@ -300,7 +303,7 @@ void RenderManager::renderDepth()
                 for (int i = 0; i < transforms.size(); ++i)
                     depthShaderAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 
-                depthShaderAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
+                depthShaderAnim.setMat4("model", m_originTransform * source->modelMatrix);
                 source->model->draw(depthShaderAnim, true);
             }
         }
@@ -349,7 +352,7 @@ void RenderManager::renderOpaque()
     for (int i = 0; i < m_visiblePbrSources.size(); i++)
     {
         RenderSource *source = m_visiblePbrSources[i];
-        pbrDeferredPre.setMat4("model", m_originTransform * source->transform.getModelMatrix());
+        pbrDeferredPre.setMat4("model", m_originTransform * source->modelMatrix);
 
         if (source->faceCullType == FaceCullType::none)
             glDisable(GL_CULL_FACE);
@@ -391,7 +394,7 @@ void RenderManager::renderOpaque()
                 pbrDeferredPreAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
         }
 
-        pbrDeferredPreAnim.setMat4("model", m_originTransform * source->transform.getModelMatrix());
+        pbrDeferredPreAnim.setMat4("model", m_originTransform * source->modelMatrix);
 
         if (source->faceCullType == FaceCullType::none)
             glDisable(GL_CULL_FACE);
@@ -869,14 +872,10 @@ void RenderManager::addSource(RenderSource *source)
         m_linkSources.push_back(source);
 
     glm::vec3 size = (source->model->aabbMax - source->model->aabbMin) / 2.0f;
-    glm::vec3 aabbCenter = (source->model->aabbMax + source->model->aabbMin) / 2.0f;
+    glm::mat4 modelMatrix(1.f);
 
-    eTransform aabbTransform;
-    aabbTransform.setPosition(aabbCenter);
-
-    glm::mat4 result = source->transform.getModelMatrix() * aabbTransform.getModelMatrix();
-
-    m_cullingManager->addObject(source, size, m_originTransform * result);
+    m_cullingManager->addObject(source, size, modelMatrix);
+    source->updateModelMatrix();
 }
 
 void RenderManager::removeSource(RenderSource *source)
@@ -926,29 +925,20 @@ bool RenderManager::inShadowFrustum(RenderSource *source, int frustumIndex)
 
 // RenderSource
 
-void RenderSource::setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale)
+void RenderSource::updateModelMatrix()
 {
-    transform.setTransform(position, rotation, scale);
-
+    // TODO: remove
     if (!m_renderManager->m_cullingManager)
         return;
 
-    m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * transform.getModelMatrix());
-}
-
-void RenderSource::setModelMatrix(glm::mat4 modelMatrix)
-{
-    transform.setModelMatrix(modelMatrix);
-
-    if (!m_renderManager->m_cullingManager)
-        return;
+    modelMatrix = transform.getModelMatrix() * offset.getModelMatrix();
 
     glm::vec3 aabbCenter = (model->aabbMax + model->aabbMin) / 2.0f;
 
     eTransform aabbTransform;
     aabbTransform.setPosition(aabbCenter);
 
-    modelMatrix = modelMatrix * aabbTransform.getModelMatrix();
+    glm::mat4 aabbModelMatrix = modelMatrix * aabbTransform.getModelMatrix();
 
-    m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * modelMatrix);
+    m_renderManager->m_cullingManager->updateObject(this, m_renderManager->m_originTransform * aabbModelMatrix);
 }
