@@ -19,7 +19,7 @@ public:
     }
 
     bool m_floatObject = false;
-    float m_floatHeight = 10.f;
+    float m_floatHeight = 3.f;
     bool m_activateObject = true;
     int m_floatIndex = 2;
 

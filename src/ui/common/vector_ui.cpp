@@ -36,6 +36,40 @@ bool VectorUI::renderQuat(const char *header, glm::quat &quat, float dragSpeed)
     return ImGui::DragFloat4(header, &quat.w, dragSpeed);
 }
 
+bool VectorUI::renderQuat(const char *header, btQuaternion &quat, float dragSpeed)
+{
+    glm::quat glmQuat = BulletGLM::getGLMQuat(quat);
+
+    bool modified = ImGui::DragFloat4(header, &glmQuat.w, dragSpeed);
+
+    glmQuat = glm::normalize(glmQuat);
+
+    if (modified)
+        quat = BulletGLM::getBulletQuat(glmQuat);
+
+    return modified;
+}
+
+bool VectorUI::renderQuatEuler(const char *header, btQuaternion &quat, float dragSpeed)
+{
+    glm::quat glmQuat = BulletGLM::getGLMQuat(quat);
+
+    glm::vec3 euler = glm::eulerAngles(glmQuat);
+    euler = glm::degrees(euler);
+
+    bool modified = ImGui::DragFloat3(header, &euler.x, dragSpeed);
+
+    euler = glm::radians(euler);
+    glmQuat = glm::quat(euler);
+
+    glmQuat = glm::normalize(glmQuat);
+
+    if (modified)
+        quat = BulletGLM::getBulletQuat(glmQuat);
+
+    return modified;
+}
+
 bool VectorUI::renderQuatEuler(const char *header, glm::quat &quat, float dragSpeed)
 {
     glm::vec3 euler = glm::eulerAngles(quat);

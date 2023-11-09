@@ -61,22 +61,20 @@ struct RagdollStatus
 
 struct RagdollSize
 {
-    float upperArmLength = 0.23f;
+    float upperArmLength = 0.29f;
     float lowerArmLength = 0.25f;
-    float shoulderOffsetVertical = 0.05f;
-    float shoulderOffsetHorizontal = 0.22f;
+    glm::vec3 shoulderOffset = glm::vec3(0.193f, 0.035f, -0.070f);
     float upperLegLength = 0.38f;
     float lowerLegLength = 0.37f;
     float pelvisHeight = 0.23f;
-    float spineHeight = 0.29f;
+    float spineHeight = 0.28f;
     float headHeight = 0.05f;
 
     bool operator==(const RagdollSize &other) const
     {
         return upperArmLength == other.upperArmLength &&
                lowerArmLength == other.lowerArmLength &&
-               shoulderOffsetVertical == other.shoulderOffsetVertical &&
-               shoulderOffsetHorizontal == other.shoulderOffsetHorizontal &&
+               shoulderOffset == other.shoulderOffset &&
                upperLegLength == other.upperLegLength &&
                lowerLegLength == other.lowerLegLength &&
                pelvisHeight == other.pelvisHeight &&
@@ -113,7 +111,9 @@ public:
     Bone *bones[JOINT_COUNT];
     btTransform boneTransforms[JOINT_COUNT];
 
-    glm::vec3 m_modelOffset = glm::vec3(0.0f, -1.9f, 0);
+    glm::vec3 m_modelOffset;
+    btQuaternion m_rightArmOffset;
+    btQuaternion m_leftArmOffset;
 
     void resetTransforms(const btVector3 &offsetPosition, btQuaternion offsetRotation);
     void resetTransforms(const btVector3 &offsetPosition, float angleY);
@@ -126,7 +126,10 @@ public:
     void updateJointSize(btCapsuleShape *shape, btRigidBody *body, float size);
 
     void syncToAnimation(glm::vec3 &position);
-    void syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrientation, btQuaternion parentBoneOrientation, glm::vec3 &position, bool fromParent);
+    void syncNodeToAnimation(const AssimpNodeData &node,
+                             btQuaternion &skipNodeOrientation,
+                             const btQuaternion &parentBoneOrientation,
+                             glm::vec3 &position, bool fromParent);
 
 private:
     void updateStateChange();

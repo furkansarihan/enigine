@@ -5,7 +5,8 @@ AssimpNodeData *getNode(AssimpNodeData &node, std::string name);
 Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVector3 &positionOffset, btScalar scale)
     : m_physicsWorld(physicsWorld),
       m_animation(animation),
-      m_scale(scale)
+      m_scale(scale),
+      m_modelOffset(glm::vec3(0.0f))
 {
     m_shapes[BODYPART_PELVIS] = new btCapsuleShape(btScalar(0.15) * m_scale, btScalar(m_size.pelvisHeight) * m_scale);
     m_shapes[BODYPART_SPINE] = new btCapsuleShape(btScalar(0.15) * m_scale, btScalar(m_size.spineHeight) * m_scale);
@@ -72,15 +73,9 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     AssimpNodeData &nodeLeftForeArm = *getNode(m_animation->m_RootNode, "mixamorig:LeftForeArm");
     nodeLeftForeArm.rigidBody = m_bodies[BODYPART_LEFT_LOWER_ARM];
 
-    // TODO: fix with joint postitions
-    nodeLeftUpLeg.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_LEG];
-    nodeLeftLeg.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_LEG];
-    nodeRightUpLeg.rigidBody = m_bodies[BODYPART_LEFT_UPPER_LEG];
-    nodeRightLeg.rigidBody = m_bodies[BODYPART_LEFT_LOWER_LEG];
-    nodeLeftArm.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_ARM];
-    nodeLeftForeArm.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_ARM];
-    nodeRightArm.rigidBody = m_bodies[BODYPART_LEFT_UPPER_ARM];
-    nodeRightForeArm.rigidBody = m_bodies[BODYPART_LEFT_LOWER_ARM];
+    // TODO: ?
+    m_rightArmOffset = btQuaternion(-0.985, 0.f, 0.f, 0.174f);
+    m_leftArmOffset = btQuaternion(0.5f, 0.5f, -0.5f, 0.5f);
 
     // constraints
     btHingeConstraint *hingeC;
@@ -113,7 +108,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
 
     // JOINT_LEFT_KNEE
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_LEG], *m_bodies[BODYPART_LEFT_LOWER_LEG], localA, localB);
-    hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+    hingeC->setLimit(btScalar(-2.f), btScalar(0));
     m_joints[JOINT_LEFT_KNEE] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
     nodeLeftLeg.index = JOINT_LEFT_KNEE;
@@ -127,14 +122,14 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
 
     // JOINT_RIGHT_KNEE
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
-    hingeC->setLimit(btScalar(0), btScalar(M_PI_2));
+    hingeC->setLimit(btScalar(-2.f), btScalar(0));
     m_joints[JOINT_RIGHT_KNEE] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
     nodeRightLeg.index = JOINT_RIGHT_KNEE;
 
     // JOINT_LEFT_SHOULDER
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
-    coneC->setLimit(M_PI_2, M_PI_2, 0, 0.85f);
+    coneC->setLimit(2.f, M_PI_2, 0, 0.85f);
     m_joints[JOINT_LEFT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
     nodeLeftArm.index = JOINT_LEFT_SHOULDER;
@@ -148,7 +143,7 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
 
     // JOINT_RIGHT_SHOULDER
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
-    coneC->setLimit(M_PI_2, M_PI_2, 0, 0.85f);
+    coneC->setLimit(2.f, M_PI_2, 0, 0.85f);
     m_joints[JOINT_RIGHT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
     nodeRightArm.index = JOINT_RIGHT_SHOULDER;
@@ -167,11 +162,11 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     m_fetalTargets[JOINT_PELVIS_SPINE].force = 500.f;
     m_fetalTargets[JOINT_PELVIS_SPINE].active = true;
 
-    m_fetalTargets[JOINT_LEFT_KNEE].angle.x = M_PI_2;
+    m_fetalTargets[JOINT_LEFT_KNEE].angle.x = -2.f;
     m_fetalTargets[JOINT_LEFT_KNEE].force = 60.f;
     m_fetalTargets[JOINT_LEFT_KNEE].active = true;
 
-    m_fetalTargets[JOINT_RIGHT_KNEE].angle.x = M_PI_2;
+    m_fetalTargets[JOINT_RIGHT_KNEE].angle.x = -2.f;
     m_fetalTargets[JOINT_RIGHT_KNEE].force = 60.f;
     m_fetalTargets[JOINT_RIGHT_KNEE].active = true;
 
@@ -191,11 +186,11 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     m_fetalTargets[JOINT_RIGHT_HIP].force = 300.f;
     m_fetalTargets[JOINT_RIGHT_HIP].active = true;
 
-    m_fetalTargets[JOINT_LEFT_SHOULDER].angle = glm::vec4(-0.466f, -0.372f, -0.802f, 0.024);
+    m_fetalTargets[JOINT_LEFT_SHOULDER].angle = glm::vec4(0.466f, -0.372f, -0.802f, 0.024);
     m_fetalTargets[JOINT_LEFT_SHOULDER].force = 200.f;
     m_fetalTargets[JOINT_LEFT_SHOULDER].active = true;
 
-    m_fetalTargets[JOINT_RIGHT_SHOULDER].angle = glm::vec4(0.466f, -0.372f, -0.802f, 0.024);
+    m_fetalTargets[JOINT_RIGHT_SHOULDER].angle = glm::vec4(-0.466f, -0.372f, -0.802f, 0.024);
     m_fetalTargets[JOINT_RIGHT_SHOULDER].force = 200.f;
     m_fetalTargets[JOINT_RIGHT_SHOULDER].active = true;
 
@@ -334,6 +329,7 @@ void Ragdoll::updateJointSize(btCapsuleShape *shape, btRigidBody *body, float si
     m_physicsWorld->m_dynamicsWorld->addRigidBody(body);
 }
 
+// TODO: fully adapt m_size
 void Ragdoll::updateJointFrames()
 {
     btTransform localA, localB;
@@ -365,7 +361,7 @@ void Ragdoll::updateJointFrames()
     localB.setIdentity();
     // .setEulerZYX(0, 0, -M_PI_4 * 5); why ???
     localA.getBasis().setEulerZYX(0, 0, -M_PI_4);
-    localA.setOrigin(m_scale * btVector3(btScalar(-0.09), btScalar(-m_size.pelvisHeight / 2), btScalar(0.)));
+    localA.setOrigin(m_scale * btVector3(btScalar(0.09), btScalar(-m_size.pelvisHeight / 2), btScalar(0.)));
     localB.getBasis().setEulerZYX(0, 0, -M_PI_4);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(m_size.upperLegLength / 2), btScalar(0.)));
     coneC = (btConeTwistConstraint *)m_joints[JOINT_LEFT_HIP];
@@ -374,9 +370,9 @@ void Ragdoll::updateJointFrames()
     // JOINT_LEFT_KNEE
     localA.setIdentity();
     localB.setIdentity();
-    localA.getBasis().setEulerZYX(0, -M_PI_2, 0);
+    localA.getBasis().setEulerZYX(0, M_PI_2, 0);
     localA.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-m_size.upperLegLength / 2), btScalar(0.)));
-    localB.getBasis().setEulerZYX(0, -M_PI_2, 0);
+    localB.getBasis().setEulerZYX(0, M_PI_2, 0);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(m_size.lowerLegLength / 2), btScalar(0.)));
     hingeC = (btHingeConstraint *)m_joints[JOINT_LEFT_KNEE];
     hingeC->setFrames(localA, localB);
@@ -385,7 +381,7 @@ void Ragdoll::updateJointFrames()
     localA.setIdentity();
     localB.setIdentity();
     localA.getBasis().setEulerZYX(0, 0, M_PI_4);
-    localA.setOrigin(m_scale * btVector3(btScalar(0.09), btScalar(-m_size.pelvisHeight / 2), btScalar(0.)));
+    localA.setOrigin(m_scale * btVector3(btScalar(-0.09), btScalar(-m_size.pelvisHeight / 2), btScalar(0.)));
     localB.getBasis().setEulerZYX(0, 0, M_PI_4);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(m_size.upperLegLength / 2), btScalar(0.)));
     coneC = (btConeTwistConstraint *)m_joints[JOINT_RIGHT_HIP];
@@ -394,9 +390,9 @@ void Ragdoll::updateJointFrames()
     // JOINT_RIGHT_KNEE
     localA.setIdentity();
     localB.setIdentity();
-    localA.getBasis().setEulerZYX(0, -M_PI_2, 0);
+    localA.getBasis().setEulerZYX(0, M_PI_2, 0);
     localA.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-m_size.upperLegLength / 2), btScalar(0.)));
-    localB.getBasis().setEulerZYX(0, -M_PI_2, 0);
+    localB.getBasis().setEulerZYX(0, M_PI_2, 0);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(m_size.lowerLegLength / 2), btScalar(0.)));
     hingeC = (btHingeConstraint *)m_joints[JOINT_RIGHT_KNEE];
     hingeC->setFrames(localA, localB);
@@ -405,7 +401,9 @@ void Ragdoll::updateJointFrames()
     localA.setIdentity();
     localB.setIdentity();
     localA.getBasis().setEulerZYX(0, 0, M_PI);
-    localA.setOrigin(m_scale * btVector3(btScalar(-m_size.shoulderOffsetHorizontal), btScalar(m_size.spineHeight / 2 + m_size.shoulderOffsetVertical), btScalar(0.)));
+    localA.setOrigin(m_scale * btVector3(btScalar(m_size.shoulderOffset.x),
+                                         btScalar(m_size.spineHeight / 2 + m_size.shoulderOffset.y),
+                                         btScalar(m_size.shoulderOffset.z)));
     localB.getBasis().setEulerZYX(0, 0, M_PI_2);
     // TODO: why to -Y direction instead of -X ?
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-m_size.upperArmLength / 2), btScalar(0.)));
@@ -426,7 +424,9 @@ void Ragdoll::updateJointFrames()
     localA.setIdentity();
     localB.setIdentity();
     localA.getBasis().setEulerZYX(0, 0, 0);
-    localA.setOrigin(m_scale * btVector3(btScalar(m_size.shoulderOffsetHorizontal), btScalar(m_size.spineHeight / 2 + m_size.shoulderOffsetVertical), btScalar(0.)));
+    localA.setOrigin(m_scale * btVector3(btScalar(-m_size.shoulderOffset.x),
+                                         btScalar(m_size.spineHeight / 2 + m_size.shoulderOffset.y),
+                                         btScalar(m_size.shoulderOffset.z)));
     localB.getBasis().setEulerZYX(0, 0, M_PI_2);
     localB.setOrigin(m_scale * btVector3(btScalar(0.), btScalar(-m_size.upperArmLength / 2), btScalar(0.)));
     coneC = (btConeTwistConstraint *)m_joints[JOINT_RIGHT_SHOULDER];
@@ -448,6 +448,8 @@ void Ragdoll::resetTransforms(const btVector3 &offsetPosition, float angleY)
     resetTransforms(offsetPosition, btQuaternion(btVector3(btScalar(0.), btScalar(1.), btScalar(0.)), angleY));
 }
 
+// TODO: syncFromAnimation
+// TODO: fully adapt m_size
 void Ragdoll::resetTransforms(const btVector3 &offsetPosition, btQuaternion offsetRotation)
 {
     btTransform offset;
@@ -469,19 +471,19 @@ void Ragdoll::resetTransforms(const btVector3 &offsetPosition, btQuaternion offs
     m_bodies[BODYPART_HEAD]->setWorldTransform(offset * transform);
 
     transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(-0.18), btScalar(0.65), btScalar(0.)));
+    transform.setOrigin(m_scale * btVector3(btScalar(0.09), btScalar(0.65), btScalar(0.)));
     m_bodies[BODYPART_LEFT_UPPER_LEG]->setWorldTransform(offset * transform);
 
     transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(-0.18), btScalar(0.2), btScalar(0.)));
+    transform.setOrigin(m_scale * btVector3(btScalar(0.09), btScalar(0.2), btScalar(0.)));
     m_bodies[BODYPART_LEFT_LOWER_LEG]->setWorldTransform(offset * transform);
 
     transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(0.18), btScalar(0.65), btScalar(0.)));
+    transform.setOrigin(m_scale * btVector3(btScalar(-0.09), btScalar(0.65), btScalar(0.)));
     m_bodies[BODYPART_RIGHT_UPPER_LEG]->setWorldTransform(offset * transform);
 
     transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(0.18), btScalar(0.2), btScalar(0.)));
+    transform.setOrigin(m_scale * btVector3(btScalar(-0.09), btScalar(0.2), btScalar(0.)));
     m_bodies[BODYPART_RIGHT_LOWER_LEG]->setWorldTransform(offset * transform);
 
     /* T pose
@@ -508,23 +510,23 @@ void Ragdoll::resetTransforms(const btVector3 &offsetPosition, btQuaternion offs
     } */
 
     transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(-0.2), btScalar(1.25), btScalar(0.)));
-    transform.getBasis().setEulerZYX(0, 0, M_PI - M_1_PI);
-    m_bodies[BODYPART_LEFT_UPPER_ARM]->setWorldTransform(offset * transform);
-
-    transform.setIdentity();
-    transform.setOrigin(m_scale * btVector3(btScalar(-0.3), btScalar(1.), btScalar(0.)));
-    transform.getBasis().setEulerZYX(0, -M_PI_2, M_PI - M_1_PI);
-    m_bodies[BODYPART_LEFT_LOWER_ARM]->setWorldTransform(offset * transform);
-
-    transform.setIdentity();
     transform.setOrigin(m_scale * btVector3(btScalar(0.2), btScalar(1.25), btScalar(0.)));
     transform.getBasis().setEulerZYX(0, 0, -M_PI + M_1_PI);
-    m_bodies[BODYPART_RIGHT_UPPER_ARM]->setWorldTransform(offset * transform);
+    m_bodies[BODYPART_LEFT_UPPER_ARM]->setWorldTransform(offset * transform);
 
     transform.setIdentity();
     transform.setOrigin(m_scale * btVector3(btScalar(0.3), btScalar(1.), btScalar(0.)));
     transform.getBasis().setEulerZYX(0, M_PI_2, -M_PI + M_1_PI);
+    m_bodies[BODYPART_LEFT_LOWER_ARM]->setWorldTransform(offset * transform);
+
+    transform.setIdentity();
+    transform.setOrigin(m_scale * btVector3(btScalar(-0.2), btScalar(1.25), btScalar(0.)));
+    transform.getBasis().setEulerZYX(0, 0, M_PI - M_1_PI);
+    m_bodies[BODYPART_RIGHT_UPPER_ARM]->setWorldTransform(offset * transform);
+
+    transform.setIdentity();
+    transform.setOrigin(m_scale * btVector3(btScalar(-0.3), btScalar(1.), btScalar(0.)));
+    transform.getBasis().setEulerZYX(0, -M_PI_2, M_PI - M_1_PI);
     m_bodies[BODYPART_RIGHT_LOWER_ARM]->setWorldTransform(offset * transform);
 }
 
@@ -554,7 +556,10 @@ void Ragdoll::syncToAnimation(glm::vec3 &position)
     syncNodeToAnimation(m_animation->m_RootNode, identity, identity, position, true);
 }
 
-void Ragdoll::syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrientation, btQuaternion parentOrientation, glm::vec3 &position, bool fromParent)
+void Ragdoll::syncNodeToAnimation(const AssimpNodeData &node,
+                                  btQuaternion &skipNodeOrientation,
+                                  const btQuaternion &parentBoneOrientation,
+                                  glm::vec3 &position, bool fromParent)
 {
     // end of tree
     if (node.childrenCount == 0)
@@ -571,7 +576,7 @@ void Ragdoll::syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrie
         skipNodeOrientation = nodeOrientation * skipNodeOrientation;
 
         for (int i = 0; i < node.childrenCount; i++)
-            syncNodeToAnimation(node.children[i], skipNodeOrientation, parentOrientation, position, fromParent);
+            syncNodeToAnimation(node.children[i], skipNodeOrientation, parentBoneOrientation, position, fromParent);
 
         return;
     }
@@ -588,7 +593,8 @@ void Ragdoll::syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrie
 
     // joint orientation
     // orient = diff * parent
-    btQuaternion diffOrientation = parentOrientation.inverse() * orientation;
+    btQuaternion diffOrientation = parentBoneOrientation.inverse() * orientation;
+    // debug
     diffs[node.index] = diffOrientation;
     skips[node.index] = skipNodeOrientation;
 
@@ -606,36 +612,25 @@ void Ragdoll::syncNodeToAnimation(AssimpNodeData node, btQuaternion skipNodeOrie
 
     // TODO: correct way
     if (node.name == "mixamorig:RightArm")
-    {
-        btQuaternion first(-0.5, 0.5, -0.5, -0.5);
-        btQuaternion last(-0.5, 0.5, -0.5, 0.5);
-        // last = first * diff
-        btQuaternion diff = first.inverse() * last;
-
-        boneOrientation = diff * boneOrientation;
-    }
+        boneOrientation = m_rightArmOffset * boneOrientation;
     if (node.name == "mixamorig:LeftArm")
-    {
-        btQuaternion first(0.5, 0.5, -0.5, 0.5);
-        btQuaternion last(-0.5, -0.5, 0.5, 0.5);
-        // last = first * diff
-        btQuaternion diff = first.inverse() * last;
-
-        boneOrientation = diff * boneOrientation;
-    }
+        boneOrientation = m_leftArmOffset * boneOrientation;
 
     // TODO: bone is nullptr?
     Bone *bone = m_animation->getBone(node.name);
     bone->m_rotations[0].value = BulletGLM::getGLMQuat(boneOrientation);
     bone->updatePose();
 
+    // debug
     bones[node.index] = bone;
-
     orients[node.index] = orientation;
-    parentOrients[node.index] = parentOrientation;
+    parentOrients[node.index] = parentBoneOrientation;
     nodeOrients[node.index] = nodeOrientation;
     boneOrients[node.index] = boneOrientation;
 
     for (int i = 0; i < node.childrenCount; i++)
-        syncNodeToAnimation(node.children[i], btQuaternion(0, 0, 0, 1), orientation, position, false);
+    {
+        btQuaternion parent = btQuaternion(0, 0, 0, 1);
+        syncNodeToAnimation(node.children[i], parent, orientation, position, false);
+    }
 }

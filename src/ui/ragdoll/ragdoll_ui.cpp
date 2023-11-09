@@ -2,9 +2,10 @@
 
 const char *stateNames[] = {"Loose", "Fetal"};
 
+// TODO: malloc error?
 void RagdollUI::render()
 {
-    if (!ImGui::CollapsingHeader("Ragdoll", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    if (!ImGui::CollapsingHeader("Ragdoll", ImGuiTreeNodeFlags_DefaultOpen))
         return;
 
     Ragdoll *ragdoll = m_character->m_ragdoll;
@@ -26,11 +27,11 @@ void RagdollUI::render()
         ImGui::EndCombo();
     }
 
-    ImGui::BeginTable("JointTargetsTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
-    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None);
-    ImGui::TableSetupColumn("Force", ImGuiTableColumnFlags_None);
-    ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_None);
-    ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_None);
+    ImGui::BeginTable("JointTargetsTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit);
+    ImGui::TableSetupColumn("Name");
+    ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Force", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Active");
     ImGui::TableHeadersRow();
     for (int i = 0; i < JOINT_COUNT; i++)
     {
@@ -42,15 +43,16 @@ void RagdollUI::render()
 
         ImGui::TableNextColumn();
         if (btConeTwistConstraint *h = dynamic_cast<btConeTwistConstraint *>(ragdoll->m_joints[i]))
-            VectorUI::renderNormalizedQuat((std::to_string(i) + ":angle").c_str(), target.angle, 0.01f);
+            VectorUI::renderNormalizedQuat(("##JointTargetsTable::angle:" + std::to_string(i)).c_str(), target.angle, 0.01f);
         else
-            ImGui::DragFloat((std::to_string(i) + ":angle").c_str(), &target.angle.x, 0.01f);
+            // VectorUI::renderNormalizedQuat(("##JointTargetsTable::angle:" + std::to_string(i)).c_str(), target.angle, 0.01f);
+            ImGui::DragFloat(("##JointTargetsTable::angle:" + std::to_string(i)).c_str(), &target.angle.x, 0.01f);
 
         ImGui::TableNextColumn();
-        ImGui::DragFloat((std::to_string(i) + ":force").c_str(), &target.force, 0.1f);
+        ImGui::DragFloat(("##JointTargetsTable::force:" + std::to_string(i)).c_str(), &target.force, 0.1f);
 
         ImGui::TableNextColumn();
-        ImGui::Checkbox((std::to_string(i) + ":active").c_str(), &target.active);
+        ImGui::Checkbox(("##JointTargetsTable::active:" + std::to_string(i)).c_str(), &target.active);
     }
     ImGui::EndTable();
 
@@ -59,8 +61,7 @@ void RagdollUI::render()
     ImGui::DragFloat("pelvisHeight", &size.pelvisHeight, 0.01f);
     ImGui::DragFloat("spineHeight", &size.spineHeight, 0.01f);
     ImGui::DragFloat("headHeight", &size.headHeight, 0.01f);
-    ImGui::DragFloat("shoulderOffsetHorizontal", &size.shoulderOffsetHorizontal, 0.01f);
-    ImGui::DragFloat("shoulderOffsetVertical", &size.shoulderOffsetVertical, 0.01f);
+    VectorUI::renderVec3("shoulderOffset", size.shoulderOffset, 0.001f);
     ImGui::DragFloat("lowerArmLength", &size.lowerArmLength, 0.01f);
     ImGui::DragFloat("upperArmLength", &size.upperArmLength, 0.01f);
     ImGui::DragFloat("lowerLegLength", &size.lowerLegLength, 0.01f);
@@ -72,45 +73,39 @@ void RagdollUI::render()
     }
     ImGui::Separator();
 
+    VectorUI::renderQuatEuler("m_rightArmOffset", ragdoll->m_rightArmOffset, 0.01f);
+    VectorUI::renderQuatEuler("m_leftArmOffset", ragdoll->m_leftArmOffset, 0.01f);
+    VectorUI::renderVec3("m_modelOffset", ragdoll->m_modelOffset, 0.01f);
     ImGui::DragFloat("m_floatHeight", &m_floatHeight, 0.1f);
     ImGui::Checkbox("activateObject", &m_activateObject);
     ImGui::DragInt("floatIndex", &m_floatIndex, 1, 0, BODYPART_COUNT - 1);
     ImGui::DragFloat("stateChangeSpeed", &m_character->m_stateChangeSpeed, 0.1f);
     ImGui::DragFloat("impulseStrength", &m_character->m_impulseStrength, 0.1f);
     btRigidBody *rb = ragdoll->m_bodies[m_floatIndex];
-    float cX = rb->getWorldTransform().getOrigin().getX();
-    float cY = rb->getWorldTransform().getOrigin().getY();
-    float cZ = rb->getWorldTransform().getOrigin().getZ();
-    if (ImGui::DragFloat("cX", &cX, 0.1f))
+    btVector3 origin = rb->getWorldTransform().getOrigin();
+    if (VectorUI::renderVec3("origin##RagdollUI::render", origin, 0.1f))
     {
-        rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
-        rb->setLinearVelocity(btVector3(0, 0, 0));
-    }
-    if (ImGui::DragFloat("cY", &cY, 0.1))
-    {
-        rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
-        rb->setLinearVelocity(btVector3(0, 0, 0));
-    }
-    if (ImGui::DragFloat("cZ", &cZ, 0.1))
-    {
-        rb->getWorldTransform().setOrigin(btVector3(cX, cY, cZ));
+        rb->getWorldTransform().setOrigin(origin);
         rb->setLinearVelocity(btVector3(0, 0, 0));
     }
     if (m_floatObject)
     {
         if (m_activateObject)
             rb->setActivationState(1);
-        rb->getWorldTransform().setOrigin(btVector3(cX, m_floatHeight, cZ));
+        origin.setY(m_floatHeight);
+        rb->getWorldTransform().setOrigin(origin);
         rb->setLinearVelocity(btVector3(0, 0, 0));
     }
 
-    ImGui::BeginTable("Ragdoll", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+    ImGui::BeginTable("Ragdoll", 8, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit);
     ImGui::TableSetupColumn("Name");
     ImGui::TableSetupColumn("Type");
     ImGui::TableSetupColumn("Motor");
-    ImGui::TableSetupColumn("Limit");
-    ImGui::TableSetupColumn("Angle");
-    ImGui::TableSetupColumn("Frames");
+    ImGui::TableSetupColumn("Limit", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+    ImGui::TableSetupColumn("Angle", ImGuiTableColumnFlags_WidthFixed, 40.0f);
+    ImGui::TableSetupColumn("Frames", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+    ImGui::TableSetupColumn("Softness");
+    ImGui::TableSetupColumn("Relaxation");
     ImGui::TableHeadersRow();
     for (int i = 0; i < JOINT_COUNT; i++)
     {
@@ -140,13 +135,33 @@ void RagdollUI::renderConeTwist(int index, btConeTwistConstraint *constraint)
     limit.x = constraint->getLimit(5); // swingSpan1
     limit.y = constraint->getLimit(4); // swingSpan2
     limit.z = constraint->getLimit(3); // twistSpan
-    glm::vec3 copy = limit;
-    VectorUI::renderVec3((std::to_string(index) + ":limit").c_str(), limit, 0.001f);
-    if (limit != copy)
+    if (VectorUI::renderVec3(("##RagdollUI::renderConeTwist::limit" + std::to_string(index)).c_str(), limit, 0.001f))
         constraint->setLimit(limit.x, limit.y, limit.z);
 
     ImGui::TableSetColumnIndex(4);
     ImGui::Text("%.3f", (float)constraint->getTwistAngle());
+
+    ImGui::TableSetColumnIndex(5);
+    btTransform frameA = constraint->getAFrame();
+    btTransform frameB = constraint->getBFrame();
+    btVector3 &originA = frameA.getOrigin();
+    btVector3 &originB = frameB.getOrigin();
+
+    if (VectorUI::renderVec3(("##RagdollUI::renderConeTwist::aFrame" + std::to_string(index)).c_str(), originA, 0.001f))
+        constraint->setFrames(frameA, frameB);
+
+    if (VectorUI::renderVec3(("##RagdollUI::renderConeTwist::bFrame" + std::to_string(index)).c_str(), originB, 0.001f))
+        constraint->setFrames(frameA, frameB);
+
+    ImGui::TableSetColumnIndex(6);
+    float softness = constraint->getLimitSoftness();
+    if (ImGui::DragFloat(("##RagdollUI::renderConeTwist::softness" + std::to_string(index)).c_str(), &softness, 0.1f))
+        constraint->setLimit(limit.x, limit.y, limit.z, softness);
+
+    ImGui::TableSetColumnIndex(7);
+    float relaxation = constraint->getRelaxationFactor();
+    if (ImGui::DragFloat(("##RagdollUI::renderConeTwist::relaxation" + std::to_string(index)).c_str(), &relaxation, 0.1f))
+        constraint->setLimit(limit.x, limit.y, limit.z, softness, 0.3f, relaxation);
 }
 
 std::string RagdollUI::getJointName(int index)
