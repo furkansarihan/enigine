@@ -3,7 +3,12 @@
 PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
     : Character(renderManager, taskManager, resourceManager, physicsWorld, followCamera),
       m_soundEngine(soundEngine),
-      m_window(window)
+      m_window(window),
+      m_followOffsetAim(glm::vec3(-0.4f, 1.6f, -1.f)),
+      m_followOffsetNormal(glm::vec3(0.0f, 1.8f, -5.f)),
+      m_followOffset(glm::vec3(0.f)),
+      m_followOffsetTarget(glm::vec3(0.f)),
+      m_followOffsetFactor(0.1f)
 {
     try
     {
@@ -153,6 +158,11 @@ void PCharacter::update(float deltaTime)
         resetRagdoll();
     }
 
+    if (glfwGetKey(m_window, GLFW_KEY_T) == GLFW_PRESS)
+    {
+        activateRagdoll();
+    }
+
     if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS)
     {
         float now = (float)glfwGetTime();
@@ -200,7 +210,8 @@ void PCharacter::updatePistolModelMatrix()
     model2 = glm::scale(model2, glm::vec3(m_pistolScale));
 
     m_pistolModelMatrix = model2;
-    m_pistolSource->setModelMatrix(m_pistolModelMatrix);
+    m_pistolSource->transform.setModelMatrix(m_pistolModelMatrix);
+    m_pistolSource->updateModelMatrix();
 
     // muzzle
     model3 = glm::translate(model3, m_pistolOffset + m_muzzleOffset);

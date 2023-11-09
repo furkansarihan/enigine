@@ -7,6 +7,7 @@ void CharacterUI::render()
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    ImGui::DragFloat("m_scale", &m_character->m_scale, 0.1f);
     // TODO: fps camera - change camera min pitch
     ImGui::Checkbox("m_aimLocked", &m_controller->m_aimLocked);
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
@@ -14,38 +15,26 @@ void CharacterUI::render()
     ImGui::Checkbox("m_drawBones", &m_drawBones);
     ImGui::Checkbox("m_renderLastEnterPath", &m_renderLastEnterPath);
     renderLastEnterCarPath();
-    if (ImGui::CollapsingHeader("m_followOffsetNormal", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    VectorUI::renderVec3("m_followOffsetNormal", m_character->m_followOffsetNormal, 0.1f);
+    VectorUI::renderVec3("m_followOffsetAim", m_character->m_followOffsetAim, 0.1f);
+    if (ImGui::TreeNode("Pistol"))
     {
-        ImGui::DragFloat("m_followOffsetNormalX", &m_character->m_followOffsetNormal.x, 0.1f);
-        ImGui::DragFloat("m_followOffsetNormalY", &m_character->m_followOffsetNormal.y, 0.1f);
-        ImGui::DragFloat("m_followOffsetNormalZ", &m_character->m_followOffsetNormal.z, 0.1f);
-    }
-    if (ImGui::CollapsingHeader("m_followOffsetAim", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        ImGui::DragFloat("m_followOffsetAimX", &m_character->m_followOffsetAim.x, 0.1f);
-        ImGui::DragFloat("m_followOffsetAimY", &m_character->m_followOffsetAim.y, 0.1f);
-        ImGui::DragFloat("m_followOffsetAimZ", &m_character->m_followOffsetAim.z, 0.1f);
-    }
-    if (ImGui::CollapsingHeader("Pistol", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-    {
-        ImGui::DragFloat("m_pistolOffsetX", &m_character->m_pistolOffset.x, 0.1f);
-        ImGui::DragFloat("m_pistolOffsetY", &m_character->m_pistolOffset.y, 0.1f);
-        ImGui::DragFloat("m_pistolOffsetZ", &m_character->m_pistolOffset.z, 0.1f);
+        VectorUI::renderVec3("m_pistolOffset", m_character->m_pistolOffset, 0.1f);
         renderQuaternion("m_pistolOrientation", m_character->m_pistolOrientation);
         ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
+        ImGui::TreePop();
     }
-    if (ImGui::CollapsingHeader("Muzzle", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    if (ImGui::TreeNode("Muzzle"))
     {
-        ImGui::DragFloat("m_muzzleOffsetX", &m_character->m_muzzleOffset.x, 0.1f);
-        ImGui::DragFloat("m_muzzleOffsetY", &m_character->m_muzzleOffset.y, 0.1f);
-        ImGui::DragFloat("m_muzzleOffsetZ", &m_character->m_muzzleOffset.z, 0.1f);
+        VectorUI::renderVec3("m_pistolOffset", m_character->m_muzzleOffset, 0.1f);
+        ImGui::TreePop();
     }
     ImGui::DragFloat("m_fireLimit", &m_character->m_fireLimit, 0.05f);
     ImGui::DragFloat("m_fireAnimStartTime", &m_character->m_fireAnimStartTime, 0.05f);
     ImGui::DragInt("m_fireAnimTimeMilli", &m_character->m_fireAnimTimeMilli, 25);
     ImGui::DragFloat("m_aimStateChangeSpeed", &m_character->m_aimStateChangeSpeed, 0.1f);
-    if (ImGui::CollapsingHeader("Footstep", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    if (ImGui::TreeNode("Footstep"))
     {
         ImGui::DragFloat("m_walkStepFreq", &m_character->m_walkStepFreq, 0.1f);
         ImGui::DragFloat("m_runStepFreq", &m_character->m_runStepFreq, 0.1f);
@@ -57,6 +46,7 @@ void CharacterUI::render()
         ImGui::Text("m_runPerc: %.3f", m_character->m_runPerc);
         ImGui::Text("m_walkAnimSpeed: %.3f", m_character->m_walkAnimSpeed);
         ImGui::Text("m_runAnimSpeed: %.3f", m_character->m_runAnimSpeed);
+        ImGui::TreePop();
     }
     ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
     ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
@@ -64,10 +54,8 @@ void CharacterUI::render()
     ImGui::DragFloat("m_leftForward", &m_character->m_leftForward, 0.01f);
     ImGui::DragFloat("m_rightForward", &m_character->m_rightForward, 0.01f);
     ImGui::Separator();
-    if (ImGui::CollapsingHeader("m_walkSpeed", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-        renderSpeedLimiter(m_character->m_controller->m_walkSpeed, "m_walkSpeed");
-    if (ImGui::CollapsingHeader("m_runSpeed", ImGuiTreeNodeFlags_NoTreePushOnOpen))
-        renderSpeedLimiter(m_character->m_controller->m_runSpeed, "m_runSpeed");
+    renderSpeedLimiter(m_character->m_controller->m_walkSpeed, "m_walkSpeed");
+    renderSpeedLimiter(m_character->m_controller->m_runSpeed, "m_runSpeed");
     ImGui::Text("m_lookDir: (%.1f, %.1f)", m_controller->m_lookDir.x, m_controller->m_lookDir.z);
     ImGui::Text("m_moving: %d", m_controller->m_moving);
     ImGui::Text("m_jumping: %d", m_controller->m_jumping);
@@ -153,11 +141,15 @@ void CharacterUI::render()
 
 void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string name)
 {
+    if (!ImGui::TreeNode((name + "##CharacterUI::renderSpeedLimiter").c_str()))
+        return;
+
     const int numPoints = 100;
     float values[numPoints];
     const float rangeMin = -M_PI;
     const float rangeMax = M_PI;
 
+    ImGui::DragFloat((name + "::m_constantValue").c_str(), &speedLimiter.m_constantValue, 0.01f);
     for (int i = 0; i < numPoints; ++i)
     {
         float t = static_cast<float>(i) / (numPoints - 1);
@@ -181,13 +173,13 @@ void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string nam
 
 void CharacterUI::renderLastEnterCarPath()
 {
+    if (!ImGui::TreeNode("Last Enter Path##CharacterUI::renderLastEnterCarPath"))
+        return;
+
     if (!m_renderLastEnterPath || m_character->m_lastCarEnterPath.empty)
         return;
 
-    ImGui::SetNextWindowSize(ImVec2(400, 400));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(200, 200, 200, 255));
-    ImGui::Begin("m_lastCarEnterPath");
-    ImVec2 windowSize = ImGui::GetWindowSize();
+    ImVec2 windowSize = ImVec2(400.f, 400.f);
     PathResult &path = m_character->m_lastCarEnterPath;
     int mapSize = path.dim.x();
     float tileSize = windowSize.x / mapSize;
@@ -243,7 +235,7 @@ void CharacterUI::renderLastEnterCarPath()
         ImVec2 center = ImVec2(startPos.x + pos.x * tileSize, startPos.y + pos.y * tileSize);
         drawList->AddCircleFilled(center, 6.f, IM_COL32(120, 120, 120, 255));
     }
-    ImGui::End();
+    ImGui::TreePop();
     ImGui::PopStyleColor();
 }
 

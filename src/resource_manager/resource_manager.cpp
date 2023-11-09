@@ -23,6 +23,11 @@ ResourceManager::~ResourceManager()
 Model *ResourceManager::getModel(const std::string &path, bool isCopy)
 {
     std::string fullPath = m_executablePath + '/' + path;
+    return getModelFullPath(fullPath, isCopy);
+}
+
+Model *ResourceManager::getModelFullPath(const std::string &fullPath, bool isCopy)
+{
     // TODO: sharing same model object is safe?
     if (!isCopy && m_models.find(fullPath) != m_models.end())
     {
@@ -30,7 +35,7 @@ Model *ResourceManager::getModel(const std::string &path, bool isCopy)
         return m_models[fullPath];
     }
 
-    Model *model = new Model(this, fullPath, path);
+    Model *model = new Model(this, fullPath);
     if (!isCopy)
         m_models[fullPath] = model;
 

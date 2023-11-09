@@ -18,10 +18,10 @@ private:
     btRigidBody *m_rb;
 
 public:
-    CharacterUI(PCharacter *character, CharacterController *controller, btRigidBody *rb)
+    CharacterUI(PCharacter *character)
         : m_character(character),
-          m_controller(controller),
-          m_rb(rb)
+          m_controller(character->m_controller),
+          m_rb(character->m_rigidbody)
 
     {
         m_bones.push_back("mixamorig:Hips");

@@ -33,7 +33,7 @@ struct BoneInfo
 class Model
 {
 public:
-    Model(ResourceManager *resourceManager, std::string const &path, std::string const &pathRelative);
+    Model(ResourceManager *resourceManager, std::string const &path);
     ~Model();
     void draw(Shader shader, bool drawOpaque = true);
     void drawInstanced(Shader shader, int instanceCount);
@@ -43,7 +43,6 @@ public:
     glm::vec3 aabbMin;
     glm::vec3 aabbMax;
     std::string m_path;
-    std::string m_pathRelative;
     std::string directory;
     bool gammaCorrection;
 

@@ -34,6 +34,7 @@ public:
     std::unordered_map<std::string, Texture> m_textures;
 
     Model *getModel(const std::string &path, bool isCopy = false);
+    Model *getModelFullPath(const std::string &fullPath, bool isCopy = false);
     void disposeModel(std::string fullPath);
     Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
     void textureFromMemory(Texture &texture, const aiTexture *embeddedTexture);

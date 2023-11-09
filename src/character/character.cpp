@@ -14,7 +14,7 @@ Character::Character(RenderManager *renderManager, TaskManager *taskManager, Res
 void Character::init()
 {
     // Animation
-    m_model = m_resourceManager->getModel("assets/gltf/swat5.glb");
+    m_model = m_resourceManager->getModel("assets/character/mixamo-reaction.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model, true);
@@ -197,19 +197,24 @@ void Character::init()
         m_blendTargets[i] = 0.0f;
 
     // Character
-    m_rigidbody = m_physicsWorld->createCapsule(10.0f, 1.0f, 0.5f, 2.0f, BulletGLM::getBulletVec3(m_position));
+    m_rigidbody = m_physicsWorld->createCapsule(10.0f, 1.0f, 0.25f, 1.3f, BulletGLM::getBulletVec3(m_position));
     m_rigidbody->setAngularFactor(btVector3(0.0f, 0.0f, 0.0f));
     m_rigidbody->setDamping(0.9f, 0.9f);
     m_rigidbody->setFriction(0.0f);
     m_rigidbody->setGravity(btVector3(0, -20.0f, 0));
 
     m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
-    m_ragdoll = new Ragdoll(m_physicsWorld, animationRagdoll, BulletGLM::getBulletVec3(m_position), 2.0f);
+    m_ragdoll = new Ragdoll(m_physicsWorld, animationRagdoll, BulletGLM::getBulletVec3(m_position), 1.0f);
+    m_ragdoll->m_modelOffset = glm::vec3(0.f, -1.0f, 0.f);
 
     eTransform transform;
-    transform.setScale(glm::vec3(2.f, 2.f, 2.f));
+    // TODO: blender gltf exporter bug - when root armature is directly parented to skinned objects
+    eTransform offset;
+    offset.setScale(glm::vec3(100.f));
+    offset.setRotation(glm::quat(0.707f, -0.707f, 0.f, 0.f));
     m_renderSource = RenderSourceBuilder()
                          .setTransform(transform)
+                         .setOffset(offset)
                          .setModel(m_model)
                          .setAnimator(m_animator)
                          .build();
@@ -240,11 +245,6 @@ void Character::update(float deltaTime)
 
     // update animation
     m_animator->update(deltaTime);
-
-    // update ragdoll blend
-    AnimPose &ragdolPose = getRagdolPose();
-    ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
-    ragdolPose.blendFactor = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
 
     // update pistol-aim blend
     m_aimBlend += deltaTime * m_aimStateChangeSpeed * (m_controller->m_aimLocked ? 1.f : -1.f);
@@ -416,6 +416,13 @@ void Character::update(float deltaTime)
     }
 
     updateModelMatrix();
+
+    // NOTE: should after updateModelMatrix
+    // update ragdoll blend
+    AnimPose &ragdolPose = getRagdolPose();
+    ragdolPose.blendFactor = (m_ragdollActive ? 1.f : -1.f);
+    // ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
+    ragdolPose.blendFactor = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
 }
 
 void Character::updateModelMatrix()
@@ -444,9 +451,8 @@ void Character::updateModelMatrix()
 
     m_modelMatrix = model;
 
-    m_renderSource->setTransform(CommonUtil::positionFromModel(model),
-                                 glm::quat_cast(glm::scale(model, glm::vec3(1.f / m_scale))),
-                                 glm::vec3(m_scale));
+    m_renderSource->transform.setModelMatrix(model);
+    m_renderSource->updateModelMatrix();
 }
 
 void Character::interpolateBlendTargets()
@@ -569,7 +575,7 @@ void Character::activateRagdoll()
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position);
     m_ragdoll->resetTransforms(modelPos, m_rotation.y);
     m_ragdoll->unFreezeBodies();
-    m_ragdoll->changeState(RagdollState::fetal);
+    m_ragdoll->changeState(RagdollState::loose);
     m_ragdollActive = true;
 }
 

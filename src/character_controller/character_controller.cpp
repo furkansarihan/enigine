@@ -8,12 +8,12 @@ CharacterController::CharacterController(btDiscreteDynamicsWorld *dynamicsWorld,
     btCapsuleShape *shape = (btCapsuleShape *)m_rigidBody->getCollisionShape();
     m_halfHeight = shape->getHalfHeight() + shape->getRadius();
 
-    m_walkSpeed.m_constantValue = 3.f;
+    m_walkSpeed.m_constantValue = 1.5f;
     m_walkSpeed.m_points.push_back(LimiterPoint(M_PI, 0.7f, 1.f));  // back
     m_walkSpeed.m_points.push_back(LimiterPoint(2.0f, 1.5f, 0.1f)); // right-back spot
     m_walkSpeed.m_points.push_back(LimiterPoint(4.3f, 1.5f, 0.1f)); // left-back spot
 
-    m_runSpeed.m_constantValue = 10.f;
+    m_runSpeed.m_constantValue = 5.f;
     m_runSpeed.m_points.push_back(LimiterPoint(M_PI, 4.f, 1.f));
     m_runSpeed.m_points.push_back(LimiterPoint(2.0f, 4.f, 0.1f));
     m_runSpeed.m_points.push_back(LimiterPoint(4.3f, 4.f, 0.1f));

@@ -25,11 +25,11 @@ public:
 
     bool m_firstPerson = false;
 
-    glm::vec3 m_followOffsetAim = glm::vec3(-1.2f, 3.4f, -2.3f);
-    glm::vec3 m_followOffsetNormal = glm::vec3(0.0f, 3.f, -8.f);
-    glm::vec3 m_followOffset = glm::vec3(0.0f, 3.f, -8.f);
-    glm::vec3 m_followOffsetTarget = glm::vec3(0.0f, 3.f, -8.f);
-    float m_followOffsetFactor = 0.1f;
+    glm::vec3 m_followOffsetAim;
+    glm::vec3 m_followOffsetNormal;
+    glm::vec3 m_followOffset;
+    glm::vec3 m_followOffsetTarget;
+    float m_followOffsetFactor;
 
     glm::mat4 m_pistolModelMatrix = glm::mat4(1.f);
     // TODO: bound to pistol model

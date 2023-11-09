@@ -1,9 +1,8 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path, std::string const &pathRelative)
+Model::Model(ResourceManager *resourceManager, std::string const &path)
     : m_resourceManager(resourceManager),
-      m_path(path),
-      m_pathRelative(pathRelative)
+      m_path(path)
 {
     m_importer = new Assimp::Importer();
 
@@ -95,8 +94,8 @@ void Model::loadModel(std::string const &path)
 
 void Model::processNode(aiNode *node, glm::mat4 parentTransform)
 {
-    glm::mat4 meshTransform = AssimpToGLM::getGLMMat4(node->mTransformation);
-    glm::mat4 transform = parentTransform * meshTransform;
+    glm::mat4 nodeTransform = AssimpToGLM::getGLMMat4(node->mTransformation);
+    glm::mat4 transform = parentTransform * nodeTransform;
 
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {

@@ -5,7 +5,7 @@ float randomFloat(float min, float max);
 ParticleEngine::ParticleEngine(ResourceManager *resourceManager, Model *particleCopy, Camera *viewCamera)
     : m_viewCamera(viewCamera)
 {
-    m_model = resourceManager->getModel(particleCopy->m_pathRelative, true);
+    m_model = resourceManager->getModelFullPath(particleCopy->m_path, true);
     setupBuffer();
 }
 
