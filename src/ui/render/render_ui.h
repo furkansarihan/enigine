@@ -30,6 +30,10 @@ public:
     RenderSource *m_drawNormalSource;
     std::vector<GLfloat> m_normalVertices;
     std::vector<GLuint> m_normalIndices;
+    // armature
+    bool m_drawArmature;
+    bool m_drawArmatureInFront;
+    float m_boneScale;
     // camera follow
     float m_followDistance;
     glm::vec3 m_followOffset;
@@ -46,6 +50,7 @@ public:
 
     void drawSelectedSource(Shader &simpleShader, glm::mat4 mvp);
     void drawSelectedNormals(Shader &lineShader, glm::mat4 mvp, unsigned int vbo, unsigned int vao, unsigned int ebo);
+    void drawSelectedArmature(Shader &simpleShader);
 
     void renderRenderSource(RenderSource *source);
     void renderSelectedSourceWindow();

@@ -7,12 +7,12 @@ void CharacterUI::render()
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
+    ImGui::DragFloat("m_ragdolActivateFactor", &m_character->m_ragdolActivateFactor, 0.5f);
     ImGui::DragFloat("m_scale", &m_character->m_scale, 0.1f);
     // TODO: fps camera - change camera min pitch
     ImGui::Checkbox("m_aimLocked", &m_controller->m_aimLocked);
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
-    ImGui::Checkbox("m_drawBones", &m_drawBones);
     ImGui::Checkbox("m_renderLastEnterPath", &m_renderLastEnterPath);
     renderLastEnterCarPath();
     VectorUI::renderVec3("m_followOffsetNormal", m_character->m_followOffsetNormal, 0.1f);
@@ -21,7 +21,6 @@ void CharacterUI::render()
     {
         VectorUI::renderVec3("m_pistolOffset", m_character->m_pistolOffset, 0.1f);
         renderQuaternion("m_pistolOrientation", m_character->m_pistolOrientation);
-        ImGui::DragFloat("m_boneScale", &m_boneScale, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
         ImGui::TreePop();
     }
@@ -255,30 +254,4 @@ void renderQuaternion(const char *label, glm::quat &quaternion)
         quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
 
     ImGui::Text("Quaternion: (%.3f, %.3f, %.3f, %.3f)", quaternion.w, quaternion.x, quaternion.y, quaternion.z);
-}
-
-void CharacterUI::drawArmatureBones(Character &character, Shader &simpleShader, Model &cube, glm::mat4 viewProjection)
-{
-    if (!m_drawBones)
-        return;
-
-    simpleShader.use();
-    simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 0.0, 1.0, 1.0f));
-    for (int i = 0; i < m_bones.size(); i++)
-    {
-        int index = character.m_animator->m_animations[0]->m_BoneInfoMap[m_bones[i]].id;
-        glm::mat4 model = character.m_animator->m_globalMatrices[index];
-
-        glm::mat4 model2(1.0f);
-        model2 = glm::translate(model2, character.m_position);
-        model2 = glm::rotate(model2, character.m_rotation.y * (1.0f - character.getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
-        model2 = glm::scale(model2, glm::vec3(character.m_scale));
-
-        model2 = model2 * model;
-
-        model2 = glm::scale(model2, glm::vec3(m_boneScale));
-
-        simpleShader.setMat4("MVP", viewProjection * model2);
-        cube.draw(simpleShader);
-    }
 }

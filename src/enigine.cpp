@@ -229,6 +229,7 @@ void Enigine::start()
         // render manager debug
         renderUI->drawSelectedSource(simpleShader, mvp);
         renderUI->drawSelectedNormals(lineShader, mvp, vbo, vao, ebo);
+        renderUI->drawSelectedArmature(simpleShader);
 
         // render manager - end
         renderManager->renderBlend();

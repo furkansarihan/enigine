@@ -22,35 +22,9 @@ public:
         : m_character(character),
           m_controller(character->m_controller),
           m_rb(character->m_rigidbody)
-
     {
-        m_bones.push_back("mixamorig:Hips");
-        m_bones.push_back("mixamorig:Spine");
-        m_bones.push_back("mixamorig:Spine1");
-        m_bones.push_back("mixamorig:Spine2");
-        m_bones.push_back("mixamorig:Neck");
-        m_bones.push_back("mixamorig:Head");
-        m_bones.push_back("mixamorig:LeftShoulder");
-        m_bones.push_back("mixamorig:RightShoulder");
-        m_bones.push_back("mixamorig:LeftArm");
-        m_bones.push_back("mixamorig:RightArm");
-        m_bones.push_back("mixamorig:LeftForeArm");
-        m_bones.push_back("mixamorig:RightForeArm");
-        m_bones.push_back("mixamorig:LeftHand");
-        m_bones.push_back("mixamorig:RightHand");
-        m_bones.push_back("mixamorig:RightUpLeg");
-        m_bones.push_back("mixamorig:RightLeg");
-        m_bones.push_back("mixamorig:RightFoot");
-        m_bones.push_back("mixamorig:RightToeBase");
-        m_bones.push_back("mixamorig:LeftUpLeg");
-        m_bones.push_back("mixamorig:LeftLeg");
-        m_bones.push_back("mixamorig:LeftFoot");
-        m_bones.push_back("mixamorig:LeftToeBase");
     }
 
-    std::vector<std::string> m_bones;
-    float m_boneScale = 5.f;
-    bool m_drawBones = false;
     bool m_renderLastEnterPath = true;
 
     void render() override;

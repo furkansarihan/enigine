@@ -13,6 +13,9 @@ RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, Res
       m_drawNormals(false),
       m_normalSize(0.01f),
       m_drawNormalSource(nullptr),
+      m_drawArmature(false),
+      m_drawArmatureInFront(false),
+      m_boneScale(5.f),
       m_followDistance(8.f),
       m_followOffset(glm::vec3(0.f, 2.f, 0.f))
 {
@@ -200,7 +203,7 @@ void RenderUI::drawSelectedSource(Shader &simpleShader, glm::mat4 mvp)
     glm::vec3 center = (m_selectedSource->model->aabbMin + m_selectedSource->model->aabbMax) / 2.f;
     glm::vec3 scale = (m_selectedSource->model->aabbMin - m_selectedSource->model->aabbMax) / 2.f;
 
-    glm::mat4 sourceModel = m_selectedSource->transform.getModelMatrix() * m_selectedSource->offset.getModelMatrix();
+    glm::mat4 sourceModel = m_selectedSource->modelMatrix;
     glm::mat4 model = glm::translate(glm::mat4(1.f), center);
     model = glm::scale(model, scale);
 
@@ -242,7 +245,7 @@ void RenderUI::drawSelectedNormals(Shader &lineShader, glm::mat4 mvp, unsigned i
         m_drawNormalSource = m_selectedSource;
     }
 
-    glm::mat4 model = m_selectedSource->transform.getModelMatrix() * m_selectedSource->offset.getModelMatrix();
+    glm::mat4 model = m_selectedSource->modelMatrix;
     mvp = mvp * model;
 
     glBindVertexArray(vao);
@@ -337,6 +340,40 @@ void RenderUI::setupDrawNormals()
     }
 }
 
+void RenderUI::drawSelectedArmature(Shader &simpleShader)
+{
+    if (!m_drawArmature)
+        return;
+
+    if (m_selectedSource == nullptr ||
+        m_selectedSource->model == nullptr ||
+        m_selectedSource->animator == nullptr)
+        return;
+
+    simpleShader.use();
+    simpleShader.setVec4("DiffuseColor", glm::vec4(1.0, 0.0, 1.0, 1.0f));
+
+    Animator *animator = m_selectedSource->animator;
+    // TODO: why without offset? - related to gltf bug?
+    glm::mat4 sourceModel = m_selectedSource->transform.getModelMatrix();
+    glm::mat4 boneScaleModel = glm::scale(glm::mat4(1.f), glm::vec3(m_boneScale));
+
+    if (m_drawArmatureInFront)
+        glDisable(GL_DEPTH_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    for (int i = 0; i < animator->m_globalMatrices.size(); i++)
+    {
+        glm::mat4 boneModel = animator->m_globalMatrices[i] * boneScaleModel;
+        glm::quat rot = glm::quat_cast(boneModel);
+
+        simpleShader.setMat4("MVP", m_renderManager->m_viewProjection * sourceModel * boneModel);
+        m_renderManager->cube->draw(simpleShader);
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (m_drawArmatureInFront)
+        glEnable(GL_DEPTH_TEST);
+}
+
 void RenderUI::renderRenderSource(RenderSource *source)
 {
     std::stringstream ss;
@@ -410,6 +447,12 @@ void RenderUI::renderSelectedSourceWindow()
     ImGui::Checkbox("Draw Normals", &m_drawNormals);
     if (ImGui::DragFloat("Normal Size", &m_normalSize, 0.001f))
         m_drawNormalSource = nullptr;
+    if (m_selectedSource->animator)
+    {
+        ImGui::Checkbox("Draw Armature", &m_drawArmature);
+        ImGui::Checkbox("Draw Armature In Front", &m_drawArmatureInFront);
+        ImGui::DragFloat("Bone Scale", &m_boneScale, 0.01f);
+    }
 
     // ImGui::End();
     ImGui::Separator();
