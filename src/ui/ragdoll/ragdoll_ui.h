@@ -8,12 +8,14 @@
 class RagdollUI : public BaseUI
 {
 private:
+    Ragdoll *m_ragdoll;
     Character *m_character;
     Camera *m_camera;
 
 public:
     RagdollUI(Character *character, Camera *camera)
-        : m_character(character),
+        : m_ragdoll(character->m_ragdoll),
+          m_character(character),
           m_camera(camera)
     {
     }
@@ -24,8 +26,14 @@ public:
     int m_floatIndex = 2;
 
     void render() override;
-    void renderConeTwist(int index, btConeTwistConstraint *constraint);
-    void renderHinge(int index, btHingeConstraint *constraint);
+
+    void renderRagdollControl();
+    void renderOffsets();
+    void renderJointTargetsTable();
+    void renderRagdollSize();
+    void renderRagdollTable();
+
+    void update();
     std::string getJointName(int index);
 };
 

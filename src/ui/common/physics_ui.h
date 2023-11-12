@@ -15,6 +15,7 @@ class PhysicsUI
 {
 public:
     static void renderHinge(int index, btHingeConstraint *constraint);
+    static void renderConeTwist(int index, btConeTwistConstraint *constraint);
 };
 
 #endif /* physics_ui_hpp */

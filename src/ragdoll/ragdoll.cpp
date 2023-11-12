@@ -1,12 +1,26 @@
 #include "ragdoll.h"
 
-AssimpNodeData *getNode(AssimpNodeData &node, std::string name);
+#include <glm/gtc/matrix_transform.hpp>
 
-Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVector3 &positionOffset, btScalar scale)
+#include "../utils/common.h"
+
+Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animator *animator, Animation *animation, const btVector3 &positionOffset, btScalar scale)
     : m_physicsWorld(physicsWorld),
+      m_animator(animator),
       m_animation(animation),
       m_scale(scale),
-      m_modelOffset(glm::vec3(0.0f))
+      m_modelOffset(glm::vec3(0.0f)),
+      m_pelvisOffset(btQuaternion(0.f, 0.f, 0.f, 1.f)),
+      m_spineOffset(btQuaternion(0.f, 0.f, 0.f, 1.f)),
+      m_headOffset(btQuaternion(0.f, 0.f, 0.f, 1.f)),
+      m_rightArmOffset(btQuaternion(0.440f, -0.565f, 0.447f, -0.536f)),
+      m_leftArmOffset(btQuaternion(0.382f, 0.625f, -0.488f, -0.474f)),
+      m_rightForeArmOffset(btQuaternion(0.f, 0.f, 1.f, 0.f)),
+      m_leftForeArmOffset(btQuaternion(0.f, 0.f, 1.f, 0.f)),
+      m_leftLegOffset(btQuaternion(0.f, 0.f, 0.f, 1.f)),
+      m_rightLegOffset(btQuaternion(0.f, 0.f, 0.f, 1.f)),
+      m_legOffset(glm::quat(0.f, 0.f, 0.f, 1.f)),
+      m_armatureScale(glm::vec3(100.f))
 {
     m_shapes[BODYPART_PELVIS] = new btCapsuleShape(btScalar(0.15) * m_scale, btScalar(m_size.pelvisHeight) * m_scale);
     m_shapes[BODYPART_SPINE] = new btCapsuleShape(btScalar(0.15) * m_scale, btScalar(m_size.spineHeight) * m_scale);
@@ -49,33 +63,35 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
         m_bodies[i]->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
     }
 
-    // save rigidbodies to nodes
-    AssimpNodeData &nodePelvis = *getNode(m_animation->m_RootNode, "mixamorig:Hips");
-    nodePelvis.rigidBody = m_bodies[BODYPART_PELVIS];
-    AssimpNodeData &nodeSpine = *getNode(m_animation->m_RootNode, "mixamorig:Spine1");
-    nodeSpine.rigidBody = m_bodies[BODYPART_SPINE];
-    AssimpNodeData &nodeHead = *getNode(m_animation->m_RootNode, "mixamorig:Head");
-    nodeHead.rigidBody = m_bodies[BODYPART_HEAD];
-    AssimpNodeData &nodeLeftUpLeg = *getNode(m_animation->m_RootNode, "mixamorig:LeftUpLeg");
-    nodeLeftUpLeg.rigidBody = m_bodies[BODYPART_LEFT_UPPER_LEG];
-    AssimpNodeData &nodeLeftLeg = *getNode(m_animation->m_RootNode, "mixamorig:LeftLeg");
-    nodeLeftLeg.rigidBody = m_bodies[BODYPART_LEFT_LOWER_LEG];
-    AssimpNodeData &nodeRightUpLeg = *getNode(m_animation->m_RootNode, "mixamorig:RightUpLeg");
-    nodeRightUpLeg.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_LEG];
-    AssimpNodeData &nodeRightLeg = *getNode(m_animation->m_RootNode, "mixamorig:RightLeg");
-    nodeRightLeg.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_LEG];
-    AssimpNodeData &nodeRightArm = *getNode(m_animation->m_RootNode, "mixamorig:RightArm");
-    nodeRightArm.rigidBody = m_bodies[BODYPART_RIGHT_UPPER_ARM];
-    AssimpNodeData &nodeRightForeArm = *getNode(m_animation->m_RootNode, "mixamorig:RightForeArm");
-    nodeRightForeArm.rigidBody = m_bodies[BODYPART_RIGHT_LOWER_ARM];
-    AssimpNodeData &nodeLeftArm = *getNode(m_animation->m_RootNode, "mixamorig:LeftArm");
-    nodeLeftArm.rigidBody = m_bodies[BODYPART_LEFT_UPPER_ARM];
-    AssimpNodeData &nodeLeftForeArm = *getNode(m_animation->m_RootNode, "mixamorig:LeftForeArm");
-    nodeLeftForeArm.rigidBody = m_bodies[BODYPART_LEFT_LOWER_ARM];
+    // setup animation nodes
+    setupNode(nodePelvis, &nodeRoot, "mixamorig:Hips", BODYPART_PELVIS, -1);
+    setupNode(nodeSpine, &nodePelvis, "mixamorig:Spine1", BODYPART_SPINE, JOINT_PELVIS_SPINE);
+    setupNode(nodeHead, &nodeSpine, "mixamorig:Head", BODYPART_HEAD, JOINT_SPINE_HEAD);
 
-    // TODO: ?
-    m_rightArmOffset = btQuaternion(-0.985, 0.f, 0.f, 0.174f);
-    m_leftArmOffset = btQuaternion(0.5f, 0.5f, -0.5f, 0.5f);
+    setupNode(nodeLeftUpLeg, &nodePelvis, "mixamorig:LeftUpLeg", BODYPART_LEFT_UPPER_LEG, JOINT_LEFT_HIP);
+    setupNode(nodeLeftLeg, &nodeLeftUpLeg, "mixamorig:LeftLeg", BODYPART_LEFT_LOWER_LEG, JOINT_LEFT_KNEE);
+    setupNode(nodeRightUpLeg, &nodePelvis, "mixamorig:RightUpLeg", BODYPART_RIGHT_UPPER_LEG, JOINT_RIGHT_HIP);
+    setupNode(nodeRightLeg, &nodeRightUpLeg, "mixamorig:RightLeg", BODYPART_RIGHT_LOWER_LEG, JOINT_RIGHT_KNEE);
+
+    setupNode(nodeLeftArm, &nodeSpine, "mixamorig:LeftArm", BODYPART_LEFT_UPPER_ARM, JOINT_LEFT_SHOULDER);
+    setupNode(nodeLeftForeArm, &nodeLeftArm, "mixamorig:LeftForeArm", BODYPART_LEFT_LOWER_ARM, JOINT_LEFT_ELBOW);
+    setupNode(nodeRightArm, &nodeSpine, "mixamorig:RightArm", BODYPART_RIGHT_UPPER_ARM, JOINT_RIGHT_SHOULDER);
+    setupNode(nodeRightForeArm, &nodeRightArm, "mixamorig:RightForeArm", BODYPART_RIGHT_LOWER_ARM, JOINT_RIGHT_ELBOW);
+
+    // tree setup
+    nodePelvis.childNodes.push_back(&nodeSpine);
+    nodePelvis.childNodes.push_back(&nodeLeftUpLeg);
+    nodePelvis.childNodes.push_back(&nodeRightUpLeg);
+
+    nodeSpine.childNodes.push_back(&nodeHead);
+    nodeSpine.childNodes.push_back(&nodeLeftArm);
+    nodeSpine.childNodes.push_back(&nodeRightArm);
+
+    nodeLeftUpLeg.childNodes.push_back(&nodeLeftLeg);
+    nodeRightUpLeg.childNodes.push_back(&nodeRightLeg);
+
+    nodeLeftArm.childNodes.push_back(&nodeLeftForeArm);
+    nodeRightArm.childNodes.push_back(&nodeRightForeArm);
 
     // constraints
     btHingeConstraint *hingeC;
@@ -90,70 +106,60 @@ Ragdoll::Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVecto
     hingeC->setLimit(btScalar(-M_PI_4), btScalar(M_PI_2));
     m_joints[JOINT_PELVIS_SPINE] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_PELVIS_SPINE], true);
-    nodeSpine.index = JOINT_PELVIS_SPINE;
 
     // JOINT_SPINE_HEAD
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_HEAD], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, M_PI_2, 0.85f);
     m_joints[JOINT_SPINE_HEAD] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_SPINE_HEAD], true);
-    nodeHead.index = JOINT_SPINE_HEAD;
 
     // JOINT_LEFT_HIP
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_LEFT_UPPER_LEG], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, 0, 0.85f);
     m_joints[JOINT_LEFT_HIP] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_HIP], true);
-    nodeLeftUpLeg.index = JOINT_LEFT_HIP;
 
     // JOINT_LEFT_KNEE
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_LEG], *m_bodies[BODYPART_LEFT_LOWER_LEG], localA, localB);
     hingeC->setLimit(btScalar(-2.f), btScalar(0));
     m_joints[JOINT_LEFT_KNEE] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_KNEE], true);
-    nodeLeftLeg.index = JOINT_LEFT_KNEE;
 
     // JOINT_RIGHT_HIP
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_PELVIS], *m_bodies[BODYPART_RIGHT_UPPER_LEG], localA, localB);
     coneC->setLimit(M_PI_4, M_PI_4, 0, 0.85f);
     m_joints[JOINT_RIGHT_HIP] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_HIP], true);
-    nodeRightUpLeg.index = JOINT_RIGHT_HIP;
 
     // JOINT_RIGHT_KNEE
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_LEG], *m_bodies[BODYPART_RIGHT_LOWER_LEG], localA, localB);
     hingeC->setLimit(btScalar(-2.f), btScalar(0));
     m_joints[JOINT_RIGHT_KNEE] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_KNEE], true);
-    nodeRightLeg.index = JOINT_RIGHT_KNEE;
 
     // JOINT_LEFT_SHOULDER
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_LEFT_UPPER_ARM], localA, localB);
-    coneC->setLimit(2.f, M_PI_2, 0, 0.85f);
+    coneC->setLimit(M_PI, M_PI, 0.1f, 0.85f);
     m_joints[JOINT_LEFT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_SHOULDER], true);
-    nodeLeftArm.index = JOINT_LEFT_SHOULDER;
 
     // JOINT_LEFT_ELBOW
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_LEFT_UPPER_ARM], *m_bodies[BODYPART_LEFT_LOWER_ARM], localA, localB);
     hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
     m_joints[JOINT_LEFT_ELBOW] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_LEFT_ELBOW], true);
-    nodeLeftForeArm.index = JOINT_LEFT_ELBOW;
 
     // JOINT_RIGHT_SHOULDER
     coneC = new btConeTwistConstraint(*m_bodies[BODYPART_SPINE], *m_bodies[BODYPART_RIGHT_UPPER_ARM], localA, localB);
-    coneC->setLimit(2.f, M_PI_2, 0, 0.85f);
+    coneC->setLimit(M_PI, M_PI, 0.1f, 0.85f);
     m_joints[JOINT_RIGHT_SHOULDER] = coneC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_SHOULDER], true);
-    nodeRightArm.index = JOINT_RIGHT_SHOULDER;
 
     // JOINT_RIGHT_ELBOW
     hingeC = new btHingeConstraint(*m_bodies[BODYPART_RIGHT_UPPER_ARM], *m_bodies[BODYPART_RIGHT_LOWER_ARM], localA, localB);
     hingeC->setLimit(btScalar(-M_PI_2), btScalar(0));
     m_joints[JOINT_RIGHT_ELBOW] = hingeC;
     m_physicsWorld->m_dynamicsWorld->addConstraint(m_joints[JOINT_RIGHT_ELBOW], true);
-    nodeRightForeArm.index = JOINT_RIGHT_ELBOW;
 
     updateJointFrames();
 
@@ -225,19 +231,44 @@ Ragdoll::~Ragdoll()
     }
 }
 
-AssimpNodeData *getNode(AssimpNodeData &node, std::string name)
+AnimationNode Ragdoll::getNode(AssimpNodeData *node, std::string name, glm::mat4 parentTransform)
 {
-    if (node.name == name)
-        return &node;
-
-    for (int i = 0; i < node.childrenCount; i++)
+    if (node->name == name)
     {
-        AssimpNodeData *foundNode = getNode(node.children[i], name);
-        if (foundNode && !foundNode->name.empty())
+        AnimationNode animNode;
+        animNode.animNode = node;
+        animNode.transform = parentTransform;
+        return animNode;
+    }
+
+    for (int i = 0; i < node->children.size(); i++)
+    {
+        AnimationNode foundNode = getNode(node->children[i], name, parentTransform * node->transformation);
+        if (foundNode.animNode && !foundNode.animNode->name.empty())
             return foundNode;
     }
 
-    return nullptr;
+    // TODO: should not end up here
+    AnimationNode emptyNode;
+    return emptyNode;
+}
+
+void Ragdoll::setupNode(RagdollNodeData &node, RagdollNodeData *parentNode, const std::string &name, int bodyPart, int joint)
+{
+    AnimationNode animationNode = getNode(m_animation->m_RootNode, name, glm::mat4(1.f));
+    node.animNode = animationNode.animNode;
+    node.transform = animationNode.transform;
+    node.jointIndex = joint;
+    node.boneIndex = m_animator->m_animations[0]->m_BoneInfoMap[name].id;
+    node.rigidBody = m_bodies[bodyPart];
+    node.parentNode = parentNode;
+    //
+    btTransform transform;
+    transform.setFromOpenGLMatrix((float *)&node.animNode->transformation);
+    node.nodeRot = transform.getRotation();
+    //
+    transform.setFromOpenGLMatrix((float *)&node.transform);
+    node.relativeNodeRot = transform.getRotation();
 }
 
 void Ragdoll::update(float deltaTime)
@@ -400,7 +431,7 @@ void Ragdoll::updateJointFrames()
     // JOINT_LEFT_SHOULDER
     localA.setIdentity();
     localB.setIdentity();
-    localA.getBasis().setEulerZYX(0, 0, M_PI);
+    localA.setRotation(btQuaternion(0.f, 0.707f, 0.707f, 0.f));
     localA.setOrigin(m_scale * btVector3(btScalar(m_size.shoulderOffset.x),
                                          btScalar(m_size.spineHeight / 2 + m_size.shoulderOffset.y),
                                          btScalar(m_size.shoulderOffset.z)));
@@ -423,7 +454,7 @@ void Ragdoll::updateJointFrames()
     // JOINT_RIGHT_SHOULDER
     localA.setIdentity();
     localB.setIdentity();
-    localA.getBasis().setEulerZYX(0, 0, 0);
+    localA.setRotation(btQuaternion(0.f, 0.707f, 0.f, 0.707f));
     localA.setOrigin(m_scale * btVector3(btScalar(-m_size.shoulderOffset.x),
                                          btScalar(m_size.spineHeight / 2 + m_size.shoulderOffset.y),
                                          btScalar(m_size.shoulderOffset.z)));
@@ -544,6 +575,7 @@ void Ragdoll::unFreezeBodies()
 {
     for (int i = 0; i < BODYPART_COUNT; ++i)
     {
+        // m_bodies[i]->setLinearFactor(btVector3(0.1f, 0.1f, 0.1f));
         m_bodies[i]->setLinearFactor(btVector3(1.0f, 1.0f, 1.0f));
         m_bodies[i]->setActivationState(1);
         m_bodies[i]->setCollisionFlags(m_bodies[i]->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
@@ -552,85 +584,92 @@ void Ragdoll::unFreezeBodies()
 
 void Ragdoll::syncToAnimation(glm::vec3 &position)
 {
-    btQuaternion identity(0, 0, 0, 1);
-    syncNodeToAnimation(m_animation->m_RootNode, identity, identity, position, true);
+    const btQuaternion identity(0, 0, 0, 1);
+
+    // parent
+    btTransform transform;
+    nodePelvis.rigidBody->getMotionState()->getWorldTransform(transform);
+    position = BulletGLM::getGLMVec3(transform.getOrigin());
+    position += m_modelOffset;
+
+    syncNodeToAnimation(&nodePelvis, m_pelvisOffset);
+    syncNodeToAnimation(&nodeSpine, m_spineOffset);
+    syncNodeToAnimation(&nodeHead, m_headOffset);
+
+    syncNodeToAnimation(&nodeLeftUpLeg, m_leftLegOffset, true);
+    syncNodeToAnimation(&nodeLeftLeg, identity);
+    syncNodeToAnimation(&nodeRightUpLeg, m_rightLegOffset, true);
+    syncNodeToAnimation(&nodeRightLeg, identity);
+
+    syncNodeToAnimation(&nodeLeftArm, m_leftArmOffset, true);
+    syncNodeToAnimation(&nodeLeftForeArm, m_leftForeArmOffset, true);
+    syncNodeToAnimation(&nodeRightArm, m_rightArmOffset, true);
+    syncNodeToAnimation(&nodeRightForeArm, m_rightForeArmOffset, true);
 }
 
-void Ragdoll::syncNodeToAnimation(const AssimpNodeData &node,
-                                  btQuaternion &skipNodeOrientation,
-                                  const btQuaternion &parentBoneOrientation,
-                                  glm::vec3 &position, bool fromParent)
+// TODO: matrix3x3?
+void Ragdoll::syncNodeToAnimation(RagdollNodeData *node, btQuaternion offset, bool flipVertical)
 {
-    // end of tree
-    if (node.childrenCount == 0)
-        return;
+    btQuaternion boneRot = node->rigidBody->getOrientation();
+    node->boneRot = boneRot;
 
-    btTransform transform;
-    transform.setFromOpenGLMatrix((float *)&node.transformation);
-    btQuaternion nodeOrientation = transform.getRotation();
+    btQuaternion parentBoneRot = node->parentNode->boneRot;
+    btQuaternion parentRelativeNodeRot = node->parentNode->relativeNodeRot;
 
-    // continue if the node is not a Bone or empty rigidbody
-    auto boneInfoMap = m_animation->m_BoneInfoMap;
-    if (boneInfoMap.find(node.name) == boneInfoMap.end() || node.rigidBody == nullptr)
-    {
-        skipNodeOrientation = nodeOrientation * skipNodeOrientation;
-
-        for (int i = 0; i < node.childrenCount; i++)
-            syncNodeToAnimation(node.children[i], skipNodeOrientation, parentBoneOrientation, position, fromParent);
-
-        return;
-    }
-
-    // TODO: rigidBody is nullptr?
-    btQuaternion orientation = node.rigidBody->getOrientation();
-    btQuaternion boneOrientation;
-
-    if (fromParent)
-    {
-        position = BulletGLM::getGLMVec3(node.rigidBody->getWorldTransform().getOrigin());
-        position += m_modelOffset;
-    }
-
-    // joint orientation
     // orient = diff * parent
-    btQuaternion diffOrientation = parentBoneOrientation.inverse() * orientation;
-    // debug
-    diffs[node.index] = diffOrientation;
-    skips[node.index] = skipNodeOrientation;
+    btQuaternion diffOrientation = parentBoneRot.inverse() * boneRot;
+    btQuaternion diffRelativeNodeRot = parentRelativeNodeRot.inverse() * node->relativeNodeRot;
 
-    if (node.name == "mixamorig:RightUpLeg" ||
-        node.name == "mixamorig:LeftUpLeg" ||
-        node.name == "mixamorig:RightLeg" ||
-        node.name == "mixamorig:LeftLeg")
+    if (flipVertical)
+    {
         diffOrientation = btQuaternion(-diffOrientation.getX(),
                                        -diffOrientation.getY(),
                                        diffOrientation.getZ(),
                                        diffOrientation.getW());
+    }
 
-    //
-    boneOrientation = skipNodeOrientation * nodeOrientation * diffOrientation;
+    btQuaternion boneOrientation = offset * node->nodeRot * node->relativeNodeRot * diffOrientation * diffRelativeNodeRot;
 
-    // TODO: correct way
-    if (node.name == "mixamorig:RightArm")
-        boneOrientation = m_rightArmOffset * boneOrientation;
-    if (node.name == "mixamorig:LeftArm")
-        boneOrientation = m_leftArmOffset * boneOrientation;
-
-    // TODO: bone is nullptr?
-    Bone *bone = m_animation->getBone(node.name);
+    Bone *bone = m_animation->getBone(node->animNode->name);
     bone->m_rotations[0].value = BulletGLM::getGLMQuat(boneOrientation);
     bone->updatePose();
+}
 
-    // debug
-    bones[node.index] = bone;
-    orients[node.index] = orientation;
-    parentOrients[node.index] = parentBoneOrientation;
-    nodeOrients[node.index] = nodeOrientation;
-    boneOrients[node.index] = boneOrientation;
+void Ragdoll::syncFromAnimation(glm::mat4 characterModel)
+{
+    const glm::quat idendity = glm::quat(1.f, 0.f, 0.f, 0.f);
 
-    for (int i = 0; i < node.childrenCount; i++)
+    syncNodeFromAnimation(nodePelvis, characterModel, idendity, false);
+    syncNodeFromAnimation(nodeSpine, characterModel, idendity, false);
+    syncNodeFromAnimation(nodeHead, characterModel, idendity, false);
+
+    syncNodeFromAnimation(nodeLeftUpLeg, characterModel, m_legOffset);
+    syncNodeFromAnimation(nodeLeftLeg, characterModel, m_legOffset);
+    syncNodeFromAnimation(nodeRightUpLeg, characterModel, m_legOffset);
+    syncNodeFromAnimation(nodeRightLeg, characterModel, m_legOffset);
+
+    syncNodeFromAnimation(nodeLeftArm, characterModel, idendity);
+    syncNodeFromAnimation(nodeLeftForeArm, characterModel, idendity);
+    syncNodeFromAnimation(nodeRightArm, characterModel, idendity);
+    syncNodeFromAnimation(nodeRightForeArm, characterModel, idendity);
+}
+
+void Ragdoll::syncNodeFromAnimation(const RagdollNodeData &node, glm::mat4 characterModel, glm::quat offset, bool offsetSize)
+{
+    glm::mat4 armatureOffset(1.f);
+    // scale offset
+    armatureOffset = glm::scale(armatureOffset, m_armatureScale);
+    // translate offset
+    if (offsetSize)
     {
-        btQuaternion parent = btQuaternion(0, 0, 0, 1);
-        syncNodeToAnimation(node.children[i], parent, orientation, position, false);
+        btCapsuleShape *shape = (btCapsuleShape *)node.rigidBody->getCollisionShape();
+        float halfHeight = shape->getHalfHeight();
+        armatureOffset = glm::translate(armatureOffset, glm::vec3(0.f, halfHeight, 0.f));
     }
+
+    glm::mat4 boneModel = characterModel * m_animator->m_globalMatrices[node.boneIndex] * armatureOffset * glm::mat4_cast(offset);
+
+    btTransform transform;
+    transform.setFromOpenGLMatrix((float *)&boneModel);
+    node.rigidBody->setWorldTransform(transform);
 }

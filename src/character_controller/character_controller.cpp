@@ -27,6 +27,7 @@ void CharacterController::updateElevation()
 {
     btVector3 up(0, 1, 0);
     btVector3 from = m_rigidBody->getWorldTransform().getOrigin();
+    from.setY(from.getY() - m_halfHeight);
     btVector3 to = from - up * 10.0; // Example raycast length
     btCollisionWorld::ClosestRayResultCallback callback(from, to);
     m_dynamicsWorld->rayTest(from, to, callback);
@@ -76,7 +77,7 @@ void CharacterController::update(float deltaTime)
     this->updateElevation();
     this->updateVelocity();
 
-    m_onGround = m_elevationDistance < (m_halfHeight + m_groundThreshold);
+    m_onGround = m_elevationDistance < (m_groundThreshold);
 
     if (m_elevationDistance > prevElevation + 1.0f)
     {
@@ -262,7 +263,7 @@ void CharacterController::update(float deltaTime)
         // m_rigidBody->applyCentralForce(btVector3(0, -force * m_elevationDistance, 0));
 
         btVector3 pos = m_rigidBody->getWorldTransform().getOrigin();
-        float gap = m_elevationDistance - m_halfHeight;
+        float gap = m_elevationDistance;
         float surface = pos.getY() - gap;
         btTransform transform;
         transform.setIdentity();

@@ -93,7 +93,6 @@ void PCharacter::update(float deltaTime)
 
     // input
     {
-
         m_controller->recieveInput(m_window, deltaTime);
         bool anyInput = m_controller->m_actionState.forward ||
                         m_controller->m_actionState.backward ||
@@ -158,9 +157,11 @@ void PCharacter::update(float deltaTime)
         resetRagdoll();
     }
 
+    // TODO: 1 frame late?
     if (glfwGetKey(m_window, GLFW_KEY_T) == GLFW_PRESS)
     {
         activateRagdoll();
+        applyImpulseChest(m_followCamera->front * m_ragdolActivateFactor);
     }
 
     if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS)

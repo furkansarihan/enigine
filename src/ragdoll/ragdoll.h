@@ -59,11 +59,34 @@ struct RagdollStatus
     RagdollState prevState = RagdollState::loose;
 };
 
+struct RagdollNodeData
+{
+    AssimpNodeData *animNode;
+    glm::mat4 transform;
+
+    int jointIndex = 0;
+    int boneIndex = 0;
+    btRigidBody *rigidBody = nullptr;
+    std::vector<RagdollNodeData *> childNodes;
+    RagdollNodeData *parentNode = nullptr;
+
+    //
+    btQuaternion boneRot = btQuaternion::getIdentity();
+    btQuaternion nodeRot = btQuaternion::getIdentity();
+    btQuaternion relativeNodeRot = btQuaternion::getIdentity();
+};
+
+struct AnimationNode
+{
+    AssimpNodeData *animNode = nullptr;
+    glm::mat4 transform;
+};
+
 struct RagdollSize
 {
     float upperArmLength = 0.29f;
     float lowerArmLength = 0.25f;
-    glm::vec3 shoulderOffset = glm::vec3(0.193f, 0.035f, -0.070f);
+    glm::vec3 shoulderOffset = glm::vec3(0.193f, 0.035f, -0.030f);
     float upperLegLength = 0.38f;
     float lowerLegLength = 0.37f;
     float pelvisHeight = 0.23f;
@@ -87,10 +110,11 @@ class Ragdoll
 {
 
 public:
-    Ragdoll(PhysicsWorld *physicsWorld, Animation *animation, const btVector3 &positionOffset, btScalar scale);
+    Ragdoll(PhysicsWorld *physicsWorld, Animator *animator, Animation *animation, const btVector3 &positionOffset, btScalar scale);
     ~Ragdoll();
 
     PhysicsWorld *m_physicsWorld;
+    Animator *m_animator;
     Animation *m_animation;
     btScalar m_scale;
     btCapsuleShape *m_shapes[BODYPART_COUNT];
@@ -101,19 +125,34 @@ public:
     RagdollStatus m_status;
     RagdollSize m_size;
 
-    // debug
-    btQuaternion orients[JOINT_COUNT];
-    btQuaternion parentOrients[JOINT_COUNT];
-    btQuaternion diffs[JOINT_COUNT];
-    btQuaternion nodeOrients[JOINT_COUNT];
-    btQuaternion boneOrients[JOINT_COUNT];
-    btQuaternion skips[JOINT_COUNT];
-    Bone *bones[JOINT_COUNT];
-    btTransform boneTransforms[JOINT_COUNT];
+    RagdollNodeData nodeRoot;
+    RagdollNodeData nodePelvis;
+    RagdollNodeData nodeSpine;
+    RagdollNodeData nodeHead;
+    RagdollNodeData nodeLeftUpLeg;
+    RagdollNodeData nodeLeftLeg;
+    RagdollNodeData nodeRightUpLeg;
+    RagdollNodeData nodeRightLeg;
+    RagdollNodeData nodeLeftArm;
+    RagdollNodeData nodeLeftForeArm;
+    RagdollNodeData nodeRightArm;
+    RagdollNodeData nodeRightForeArm;
 
+    // to-animation offsets
     glm::vec3 m_modelOffset;
+    btQuaternion m_pelvisOffset;
+    btQuaternion m_spineOffset;
+    btQuaternion m_headOffset;
     btQuaternion m_rightArmOffset;
     btQuaternion m_leftArmOffset;
+    btQuaternion m_rightForeArmOffset;
+    btQuaternion m_leftForeArmOffset;
+    btQuaternion m_leftLegOffset;
+    btQuaternion m_rightLegOffset;
+
+    // from-animation offsets
+    glm::quat m_legOffset;
+    glm::vec3 m_armatureScale;
 
     void resetTransforms(const btVector3 &offsetPosition, btQuaternion offsetRotation);
     void resetTransforms(const btVector3 &offsetPosition, float angleY);
@@ -126,13 +165,15 @@ public:
     void updateJointSize(btCapsuleShape *shape, btRigidBody *body, float size);
 
     void syncToAnimation(glm::vec3 &position);
-    void syncNodeToAnimation(const AssimpNodeData &node,
-                             btQuaternion &skipNodeOrientation,
-                             const btQuaternion &parentBoneOrientation,
-                             glm::vec3 &position, bool fromParent);
+    void syncNodeToAnimation(RagdollNodeData *node, btQuaternion offset, bool flipVertical = false);
+    void syncFromAnimation(glm::mat4 characterModel);
+    void syncNodeFromAnimation(const RagdollNodeData &node, glm::mat4 characterModel, glm::quat offset, bool offsetSize = true);
 
 private:
     void updateStateChange();
+
+    AnimationNode getNode(AssimpNodeData *node, std::string name, glm::mat4 parentTransform);
+    void setupNode(RagdollNodeData &node, RagdollNodeData *parentNode, const std::string &name, int bodyPart, int joint);
 };
 
 #endif /* ragdoll_hpp */

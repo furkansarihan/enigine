@@ -14,7 +14,7 @@ Character::Character(RenderManager *renderManager, TaskManager *taskManager, Res
 void Character::init()
 {
     // Animation
-    m_model = m_resourceManager->getModel("assets/character/mixamo-reaction.glb");
+    m_model = m_resourceManager->getModel("assets/character/mixamo-reaction-1.glb");
     Animation *animation0 = new Animation("idle", m_model);
     Animation *animation1 = new Animation("walking-forward", m_model);
     Animation *animation2 = new Animation("left", m_model, true);
@@ -204,7 +204,7 @@ void Character::init()
     m_rigidbody->setGravity(btVector3(0, -20.0f, 0));
 
     m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
-    m_ragdoll = new Ragdoll(m_physicsWorld, animationRagdoll, BulletGLM::getBulletVec3(m_position), 1.0f);
+    m_ragdoll = new Ragdoll(m_physicsWorld, m_animator, animationRagdoll, BulletGLM::getBulletVec3(m_position), 1.0f);
     m_ragdoll->m_modelOffset = glm::vec3(0.f, -1.0f, 0.f);
 
     eTransform transform;
@@ -242,6 +242,9 @@ void Character::update(float deltaTime)
     // checkPhysicsStateChange();
     if (m_ragdollActive)
         m_ragdoll->syncToAnimation(m_position);
+    else
+        // TODO: only when required
+        m_ragdoll->syncFromAnimation(m_renderSource->transform.getModelMatrix());
 
     // update animation
     m_animator->update(deltaTime);
@@ -573,7 +576,7 @@ void Character::activateRagdoll()
 {
     inactivateCollider();
     btVector3 modelPos = BulletGLM::getBulletVec3(m_position);
-    m_ragdoll->resetTransforms(modelPos, m_rotation.y);
+    // TODO: keep velocity?
     m_ragdoll->unFreezeBodies();
     m_ragdoll->changeState(RagdollState::loose);
     m_ragdollActive = true;

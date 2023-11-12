@@ -135,3 +135,28 @@ bool VectorUI::renderTransform(const char *header, eTransform &transform, float 
 
     return modified;
 }
+
+bool VectorUI::renderTransform(const char *header, btTransform &transform, float dragPos, float dragRot, float dragScale)
+{
+    bool modified = false;
+
+    ImGui::Text("%s", extractStringBeforeDoubleHash(std::string(header)).c_str());
+
+    btVector3 pos = transform.getOrigin();
+    if (VectorUI::renderVec3(("position##" + std::string(header)).c_str(), pos, dragPos))
+    {
+        transform.setOrigin(pos);
+        modified = true;
+    }
+
+    btQuaternion rot = transform.getRotation();
+    if (VectorUI::renderQuat(("rotation##" + std::string(header)).c_str(), rot, dragRot))
+    {
+        transform.setRotation(rot);
+        modified = true;
+    }
+
+    // TODO: scale
+
+    return modified;
+}

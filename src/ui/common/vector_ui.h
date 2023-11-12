@@ -29,6 +29,7 @@ public:
     static bool renderNormalizedQuat(const char *header, glm::vec4 &vector, float dragSpeed);
 
     static bool renderTransform(const char *header, eTransform &transform, float dragPos, float dragRot, float dragScale);
+    static bool renderTransform(const char *header, btTransform &transform, float dragPos, float dragRot, float dragScale);
 };
 
 #endif /* vector_ui_hpp */
