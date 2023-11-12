@@ -17,12 +17,9 @@
 
 struct AssimpNodeData
 {
-    int index;
     glm::mat4 transformation;
     std::string name;
-    int childrenCount;
-    std::vector<AssimpNodeData> children;
-    btRigidBody *rigidBody = nullptr;
+    std::vector<AssimpNodeData *> children;
 };
 
 class Animation
@@ -33,8 +30,11 @@ public:
     float m_playbackSpeed = 1.f;
     int m_TicksPerSecond;
     bool m_timed = false;
+
+    AssimpNodeData *m_RootNode;
+    std::map<std::string, AssimpNodeData *> m_assimpNodes;
+
     std::unordered_map<std::string, Bone *> m_bones;
-    AssimpNodeData m_RootNode;
     std::map<std::string, BoneInfo> m_BoneInfoMap;
     std::unordered_map<std::string, float> m_blendMask;
 
@@ -42,7 +42,7 @@ public:
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);
-    void readHierarchy(AssimpNodeData &dest, const aiNode *src);
+    void readHierarchy(AssimpNodeData *dest, const aiNode *src);
     void setBlendMask(std::unordered_map<std::string, float> blendMask, float defaultValue);
 };
 

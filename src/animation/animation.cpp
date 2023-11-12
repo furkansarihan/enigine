@@ -33,6 +33,8 @@ Animation::Animation(const std::string &animationName, Model *model, bool timed)
     // std::cout << "Animation: mNumChannels: " << animation->mNumChannels << std::endl
     //           << std::endl;
 
+    m_RootNode = new AssimpNodeData();
+
     m_Duration = animation->mDuration;
     m_TicksPerSecond = animation->mTicksPerSecond;
     readHierarchy(m_RootNode, scene->mRootNode);
@@ -41,6 +43,12 @@ Animation::Animation(const std::string &animationName, Model *model, bool timed)
 
 Animation::~Animation()
 {
+    for (auto iter = m_assimpNodes.begin(); iter != m_assimpNodes.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    m_assimpNodes.clear();
+
     for (auto iter = m_bones.begin(); iter != m_bones.end(); ++iter)
     {
         delete iter->second;
@@ -92,19 +100,20 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
 }
 
 // TODO: only read bones?
-void Animation::readHierarchy(AssimpNodeData &dest, const aiNode *src)
+void Animation::readHierarchy(AssimpNodeData *dest, const aiNode *src)
 {
     assert(src);
 
-    dest.name = src->mName.data;
-    dest.transformation = AssimpToGLM::getGLMMat4(src->mTransformation);
-    dest.childrenCount = src->mNumChildren;
+    dest->name = src->mName.data;
+    dest->transformation = AssimpToGLM::getGLMMat4(src->mTransformation);
+    m_assimpNodes[dest->name] = dest;
 
     for (int i = 0; i < src->mNumChildren; i++)
     {
-        AssimpNodeData newData;
+        AssimpNodeData *newData = new AssimpNodeData();
+
         readHierarchy(newData, src->mChildren[i]);
-        dest.children.push_back(newData);
+        dest->children.push_back(newData);
     }
 }
 

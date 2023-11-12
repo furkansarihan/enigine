@@ -11,12 +11,13 @@ Animator::Animator(std::vector<Animation *> animations)
     // TODO: initial state
 
     // TODO: better way?
-    m_finalBoneMatrices.reserve(MAX_BONES);
-    for (int i = 0; i < MAX_BONES; i++)
+    int size = m_animations[0]->m_bones.size();
+    m_finalBoneMatrices.reserve(size);
+    for (int i = 0; i < size; i++)
         m_finalBoneMatrices.push_back(glm::mat4(1.0f));
 
-    m_globalMatrices.reserve(MAX_BONES);
-    for (int i = 0; i < MAX_BONES; i++)
+    m_globalMatrices.reserve(size);
+    for (int i = 0; i < size; i++)
         m_globalMatrices.push_back(glm::mat4(1.0f));
 }
 
@@ -39,7 +40,7 @@ void Animator::update(float deltaTime)
         m_timers[i] = clampedTime;
     }
 
-    calculateBoneTransform(&m_animations[0]->m_RootNode, glm::mat4(1.0f));
+    calculateBoneTransform(m_animations[0]->m_RootNode, glm::mat4(1.0f));
 }
 
 void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform)
@@ -135,8 +136,8 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
         m_globalMatrices[index] = globalTransformation;
     }
 
-    for (int i = 0; i < node->childrenCount; i++)
-        calculateBoneTransform(&node->children[i], globalTransformation);
+    for (int i = 0; i < node->children.size(); i++)
+        calculateBoneTransform(node->children[i], globalTransformation);
 }
 
 void Animator::setAnimTime(int animIndex, float time)
