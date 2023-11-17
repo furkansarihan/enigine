@@ -129,13 +129,23 @@ public:
     float m_ragdolActivateFactor = 0.1f;
     float m_stateChangeSpeed = 10.f;
 
-    bool m_controlCharacter = false;
-    bool m_followCharacter = false;
+    glm::quat m_neckRot;
+    glm::quat m_headRot;
+    glm::quat m_clampedHeadRot;
+    glm::quat m_headRotOffset;
+
+    bool m_controlCharacter;
+    bool m_followCharacter;
+    bool m_headFollow;
+    bool m_lastHeadFollow;
 
     Character(RenderManager *renderManager, TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);
+    void updateHeadFollow(float deltaTime);
+    bool updateHeadFollowRotation(bool firstUpdate);
+    glm::quat getNeckRotation();
     void updateModelMatrix();
     void interpolateBlendTargets();
     void syncFootstepFrequency();

@@ -1,7 +1,5 @@
 #include "character_ui.h"
 
-void renderQuaternion(const char *label, glm::quat &quaternion);
-
 void CharacterUI::render()
 {
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
@@ -13,6 +11,7 @@ void CharacterUI::render()
     ImGui::Checkbox("m_aimLocked", &m_controller->m_aimLocked);
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
+    ImGui::Checkbox("m_headFollow", &m_character->m_headFollow);
     ImGui::Checkbox("m_renderLastEnterPath", &m_renderLastEnterPath);
     renderLastEnterCarPath();
     VectorUI::renderVec3("m_followOffsetNormal", m_character->m_followOffsetNormal, 0.1f);
@@ -20,7 +19,7 @@ void CharacterUI::render()
     if (ImGui::TreeNode("Pistol"))
     {
         VectorUI::renderVec3("m_pistolOffset", m_character->m_pistolOffset, 0.1f);
-        renderQuaternion("m_pistolOrientation", m_character->m_pistolOrientation);
+        VectorUI::renderQuatEuler("m_pistolOrientation", m_character->m_pistolOrientation, 0.01f);
         ImGui::DragFloat("m_pistolScale", &m_character->m_pistolScale, 0.01f);
         ImGui::TreePop();
     }
@@ -89,8 +88,10 @@ void CharacterUI::render()
     ImGui::DragFloat("m_turnAnimForce", &m_controller->m_turnAnimForce, 0.01f, 0);
     ImGui::DragFloat("m_turnAnimMaxFactor", &m_controller->m_turnAnimMaxFactor, 0.1f, 0);
     ImGui::DragFloat("m_floatElevation", &m_controller->m_floatElevation, 0.001f, 0);
-    ImGui::DragFloat("m_rotation.x", &m_character->m_rotation.x, 0.1f);
-    ImGui::DragFloat("m_rotation.z", &m_character->m_rotation.z, 0.1f);
+    VectorUI::renderVec3("m_rotation", m_character->m_rotation, 0.1f);
+    // VectorUI::renderQuat("m_headRot", m_character->m_headRot, 0.1f);
+    // VectorUI::renderQuat("m_neckRot", m_character->m_neckRot, 0.1f);
+    VectorUI::renderNormalizedQuat("m_headRotOffset", m_character->m_headRotOffset, 0.1f);
     float gravityY = m_rb->getGravity().getY();
     if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
     {
@@ -236,22 +237,4 @@ void CharacterUI::renderLastEnterCarPath()
     }
     ImGui::TreePop();
     ImGui::PopStyleColor();
-}
-
-void renderQuaternion(const char *label, glm::quat &quaternion)
-{
-    float eulerX = glm::degrees(glm::pitch(quaternion));
-    float eulerY = glm::degrees(glm::yaw(quaternion));
-    float eulerZ = glm::degrees(glm::roll(quaternion));
-
-    if (ImGui::SliderFloat((std::string(label) + "_X").c_str(), &eulerX, -180.0f, 180.0f))
-        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
-
-    if (ImGui::SliderFloat((std::string(label) + "_Y").c_str(), &eulerY, -180.0f, 180.0f))
-        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
-
-    if (ImGui::SliderFloat((std::string(label) + "_Z").c_str(), &eulerZ, -180.0f, 180.0f))
-        quaternion = glm::quat(glm::radians(glm::vec3(eulerX, eulerY, eulerZ)));
-
-    ImGui::Text("Quaternion: (%.3f, %.3f, %.3f, %.3f)", quaternion.w, quaternion.x, quaternion.y, quaternion.z);
 }

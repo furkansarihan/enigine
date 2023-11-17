@@ -11,12 +11,14 @@ private:
     Animator *m_animator;
 
 public:
-    AnimationUI(Animator *animator) : m_animator(animator) {}
+    AnimationUI(Animator *animator);
 
-    int m_selectedAnimPose = 2;
+    int m_selectedAnimPose;
 
     void render() override;
-    void renderBoneList();
+
+    void renderBlendTable();
+    void renderSelectedAnimPose();
 };
 
 #endif /* animation_ui_hpp */

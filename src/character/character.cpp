@@ -6,7 +6,12 @@ Character::Character(RenderManager *renderManager, TaskManager *taskManager, Res
       m_resourceManager(resourceManager),
       m_physicsWorld(physicsWorld),
       m_followCamera(followCamera),
-      m_firing(false)
+      m_firing(false),
+      m_headRotOffset(glm::quat(1.f, 0.f, 0.f, 0.f)),
+      m_clampedHeadRot(glm::quat(1.f, 0.f, 0.f, 0.f)),
+      m_controlCharacter(false),
+      m_followCharacter(false),
+      m_headFollow(false)
 {
     init();
 }
@@ -37,6 +42,7 @@ void Character::init()
     Animation *animation18 = new Animation("enter-car-7", m_model);
     Animation *animation19 = new Animation("exit-car-6", m_model);
     Animation *animation20 = new Animation("jump-car-5", m_model);
+    Animation *animationHeadFollow = new Animation("pose", m_model, true);
 
     // TODO: inside Model
     std::vector<Animation *> animations;
@@ -61,6 +67,7 @@ void Character::init()
     animations.push_back(animation18);
     animations.push_back(animation19);
     animations.push_back(animation20);
+    animations.push_back(animationHeadFollow);
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
@@ -153,8 +160,12 @@ void Character::init()
     blendMask["mixamorig:RightArm"] = 1.0f;
     blendMask["mixamorig:RightForeArm"] = 1.0f;
     blendMask["mixamorig:RightHand"] = 1.0f;
-
     animation17->setBlendMask(blendMask, 0.f);
+
+    // head follow
+    blendMask.clear();
+    blendMask["mixamorig:Head"] = 1.0f;
+    animationHeadFollow->setBlendMask(blendMask, 0.f);
 
     // turn-left pose
     AnimPose animPose;
@@ -187,6 +198,10 @@ void Character::init()
     // jump-car
     animPose.index = 20;
     animPose.blendFactor = 0.0f;
+    m_animator->m_state.poses.push_back(animPose);
+    // head-follow
+    animPose.index = 21;
+    animPose.blendFactor = 1.0f;
     m_animator->m_state.poses.push_back(animPose);
 
     m_walkStepFreq = 1.f / m_animator->m_animations[1]->m_Duration;
@@ -420,12 +435,87 @@ void Character::update(float deltaTime)
 
     updateModelMatrix();
 
+    updateHeadFollow(deltaTime);
+
     // NOTE: should after updateModelMatrix
     // update ragdoll blend
     AnimPose &ragdolPose = getRagdolPose();
     ragdolPose.blendFactor = (m_ragdollActive ? 1.f : -1.f);
     // ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
     ragdolPose.blendFactor = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
+}
+
+void Character::updateHeadFollow(float deltaTime)
+{
+    // update AnimPose blend
+    AnimPose &animPose = m_animator->m_state.poses[8];
+    animPose.blendFactor += deltaTime * m_aimStateChangeSpeed * (m_headFollow ? 1.f : -1.f);
+    animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
+
+    Bone *bone = m_animator->m_animations[21]->getBone("mixamorig:Head");
+    glm::quat &boneRot = bone->m_rotations[0].value;
+
+    bool shouldSlerp = true;
+    if (m_headFollow)
+        shouldSlerp = updateHeadFollowRotation(!m_lastHeadFollow);
+    else
+        m_clampedHeadRot = glm::quat(1.f, 0.f, 0.f, 0.f);
+
+    shouldSlerp = shouldSlerp && animPose.blendFactor != 0.f;
+
+    boneRot = shouldSlerp ? glm::slerp(boneRot, m_clampedHeadRot, 0.1f) : m_clampedHeadRot;
+    bone->updatePose();
+
+    m_lastHeadFollow = m_headFollow;
+}
+
+bool Character::updateHeadFollowRotation(bool firstUpdate)
+{
+    m_neckRot = getNeckRotation();
+    glm::quat characterRot = glm::quatLookAtRH(-m_controller->m_lookDir, glm::vec3(0.f, 1.f, 0.f));
+    glm::quat cameraRot = glm::quatLookAtRH(-m_followCamera->front, m_followCamera->up);
+
+    // worldCamera = worldCharacter * localNeck * localHead
+    m_headRot = glm::normalize(glm::inverse(characterRot * m_neckRot) * cameraRot * m_headRotOffset);
+
+    // clamp head rotation
+    float angle = glm::angle(m_headRot);
+    if (angle > M_PI)
+        angle = fmod(M_PI * 2.f - angle, 3.14159265f);
+
+    const float maxHeadAngle = M_PI_2 - 0.3f;
+    const float minSafeZoneAngle = M_PI - 0.3f;
+
+    if (!firstUpdate && angle > minSafeZoneAngle)
+    {
+        // prevent constant flip by keeping the last clamped value
+    }
+    else if (angle > maxHeadAngle)
+    {
+        float factor = maxHeadAngle / angle;
+        const glm::quat identity(1.f, 0.f, 0.f, 0.f);
+        m_clampedHeadRot = glm::slerp(identity, m_headRot, factor);
+    }
+    else
+    {
+        m_clampedHeadRot = m_headRot;
+    }
+
+    bool shouldSlerp = angle > maxHeadAngle;
+    return shouldSlerp;
+}
+
+glm::quat Character::getNeckRotation()
+{
+    int neckId = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:Neck"].id;
+    glm::mat4 neckModel = m_animator->m_globalMatrices[neckId];
+
+    glm::vec3 position, scale;
+    glm::quat rotation;
+    CommonUtil::decomposeModel(neckModel, position, rotation, scale);
+    // glm::decompose(neckModel, scale, rotation, position, skew, perspective);
+
+    return rotation;
 }
 
 void Character::updateModelMatrix()
