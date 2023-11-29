@@ -13,12 +13,12 @@ private:
 public:
     AnimationUI(Animator *animator);
 
-    int m_selectedAnimPose;
+    Animation *m_selectedAnimation;
 
     void render() override;
 
-    void renderBlendTable();
-    void renderSelectedAnimPose();
+    void renderBlendTable(const std::string &tableName, std::vector<Anim *> &anims);
+    void renderSelectedAnimation();
 };
 
 #endif /* animation_ui_hpp */

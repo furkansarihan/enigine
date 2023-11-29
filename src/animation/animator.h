@@ -13,23 +13,24 @@
 
 #define MAX_BONES 200
 
-struct Anim
+class Anim
 {
-    int index;
-    float blendFactor;
-};
+public:
+    Anim(Animation *animation);
 
-struct AnimPose
-{
-    int index;
-    float blendFactor;
-    float time = 0.f;
+    Animation *m_animation;
+    float m_blendFactor;
+    float m_playbackSpeed;
+    bool m_timerActive;
+    float m_timer;
+
+    void updateTimer(float deltaTime, float startOffset);
 };
 
 struct AnimatorState
 {
-    std::vector<Anim> animations;
-    std::vector<AnimPose> poses;
+    std::vector<Anim *> animations;
+    std::vector<Anim *> poses;
 };
 
 class Animator
@@ -38,7 +39,6 @@ public:
     std::vector<glm::mat4> m_finalBoneMatrices;
     std::vector<glm::mat4> m_globalMatrices;
     std::vector<Animation *> m_animations;
-    std::vector<float> m_timers;
     AnimatorState m_state;
     float m_startOffset = 0.f;
 
@@ -46,7 +46,8 @@ public:
     ~Animator();
     void update(float deltaTime);
     void calculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform);
-    void setAnimTime(int animIndex, float time);
+    Anim *addStateAnimation(Animation *animation);
+    Anim *addPoseAnimation(Animation *animation);
 };
 
 #endif /* animator_hpp */

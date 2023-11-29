@@ -2,9 +2,8 @@
 
 #include "animation.h"
 
-Animation::Animation(const std::string &animationName, Model *model, bool timed)
-    : m_name(animationName),
-      m_timed(timed)
+Animation::Animation(const std::string &animationName, Model *model)
+    : m_name(animationName)
 {
     const aiScene *scene = model->m_scene;
     assert(scene && scene->mRootNode);
@@ -21,6 +20,7 @@ Animation::Animation(const std::string &animationName, Model *model, bool timed)
         }
     }
 
+    // TODO: ?
     if (animation == nullptr)
     {
         std::cout << "Animation: can not found an animation with name: " << animationName << std::endl;
@@ -33,11 +33,11 @@ Animation::Animation(const std::string &animationName, Model *model, bool timed)
     // std::cout << "Animation: mNumChannels: " << animation->mNumChannels << std::endl
     //           << std::endl;
 
-    m_RootNode = new AssimpNodeData();
+    m_rootNode = new AssimpNodeData();
 
-    m_Duration = animation->mDuration;
-    m_TicksPerSecond = animation->mTicksPerSecond;
-    readHierarchy(m_RootNode, scene->mRootNode);
+    m_duration = animation->mDuration;
+    m_ticksPerSecond = animation->mTicksPerSecond;
+    readHierarchy(m_rootNode, scene->mRootNode);
     readBones(animation, *model);
 }
 
@@ -96,7 +96,7 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
         m_bones[boneName] = bone;
     }
 
-    m_BoneInfoMap = boneInfoMap;
+    m_boneInfoMap = boneInfoMap;
 }
 
 // TODO: only read bones?

@@ -26,19 +26,17 @@ class Animation
 {
 public:
     std::string m_name;
-    float m_Duration;
-    float m_playbackSpeed = 1.f;
-    int m_TicksPerSecond;
-    bool m_timed = false;
+    float m_duration;
+    int m_ticksPerSecond;
 
-    AssimpNodeData *m_RootNode;
+    AssimpNodeData *m_rootNode;
     std::map<std::string, AssimpNodeData *> m_assimpNodes;
 
     std::unordered_map<std::string, Bone *> m_bones;
-    std::map<std::string, BoneInfo> m_BoneInfoMap;
+    std::map<std::string, BoneInfo> m_boneInfoMap;
     std::unordered_map<std::string, float> m_blendMask;
 
-    Animation(const std::string &animationName, Model *model, bool timed = false);
+    Animation(const std::string &animationName, Model *model);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);

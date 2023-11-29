@@ -3,11 +3,8 @@
 #include "animator.h"
 
 Animator::Animator(std::vector<Animation *> animations)
+    : m_animations(animations)
 {
-    m_animations = animations;
-    for (int i = 0; i < m_animations.size(); i++)
-        m_timers.push_back(0.0f);
-
     // TODO: initial state
 
     // TODO: better way?
@@ -23,24 +20,24 @@ Animator::Animator(std::vector<Animation *> animations)
 
 Animator::~Animator()
 {
-    // TODO: destruction
+    for (int i = 0; i < m_state.animations.size(); i++)
+        delete m_state.animations[i];
+    m_state.animations.clear();
+
+    for (int i = 0; i < m_state.poses.size(); i++)
+        delete m_state.poses[i];
+    m_state.poses.clear();
 }
 
-// TODO: move validations to setters
 void Animator::update(float deltaTime)
 {
-    for (int i = 0; i < m_animations.size(); i++)
-    {
-        m_timers[i] += m_animations[i]->m_TicksPerSecond * m_animations[i]->m_playbackSpeed * deltaTime;
+    for (int i = 0; i < m_state.animations.size(); i++)
+        m_state.animations[i]->updateTimer(deltaTime, m_startOffset);
 
-        float clampedTime = fmod(m_timers[i], m_animations[i]->m_Duration);
-        if (clampedTime < m_timers[i])
-            clampedTime += m_startOffset;
+    for (int i = 0; i < m_state.poses.size(); i++)
+        m_state.poses[i]->updateTimer(deltaTime, m_startOffset);
 
-        m_timers[i] = clampedTime;
-    }
-
-    calculateBoneTransform(m_animations[0]->m_RootNode, glm::mat4(1.0f));
+    calculateBoneTransform(m_animations[0]->m_rootNode, glm::mat4(1.0f));
 }
 
 void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 parentTransform)
@@ -56,18 +53,18 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     float totalWeight = 0.0f;
     for (int i = 0; i < m_state.animations.size(); i++)
     {
-        Anim anim = m_state.animations[i];
-        Bone *bone = m_animations[anim.index]->getBone(nodeName);
+        Anim *anim = m_state.animations[i];
+        Bone *bone = anim->m_animation->getBone(nodeName);
 
         if (!bone)
             continue;
 
-        float blendWeight = anim.blendFactor * bone->m_blendFactor;
+        float blendWeight = anim->m_blendFactor * bone->m_blendFactor;
 
         if (blendWeight == 0.0f)
             continue;
 
-        bone->update(m_timers[anim.index]);
+        bone->update(anim->m_timer);
 
         totalWeight += blendWeight;
 
@@ -92,25 +89,22 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
         boneProcessed = true;
     }
 
-    // AnimPose influence
+    // pose influence
     for (int i = 0; i < m_state.poses.size(); i++)
     {
-        AnimPose animPose = m_state.poses[i];
-        Animation *animation = m_animations[animPose.index];
+        Anim *anim = m_state.poses[i];
+        Animation *animation = anim->m_animation;
         Bone *bone = animation->getBone(nodeName);
 
         if (!bone)
             continue;
 
-        float blendWeight = animPose.blendFactor * bone->m_blendFactor;
+        float blendWeight = anim->m_blendFactor * bone->m_blendFactor;
 
         if (blendWeight == 0.0f)
             continue;
 
-        if (animation->m_timed)
-            bone->update(animPose.time);
-        else
-            bone->update(m_timers[animPose.index]);
+        bone->update(anim->m_timer);
 
         blendedT = glm::mix(blendedT, bone->m_translation, blendWeight);
         blendedR = glm::slerp(blendedR, bone->m_rotation, blendWeight);
@@ -127,7 +121,7 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
 
     // TODO: always first index is correct?
-    auto boneInfoMap = m_animations[0]->m_BoneInfoMap;
+    auto boneInfoMap = m_animations[0]->m_boneInfoMap;
     if (boneInfoMap.find(nodeName) != boneInfoMap.end())
     {
         int index = boneInfoMap[nodeName].id;
@@ -140,7 +134,47 @@ void Animator::calculateBoneTransform(const AssimpNodeData *node, glm::mat4 pare
         calculateBoneTransform(node->children[i], globalTransformation);
 }
 
-void Animator::setAnimTime(int animIndex, float time)
+Anim *Animator::addStateAnimation(Animation *animation)
 {
-    m_timers[animIndex] = time;
+    Anim *anim = new Anim(animation);
+    m_state.animations.push_back(anim);
+
+    return anim;
+}
+
+Anim *Animator::addPoseAnimation(Animation *animation)
+{
+    Anim *anim = new Anim(animation);
+    m_state.poses.push_back(anim);
+
+    return anim;
+}
+
+// Anim
+
+Anim::Anim(Animation *animation)
+    : m_animation(animation),
+      m_blendFactor(0.f),
+      m_playbackSpeed(1.f),
+      m_timerActive(true),
+      m_timer(0.f)
+{
+}
+
+void Anim::updateTimer(float deltaTime, float startOffset)
+{
+    if (!m_timerActive)
+        return;
+
+    // TODO: ?
+    // if (m_blendFactor == 0.f)
+    //     return;
+
+    m_timer += m_animation->m_ticksPerSecond * m_playbackSpeed * deltaTime;
+
+    float clampedTime = fmod(m_timer, m_animation->m_duration);
+    if (clampedTime < m_timer)
+        clampedTime += startOffset;
+
+    m_timer = clampedTime;
 }
