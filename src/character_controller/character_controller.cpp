@@ -3,20 +3,23 @@
 CharacterController::CharacterController(btDiscreteDynamicsWorld *dynamicsWorld, btRigidBody *rigidBody, Camera *followCamera)
     : m_dynamicsWorld(dynamicsWorld),
       m_rigidBody(rigidBody),
-      m_followCamera(followCamera)
+      m_followCamera(followCamera),
+      m_runForce(2000.0f),
+      m_moveForce(1000.0f),
+      m_jumpForce(100.0f)
 {
     btCapsuleShape *shape = (btCapsuleShape *)m_rigidBody->getCollisionShape();
     m_halfHeight = shape->getHalfHeight() + shape->getRadius();
 
     m_walkSpeed.m_constantValue = 1.5f;
-    m_walkSpeed.m_points.push_back(LimiterPoint(M_PI, 0.7f, 1.f));  // back
-    m_walkSpeed.m_points.push_back(LimiterPoint(2.0f, 1.5f, 0.1f)); // right-back spot
-    m_walkSpeed.m_points.push_back(LimiterPoint(4.3f, 1.5f, 0.1f)); // left-back spot
+    m_walkSpeed.m_points.push_back(LimiterPoint(M_PI, 0.3f, 1.f));  // back
+    m_walkSpeed.m_points.push_back(LimiterPoint(2.0f, 0.7f, 0.1f)); // right-back spot
+    m_walkSpeed.m_points.push_back(LimiterPoint(4.3f, 0.7f, 0.1f)); // left-back spot
 
-    m_runSpeed.m_constantValue = 5.f;
-    m_runSpeed.m_points.push_back(LimiterPoint(M_PI, 4.f, 1.f));
-    m_runSpeed.m_points.push_back(LimiterPoint(2.0f, 4.f, 0.1f));
-    m_runSpeed.m_points.push_back(LimiterPoint(4.3f, 4.f, 0.1f));
+    m_runSpeed.m_constantValue = 4.f;
+    m_runSpeed.m_points.push_back(LimiterPoint(M_PI, 0.3f, 1.f));
+    m_runSpeed.m_points.push_back(LimiterPoint(2.0f, 0.7f, 0.1f));
+    m_runSpeed.m_points.push_back(LimiterPoint(4.3f, 0.7f, 0.1f));
 }
 
 CharacterController::~CharacterController()
@@ -41,15 +44,13 @@ void CharacterController::updateElevation()
 
 void CharacterController::updateVelocity()
 {
-    btVector3 origin(0, 0, 0);
-
     m_velocity = m_rigidBody->getLinearVelocity();
-    m_speed = m_velocity.distance(origin);
+    m_speed = m_velocity.length();
 
     m_verticalVelocity = btVector3(m_velocity.getX(), 0, m_velocity.getZ());
-    m_verticalSpeed = m_verticalVelocity.distance(origin);
+    m_verticalSpeed = m_verticalVelocity.length();
     btVector3 horizontalVelocity = btVector3(0, m_velocity.getY(), 0);
-    m_horizontalSpeed = horizontalVelocity.distance(origin);
+    m_horizontalSpeed = horizontalVelocity.length();
 }
 
 void CharacterController::recieveInput(GLFWwindow *window, float deltaTime)
@@ -141,6 +142,8 @@ void CharacterController::update(float deltaTime)
         moveTarget += right;
     }
 
+    moveTarget = glm::normalize(moveTarget);
+
     // TODO: prevent jump when move ends
 
     m_moving = move;
@@ -150,7 +153,7 @@ void CharacterController::update(float deltaTime)
     if (m_aimLocked || m_rotate)
         lookTarget = m_refFront;
     else
-        lookTarget = glm::normalize(moveTarget);
+        lookTarget = moveTarget;
 
     // turn
     float normalizedDistance = 1.f;
@@ -205,16 +208,21 @@ void CharacterController::update(float deltaTime)
     {
         // TODO: calculate forceVec
         btVector3 forceVec = BulletGLM::getBulletVec3(moveTarget);
-        float force = m_rigidBody->getMass() * m_moveForce * deltaTime;
+        float force = m_rigidBody->getMass() * deltaTime;
+
+        force *= m_running ? m_runForce : m_moveForce;
 
         forceVec *= force;
         forceVec *= normalizedDistance;
 
-        glm::vec3 moveDir = glm::normalize(BulletGLM::getGLMVec3(m_velocity));
-        m_dotFront = glm::dot(m_lookDir, moveDir);
+        m_moveDir = glm::normalize(BulletGLM::getGLMVec3(m_verticalVelocity));
+        m_dotFront = glm::dot(m_lookDir, m_moveDir);
+
+        if (isnan(m_dotFront))
+            m_dotFront = -1.f;
 
         m_signedMoveAngleTarget = glm::acos(m_dotFront);
-        glm::vec3 cross = glm::cross(m_lookDir, moveDir);
+        glm::vec3 cross = glm::cross(m_lookDir, m_moveDir);
         float crossDotAxis = glm::dot(cross, glm::vec3(0.f, 1.f, 0.f));
         if (crossDotAxis > 0.0f)
             m_signedMoveAngleTarget = -m_signedMoveAngleTarget;

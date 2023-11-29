@@ -63,6 +63,38 @@ struct PassengerInfo
     CarController *car = nullptr;
 };
 
+struct MoveCircle
+{
+    Anim *m_forward;
+    Anim *m_back;
+    Anim *m_left;
+    Anim *m_right;
+    Anim *m_backLeft;
+    Anim *m_backRight;
+};
+
+struct MoveOrient
+{
+    float forward;
+    float back;
+    float left;
+    float right;
+    float backLeft;
+    float backRight;
+};
+
+struct MoveStage
+{
+    float idle;
+    float walk;
+    float run;
+
+    float idleEndGap = 0.1f;
+    float walkStartGap = 0.1;
+    float walkEndGap = 0.1f;
+    float runStartGap = 0.1f;
+};
+
 class Character : public Updatable
 {
 public:
@@ -84,19 +116,31 @@ public:
 
     RenderSource *m_transform;
     glm::mat4 m_modelMatrix;
-    glm::vec3 m_position = glm::vec3(200.f, 5.f, 250.f);
+    glm::vec3 m_position = glm::vec3(125.f, 5.f, 250.f);
     glm::vec3 m_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     float m_scale = 1.0;
 
-    // animation
-    float m_blendTargets[13];
-    float m_blendTargetsPose[2];
-    float m_blendSpeed = 0.2f;
+    // animation states
+    Anim *m_idle;
+    MoveCircle m_walkCircle;
+    MoveCircle m_runCircle;
+    MoveOrient m_moveOrient;
+    MoveStage m_moveStage;
+    MoveStage m_prevMoveStage;
 
-    float m_runFactor = 0.f;
-    float m_idleFactor = 0.f;
-    float m_prevRunFactor = 0.f;
-    float m_prevIdleFactor = 0.f;
+    // animation poses
+    Anim *m_animPoseLeanLeft;
+    Anim *m_animPoseLeanRight;
+    Anim *m_animPoseRagdoll;
+    Anim *m_animPosePistolAim;
+    Anim *m_animPoseFiring;
+    Anim *m_animPoseEnterCar;
+    Anim *m_animPoseExitCar;
+    Anim *m_animPoseJumpCar;
+    Anim *m_animPoseHeadFollow;
+    Anim *m_animTurn180;
+
+    float m_blendSpeed = 0.2f;
 
     float m_walkStepFreq = 1.f;
     float m_runStepFreq = 1.f;
@@ -108,11 +152,6 @@ public:
 
     float m_walkAnimSpeed = 0.f;
     float m_runAnimSpeed = 0.f;
-
-    float m_leftBlendEdge = 1.45f;
-    float m_rightBlendEdge = 1.2f;
-    float m_leftForward = 0.35f;
-    float m_rightForward = 0.05f;
 
     float m_aimBlend = 0.0f;
     float m_aimStateChangeSpeed = 3.f;
@@ -143,16 +182,20 @@ public:
     ~Character();
     void init();
     void update(float deltaTime);
+    void updateMoveOrient();
+    void updateMoveStage();
+    void updateMoveCircleBlend(MoveCircle &circle, float value);
+    void updateMoveCircleTimer(MoveCircle &circle, float value);
+    void updateMoveCirclePlaybackSpeed(MoveCircle &circle, float value);
+    void assignBlend(float &orient, float dot);
+    void interpolateValue(float &value, float newValue);
     void updateHeadFollow(float deltaTime);
     bool updateHeadFollowRotation(bool firstUpdate);
     glm::quat getNeckRotation();
     void updateModelMatrix();
     void interpolateBlendTargets();
     void syncFootstepFrequency();
-    void setWalkPlaybackSpeed(float animSpeed);
-    void setRunPlaybackSpeed(float animSpeed);
-    void setWalkTimer(float time);
-    void setRunTimer(float time);
+    void syncFootstepFrequency2();
     void activateRagdoll();
     void applyImpulseFullRagdoll(glm::vec3 impulse);
     void applyImpulseChest(glm::vec3 impulse);
@@ -160,11 +203,6 @@ public:
     void activateCollider();
     void inactivateCollider();
     void checkPhysicsStateChange();
-    AnimPose &getRagdolPose();
-    AnimPose &getAimPose();
-    AnimPose &getFiringPose();
-    AnimPose &getEnterCarAnim();
-    AnimPose &getExitCarAnim();
     void updateAimPoseBlendMask(float blendFactor);
     void enterNearestCar();
     void cancelEnterCar();

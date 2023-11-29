@@ -255,11 +255,11 @@ AnimationNode Ragdoll::getNode(AssimpNodeData *node, std::string name, glm::mat4
 
 void Ragdoll::setupNode(RagdollNodeData &node, RagdollNodeData *parentNode, const std::string &name, int bodyPart, int joint)
 {
-    AnimationNode animationNode = getNode(m_animation->m_RootNode, name, glm::mat4(1.f));
+    AnimationNode animationNode = getNode(m_animation->m_rootNode, name, glm::mat4(1.f));
     node.animNode = animationNode.animNode;
     node.transform = animationNode.transform;
     node.jointIndex = joint;
-    node.boneIndex = m_animator->m_animations[0]->m_BoneInfoMap[name].id;
+    node.boneIndex = m_animator->m_animations[0]->m_boneInfoMap[name].id;
     node.rigidBody = m_bodies[bodyPart];
     node.parentNode = parentNode;
     //

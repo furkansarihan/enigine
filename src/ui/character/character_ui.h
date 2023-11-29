@@ -25,9 +25,12 @@ public:
     {
     }
 
-    bool m_renderLastEnterPath = true;
-
     void render() override;
+    void renderState();
+    void renderMovement();
+    void renderPhysics();
+    void renderController();
+    void renderAttachments();
     void renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string name);
     void renderLastEnterCarPath();
     void drawArmatureBones(Character &character, Shader &simpleShader, Model &model, glm::mat4 viewProjection);

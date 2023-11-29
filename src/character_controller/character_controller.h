@@ -32,8 +32,9 @@ public:
     float m_maxWalkRelative;
     float m_maxRunRelative;
 
-    float m_moveForce = 4500.0f;
-    float m_jumpForce = 300.0f;
+    float m_runForce;
+    float m_moveForce;
+    float m_jumpForce;
     float m_speedAtJumpStart = 0.0f;
     float m_walkToRunAnimThreshold = 0.8f;
     float m_toIdleForce = 2250.0f;
@@ -73,6 +74,7 @@ public:
     bool m_aimLocked = false;
     bool m_rotate = false;
 
+    glm::vec3 m_moveDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
     glm::vec3 m_lookDir = glm::vec3(0.0f, 0.0f, 1.0f); // +Z
     glm::vec3 m_refFront = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec3 m_refRight = glm::vec3(1.0f, 0.0f, 0.0f);

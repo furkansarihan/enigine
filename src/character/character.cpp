@@ -19,104 +19,91 @@ Character::Character(RenderManager *renderManager, TaskManager *taskManager, Res
 void Character::init()
 {
     // Animation
-    m_model = m_resourceManager->getModel("assets/character/mixamo-reaction-1.glb");
-    Animation *animation0 = new Animation("idle", m_model);
-    Animation *animation1 = new Animation("walking-forward", m_model);
-    Animation *animation2 = new Animation("left", m_model, true);
-    Animation *animation3 = new Animation("right", m_model, true);
-    Animation *animation4 = new Animation("running-forward", m_model);
-    Animation *animation5 = new Animation("walking-left", m_model);
-    Animation *animation6 = new Animation("walking-right", m_model);
-    Animation *animation7 = new Animation("walking-back", m_model);
-    Animation *animation8 = new Animation("running-left", m_model);
-    Animation *animation9 = new Animation("running-right", m_model);
-    Animation *animation10 = new Animation("running-back", m_model);
-    Animation *animation11 = new Animation("walking-back-left", m_model);
-    Animation *animation12 = new Animation("walking-back-right", m_model);
-    Animation *animation13 = new Animation("running-back-left", m_model);
-    Animation *animation14 = new Animation("running-back-right", m_model);
-    Animation *animation15 = new Animation("pistol-aim-1", m_model, true);
+    m_model = m_resourceManager->getModel("assets/character/mixamo-y-1.glb");
+
+    Animation *animIdle = new Animation("idle", m_model);
+
+    Animation *animWalkForward = new Animation("walking-forward", m_model);
+    Animation *animWalkBack = new Animation("walking-back", m_model);
+    Animation *animWalkLeft = new Animation("walking-left", m_model);
+    Animation *animWalkRight = new Animation("walking-right", m_model);
+    Animation *animWalkBackLeft = new Animation("walking-back-left", m_model);
+    Animation *animWalkBackRight = new Animation("walking-back-right", m_model);
+
+    Animation *animRunForward = new Animation("running-forward", m_model);
+    Animation *animRunBack = new Animation("running-back", m_model);
+    Animation *animRunLeft = new Animation("running-left", m_model);
+    Animation *animRunRight = new Animation("running-right", m_model);
+    Animation *animRunBackLeft = new Animation("running-back-left", m_model);
+    Animation *animRunBackRight = new Animation("running-back-right", m_model);
+
     // TODO: create empty at runtime?
-    Animation *animationRagdoll = new Animation("pose", m_model, true);
-    Animation *animation17 = new Animation("firing", m_model, true);
-    Animation *animation18 = new Animation("enter-car-7", m_model);
-    Animation *animation19 = new Animation("exit-car-6", m_model);
-    Animation *animation20 = new Animation("jump-car-5", m_model);
-    Animation *animationHeadFollow = new Animation("pose", m_model, true);
+    Animation *animRagdoll = new Animation("pose", m_model);
+    Animation *animHeadFollow = new Animation("pose", m_model);
+
+    Animation *animPistolAim = new Animation("pistol-aim-1", m_model);
+    Animation *animFiring = new Animation("firing", m_model);
+    Animation *animLeanLeft = new Animation("left", m_model);
+    Animation *animLeanRight = new Animation("right", m_model);
+
+    Animation *animEnterCar = new Animation("enter-car-7", m_model);
+    Animation *animExitCar = new Animation("exit-car-6", m_model);
+    Animation *animJumpCar = new Animation("jump-car-5", m_model);
+    Animation *animTurn180 = new Animation("turn-180", m_model);
 
     // TODO: inside Model
-    std::vector<Animation *> animations;
-    animations.push_back(animation0);
-    animations.push_back(animation1);
-    animations.push_back(animation2);
-    animations.push_back(animation3);
-    animations.push_back(animation4);
-    animations.push_back(animation5);
-    animations.push_back(animation6);
-    animations.push_back(animation7);
-    animations.push_back(animation8);
-    animations.push_back(animation9);
-    animations.push_back(animation10);
-    animations.push_back(animation11);
-    animations.push_back(animation12);
-    animations.push_back(animation13);
-    animations.push_back(animation14);
-    animations.push_back(animation15);
-    animations.push_back(animationRagdoll);
-    animations.push_back(animation17);
-    animations.push_back(animation18);
-    animations.push_back(animation19);
-    animations.push_back(animation20);
-    animations.push_back(animationHeadFollow);
+    std::vector<Animation *> animations = {
+        // movement
+        animIdle,
+        animWalkForward,
+        animWalkBack,
+        animWalkLeft,
+        animWalkRight,
+        animWalkBackLeft,
+        animWalkBackRight,
+        animRunForward,
+        animRunBack,
+        animRunLeft,
+        animRunRight,
+        animRunBackLeft,
+        animRunBackRight,
+        // empty
+        animRagdoll,
+        animHeadFollow,
+        // pose
+        animPistolAim,
+        animFiring,
+        animLeanLeft,
+        animLeanRight,
+        // actions
+        animEnterCar,
+        animExitCar,
+        animJumpCar,
+    };
 
     // TODO: setup multiple animators from same Model
     m_animator = new Animator(animations);
     m_animator->m_startOffset = 33.333f;
 
-    // state
-    // TODO: increase accessibility - name or pointer to Animation
-    Anim anim;
-    anim.index = 0; // idle
-    anim.blendFactor = 1.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 1; // forward
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 7; // backward
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 11; // backward-left
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 12; // backward-right
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 5; // left
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 6; // right
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 4; // run-forward
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 10; // run-back
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 8; // run-left
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 9; // run-right
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 13; // run-back-left
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
-    anim.index = 14; // run-back-right
-    anim.blendFactor = 0.0;
-    m_animator->m_state.animations.push_back(anim);
+    // states
+    m_idle = m_animator->addStateAnimation(animIdle);
+    m_idle->m_blendFactor = 1.0f; // TODO: ?
 
-    // set blend mask for turn-right and turn-left
+    m_walkCircle.m_forward = m_animator->addStateAnimation(animWalkForward);
+    m_walkCircle.m_back = m_animator->addStateAnimation(animWalkBack);
+    m_walkCircle.m_left = m_animator->addStateAnimation(animWalkLeft);
+    m_walkCircle.m_right = m_animator->addStateAnimation(animWalkRight);
+    m_walkCircle.m_backLeft = m_animator->addStateAnimation(animWalkBackLeft);
+    m_walkCircle.m_backRight = m_animator->addStateAnimation(animWalkBackRight);
+
+    m_runCircle.m_forward = m_animator->addStateAnimation(animRunForward);
+    m_runCircle.m_back = m_animator->addStateAnimation(animRunBack);
+    m_runCircle.m_left = m_animator->addStateAnimation(animRunLeft);
+    m_runCircle.m_right = m_animator->addStateAnimation(animRunRight);
+    m_runCircle.m_backLeft = m_animator->addStateAnimation(animRunBackLeft);
+    m_runCircle.m_backRight = m_animator->addStateAnimation(animRunBackRight);
+
+    // blend masks
     std::unordered_map<std::string, float> blendMask;
     blendMask["mixamorig:Spine"] = 1.0f;
     blendMask["mixamorig:Spine1"] = 1.0f;
@@ -124,8 +111,8 @@ void Character::init()
     blendMask["mixamorig:Neck"] = 1.0f;
     blendMask["mixamorig:Head"] = 1.0f;
 
-    animation2->setBlendMask(blendMask, 0.f);
-    animation3->setBlendMask(blendMask, 0.f);
+    animLeanLeft->setBlendMask(blendMask, 0.f);
+    animLeanRight->setBlendMask(blendMask, 0.f);
     // TODO: ragdoll mask for ragdoll hands - default position?
 
     // TODO: fix animation - no arms
@@ -147,10 +134,10 @@ void Character::init()
     blendMask["mixamorig:LeftFoot"] = 1.0f;
     blendMask["mixamorig:LeftToeBase"] = 1.0f;
 
-    animation11->setBlendMask(blendMask, 0.f);
-    animation12->setBlendMask(blendMask, 0.f);
-    animation13->setBlendMask(blendMask, 0.f);
-    animation14->setBlendMask(blendMask, 0.f);
+    animWalkBackLeft->setBlendMask(blendMask, 0.f);
+    animWalkBackRight->setBlendMask(blendMask, 0.f);
+    animRunBackLeft->setBlendMask(blendMask, 0.f);
+    animRunBackRight->setBlendMask(blendMask, 0.f);
 
     // firing
     blendMask.clear();
@@ -160,66 +147,51 @@ void Character::init()
     blendMask["mixamorig:RightArm"] = 1.0f;
     blendMask["mixamorig:RightForeArm"] = 1.0f;
     blendMask["mixamorig:RightHand"] = 1.0f;
-    animation17->setBlendMask(blendMask, 0.f);
+    animFiring->setBlendMask(blendMask, 0.f);
 
     // head follow
     blendMask.clear();
     blendMask["mixamorig:Head"] = 1.0f;
-    animationHeadFollow->setBlendMask(blendMask, 0.f);
+    animHeadFollow->setBlendMask(blendMask, 0.f);
 
-    // turn-left pose
-    AnimPose animPose;
-    animPose.index = 2;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // turn-right pose
-    animPose.index = 3;
-    m_animator->m_state.poses.push_back(animPose);
-    // pistol-aim
-    animPose.index = 15;
-    animPose.blendFactor = 1.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // ragdoll
-    animPose.index = 16;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // firing
-    animPose.index = 17;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // enter-car
-    animPose.index = 18;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // exit-car
-    animPose.index = 19;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // jump-car
-    animPose.index = 20;
-    animPose.blendFactor = 0.0f;
-    m_animator->m_state.poses.push_back(animPose);
-    // head-follow
-    animPose.index = 21;
-    animPose.blendFactor = 1.0f;
-    m_animator->m_state.poses.push_back(animPose);
+    blendMask.clear();
+    blendMask["mixamorig:Hips"] = 0.f;
+    animTurn180->setBlendMask(blendMask, 1.f);
 
-    m_walkStepFreq = 1.f / m_animator->m_animations[1]->m_Duration;
-    m_runStepFreq = 1.f / m_animator->m_animations[4]->m_Duration;
+    // TODO: priority variable? instead of order
+    // state anim poses
+    m_animPoseLeanLeft = m_animator->addPoseAnimation(animLeanLeft);
+    m_animPoseLeanRight = m_animator->addPoseAnimation(animLeanRight);
+    m_animPosePistolAim = m_animator->addPoseAnimation(animPistolAim);
+    m_animPoseFiring = m_animator->addPoseAnimation(animFiring);
+    m_animPoseEnterCar = m_animator->addPoseAnimation(animEnterCar);
+    m_animPoseEnterCar = m_animator->addPoseAnimation(animExitCar);
+    m_animPoseJumpCar = m_animator->addPoseAnimation(animJumpCar);
+    m_animTurn180 = m_animator->addPoseAnimation(animTurn180);
+    m_animPoseHeadFollow = m_animator->addPoseAnimation(animHeadFollow);
+    m_animPoseRagdoll = m_animator->addPoseAnimation(animRagdoll);
 
-    // TODO:
-    for (int i = 0; i < 13; i++)
-        m_blendTargets[i] = 0.0f;
+    m_animPoseRagdoll->m_timerActive = false;
+    m_animPoseHeadFollow->m_timerActive = false;
+    m_animPosePistolAim->m_timerActive = false;
+    m_animPoseFiring->m_timerActive = false;
+    m_animPoseLeanLeft->m_timerActive = false;
+    m_animPoseLeanRight->m_timerActive = false;
+
+    m_walkStepFreq = 1.f / animWalkForward->m_duration;
+    m_runStepFreq = 1.f / animRunForward->m_duration;
+
+    m_moveStage.idle = 1.f;
 
     // Character
     m_rigidbody = m_physicsWorld->createCapsule(10.0f, 1.0f, 0.25f, 1.3f, BulletGLM::getBulletVec3(m_position));
     m_rigidbody->setAngularFactor(btVector3(0.0f, 0.0f, 0.0f));
     m_rigidbody->setDamping(0.9f, 0.9f);
     m_rigidbody->setFriction(0.0f);
-    m_rigidbody->setGravity(btVector3(0, -20.0f, 0));
+    m_rigidbody->setGravity(btVector3(0, -10.0f, 0));
 
     m_controller = new CharacterController(m_physicsWorld->m_dynamicsWorld, m_rigidbody, m_followCamera);
-    m_ragdoll = new Ragdoll(m_physicsWorld, m_animator, animationRagdoll, BulletGLM::getBulletVec3(m_position), 1.0f);
+    m_ragdoll = new Ragdoll(m_physicsWorld, m_animator, animRagdoll, BulletGLM::getBulletVec3(m_position), 1.0f);
     m_ragdoll->m_modelOffset = glm::vec3(0.f, -1.0f, 0.f);
 
     eTransform transform;
@@ -270,9 +242,9 @@ void Character::update(float deltaTime)
     updateAimPoseBlendMask(m_aimBlend);
 
     // update firing blend
-    AnimPose &firingPose = getFiringPose();
-    firingPose.blendFactor += deltaTime * m_firingStateChangeSpeed * (m_firing ? 1.f : -1.f);
-    firingPose.blendFactor = std::max(0.0f, std::min(firingPose.blendFactor, 1.0f));
+    Anim &firingPose = *m_animPoseFiring;
+    firingPose.m_blendFactor += deltaTime * m_firingStateChangeSpeed * (m_firing ? 1.f : -1.f);
+    firingPose.m_blendFactor = std::max(0.0f, std::min(firingPose.m_blendFactor, 1.0f));
 
     // sync animator with controller
     if (m_rigidbody && m_rigidbody->getMotionState() && !m_ragdollActive)
@@ -286,151 +258,33 @@ void Character::update(float deltaTime)
         }
         m_rotation.y = glm::atan(m_controller->m_lookDir.x, m_controller->m_lookDir.z);
 
-        float front = 0.f;
-        float back = 0.f;
-        float right = 0.f;
-        float left = 0.f;
-        float backRight = 0.f;
-        float backLeft = 0.f;
-        float moveAngle = m_controller->m_signedMoveAngle;
+        updateMoveOrient();
+        updateMoveStage();
 
-        if (moveAngle >= 0.f && moveAngle < M_PI_2) // 1
-        {
-            front = (M_PI_2 - moveAngle) / M_PI_2;
-            right = moveAngle / M_PI_2;
-        }
-        else if (moveAngle >= M_PI_2 && moveAngle < M_PI_2 + M_PI_2 / 2.f) // 2.1
-        {
-            float angle = moveAngle - M_PI_2;
-            backRight = angle / (M_PI_2 / 2.f);
-            right = 1.f - backRight;
-        }
-        else if (moveAngle >= M_PI_2 + M_PI_2 / 2.f && moveAngle <= M_PI) // 2.2
-        {
-            float angle = moveAngle - (M_PI_2 + M_PI_2 / 2.f);
-            back = angle / (M_PI_2 / 2.f);
-            backRight = 1.f - back;
-        }
-        else if (moveAngle >= -M_PI && moveAngle < -(M_PI_2 + M_PI_2 / 2.f)) // 3.1
-        {
-            float angle = -moveAngle - (M_PI_2 + M_PI_2 / 2.f);
-            back = angle / (M_PI_2 / 2.f);
-            backLeft = 1.f - back;
-        }
-        else if (moveAngle >= -(M_PI_2 + M_PI_2 / 2.f) && moveAngle < -M_PI_2) // 3.2
-        {
-            float angle = -moveAngle - M_PI_2;
-            backLeft = angle / (M_PI_2 / 2.f);
-            left = 1.f - backLeft;
-        }
-        else if (moveAngle >= -M_PI_2 && moveAngle < 0.f) // 4
-        {
-            front = (M_PI_2 + moveAngle) / M_PI_2;
-            left = -moveAngle / M_PI_2;
-        }
+        m_idle->m_blendFactor = m_moveStage.idle;
+        updateMoveCircleBlend(m_walkCircle, m_moveStage.walk);
+        updateMoveCircleBlend(m_runCircle, m_moveStage.run);
 
-        m_blendTargets[0] = 0.f; // idle
-        m_blendTargets[1] = front;
-        m_blendTargets[2] = back;
-        m_blendTargets[3] = backLeft;
-        m_blendTargets[4] = backRight;
-        m_blendTargets[5] = left;
-        m_blendTargets[6] = right;
-        m_blendTargets[7] = 0.f;  // run-forward
-        m_blendTargets[8] = 0.f;  // run-back
-        m_blendTargets[9] = 0.f;  // run-left
-        m_blendTargets[10] = 0.f; // run-right
-        m_blendTargets[11] = 0.f; // run-back-left
-        m_blendTargets[12] = 0.f; // run-back-right
-
-        m_runFactor = 0.f;
-        m_idleFactor = m_animator->m_state.animations[0].blendFactor;
-
-        float maxWalkSpeed = m_controller->m_maxWalkRelative + m_controller->m_walkToRunAnimThreshold;
-        if (m_controller->m_verticalSpeed > maxWalkSpeed)
+        // full body rotating
+        if (!m_controller->m_aimLocked && m_controller->m_dotFront < 0.f)
         {
-            float runnningGap = m_controller->m_maxRunRelative - maxWalkSpeed;
-            float runningLevel = m_controller->m_verticalSpeed - maxWalkSpeed;
-            m_runFactor = CommonUtil::snappedClamp(runningLevel / runnningGap, 0.0f, 1.0f, 0.08f);
-            float clamped = m_runFactor;
+            // reset animation
+            if (m_animTurn180->m_blendFactor < 0.01f)
+            {
+                m_animTurn180->m_timer = 0.f;
+            }
 
-            m_blendTargets[1] *= (1.f - clamped);
-            m_blendTargets[2] *= (1.f - clamped);
-            m_blendTargets[3] *= (1.f - clamped);
-            m_blendTargets[4] *= (1.f - clamped);
-            m_blendTargets[5] *= (1.f - clamped);
-            m_blendTargets[6] *= (1.f - clamped);
-            m_blendTargets[7] = front * clamped;
-            m_blendTargets[8] = back * clamped;
-            m_blendTargets[9] = left * clamped;
-            m_blendTargets[10] = right * clamped;
-            m_blendTargets[11] = backLeft * clamped;
-            m_blendTargets[12] = backRight * clamped;
+            interpolateValue(m_animTurn180->m_blendFactor, 1.f);
         }
         else
-        {
-            float clamped = CommonUtil::snappedClamp(m_controller->m_verticalSpeed / m_controller->m_maxWalkRelative, 0.0f, 1.0f, 0.0f);
+            interpolateValue(m_animTurn180->m_blendFactor, 0.f);
 
-            m_blendTargets[0] = (1.f - clamped);
-            m_blendTargets[1] *= clamped;
-            m_blendTargets[2] *= clamped;
-            m_blendTargets[3] *= clamped;
-            m_blendTargets[4] *= clamped;
-            m_blendTargets[5] *= clamped;
-            m_blendTargets[6] *= clamped;
-        }
+        interpolateValue(m_animPoseLeanLeft->m_blendFactor, std::clamp(-m_controller->m_turnFactor, 0.f, 1.f));
+        interpolateValue(m_animPoseLeanRight->m_blendFactor, std::clamp(m_controller->m_turnFactor, 0.f, 1.f));
 
-        syncFootstepFrequency();
-
-        // TODO: fix - wrong blend while locked
-        // full body rotating
-        if (m_controller->m_dotFront <= 0.f && m_controller->m_turnFactor > 0)
-        {
-            float turn = m_controller->m_turnFactor / m_controller->m_turnAnimMaxFactor;
-            m_blendTargets[4] = turn * m_controller->m_turnAnimMult;
-
-            m_blendTargets[3] *= (1.f - turn);
-            m_blendTargets[1] *= (1.f - turn);
-            m_blendTargets[2] *= (1.f - turn);
-            m_blendTargets[5] *= (1.f - turn);
-            m_blendTargets[6] *= (1.f - turn);
-        }
-        else if (m_controller->m_dotFront <= 0.f && m_controller->m_turnFactor < 0)
-        {
-            float turn = -m_controller->m_turnFactor / m_controller->m_turnAnimMaxFactor;
-            m_blendTargets[3] = turn * m_controller->m_turnAnimMult;
-
-            m_blendTargets[4] *= (1.f - turn);
-            m_blendTargets[1] *= (1.f - turn);
-            m_blendTargets[2] *= (1.f - turn);
-            m_blendTargets[5] *= (1.f - turn);
-            m_blendTargets[6] *= (1.f - turn);
-        }
-
-        float &animL = m_blendTargetsPose[0];
-        float &animR = m_blendTargetsPose[1];
-        animL = std::max(0.0f, std::min(-m_controller->m_turnFactor, 1.0f));
-        animR = std::max(0.0f, std::min(m_controller->m_turnFactor, 1.0f));
-
-        // adaptive turn for pistol-aim
-        if (m_controller->m_aimLocked)
-        {
-            float &leftBlend = m_animator->m_state.animations[5].blendFactor;
-            float &rightBlend = m_animator->m_state.animations[6].blendFactor;
-
-            float leftB = leftBlend + m_leftForward;
-            float rightB = rightBlend + m_rightForward;
-
-            if (leftB > 0.f)
-                animR = std::max(0.0f, std::min(leftB / m_leftBlendEdge, 1.0f));
-            if (rightB > 0.f)
-                animL = std::max(0.0f, std::min(rightB / m_rightBlendEdge, 1.0f));
-        }
-
-        m_prevRunFactor = m_runFactor;
-        m_prevIdleFactor = m_idleFactor;
-
-        interpolateBlendTargets();
+        m_prevMoveStage.idle = m_moveStage.idle;
+        m_prevMoveStage.walk = m_moveStage.walk;
+        m_prevMoveStage.run = m_moveStage.run;
     }
 
     updateModelMatrix();
@@ -439,20 +293,166 @@ void Character::update(float deltaTime)
 
     // NOTE: should after updateModelMatrix
     // update ragdoll blend
-    AnimPose &ragdolPose = getRagdolPose();
-    ragdolPose.blendFactor = (m_ragdollActive ? 1.f : -1.f);
+    Anim &ragdolPose = *m_animPoseRagdoll;
+    ragdolPose.m_blendFactor = (m_ragdollActive ? 1.f : -1.f);
     // ragdolPose.blendFactor += deltaTime * m_stateChangeSpeed * (m_ragdollActive ? 1.f : -1.f);
-    ragdolPose.blendFactor = std::max(0.0f, std::min(ragdolPose.blendFactor, 1.0f));
+    ragdolPose.m_blendFactor = std::max(0.0f, std::min(ragdolPose.m_blendFactor, 1.0f));
+}
+
+void Character::updateMoveOrient()
+{
+    float front = 0.f;
+    float back = 0.f;
+    float right = 0.f;
+    float left = 0.f;
+    float backRight = 0.f;
+    float backLeft = 0.f;
+    float moveAngle = m_controller->m_signedMoveAngle;
+
+    if (moveAngle >= 0.f && moveAngle < M_PI_2) // 1
+    {
+        front = (M_PI_2 - moveAngle) / M_PI_2;
+        right = moveAngle / M_PI_2;
+
+        // TODO: sync timer
+    }
+    else if (moveAngle >= M_PI_2 && moveAngle < M_PI_2 + M_PI_2 / 2.f) // 2.1
+    {
+        float angle = moveAngle - M_PI_2;
+        backRight = angle / (M_PI_2 / 2.f);
+        right = 1.f - backRight;
+    }
+    else if (moveAngle >= M_PI_2 + M_PI_2 / 2.f && moveAngle <= M_PI) // 2.2
+    {
+        float angle = moveAngle - (M_PI_2 + M_PI_2 / 2.f);
+        back = angle / (M_PI_2 / 2.f);
+        backRight = 1.f - back;
+    }
+    else if (moveAngle >= -M_PI && moveAngle < -(M_PI_2 + M_PI_2 / 2.f)) // 3.1
+    {
+        float angle = -moveAngle - (M_PI_2 + M_PI_2 / 2.f);
+        back = angle / (M_PI_2 / 2.f);
+        backLeft = 1.f - back;
+    }
+    else if (moveAngle >= -(M_PI_2 + M_PI_2 / 2.f) && moveAngle < -M_PI_2) // 3.2
+    {
+        float angle = -moveAngle - M_PI_2;
+        backLeft = angle / (M_PI_2 / 2.f);
+        left = 1.f - backLeft;
+    }
+    else if (moveAngle >= -M_PI_2 && moveAngle < 0.f) // 4
+    {
+        front = (M_PI_2 + moveAngle) / M_PI_2;
+        left = -moveAngle / M_PI_2;
+
+        // TODO: sync timer
+    }
+
+    interpolateValue(m_moveOrient.forward, front);
+    interpolateValue(m_moveOrient.back, back);
+    interpolateValue(m_moveOrient.left, left);
+    interpolateValue(m_moveOrient.right, right);
+    interpolateValue(m_moveOrient.backLeft, backLeft);
+    interpolateValue(m_moveOrient.backRight, backRight);
+}
+
+// TODO: stepper
+void Character::updateMoveStage()
+{
+    float fullIdleEnd = m_moveStage.idleEndGap;
+    float fullWalkStart = m_controller->m_maxWalkRelative - m_moveStage.walkStartGap;
+    float fullWalkEnd = m_controller->m_maxWalkRelative + m_moveStage.walkEndGap;
+    float fullRunStart = m_controller->m_maxRunRelative - m_moveStage.runStartGap;
+
+    if (m_controller->m_verticalSpeed <= fullIdleEnd)
+    {
+        m_moveStage.idle = 1.f;
+        m_moveStage.walk = 0.f;
+        m_moveStage.run = 0.f;
+    }
+    else if (m_controller->m_verticalSpeed <= fullWalkStart)
+    {
+        // blend idle -> walk
+        float blendRange = fullWalkStart - fullIdleEnd;
+        float blendFactor = m_controller->m_verticalSpeed - fullIdleEnd;
+        m_moveStage.walk = blendFactor / blendRange;
+        m_moveStage.idle = 1.f - m_moveStage.walk;
+
+        m_moveStage.run = 0.f;
+
+        // TODO: update footstep frequency
+    }
+    else if (m_controller->m_verticalSpeed <= fullWalkEnd)
+    {
+        m_moveStage.idle = 0.f;
+        m_moveStage.walk = 1.f;
+        m_moveStage.run = 0.f;
+    }
+    else if (m_controller->m_verticalSpeed <= fullRunStart)
+    {
+        m_moveStage.idle = 0.f;
+
+        // blend walk -> run
+        float blendRange = fullRunStart - fullWalkEnd;
+        float blendFactor = m_controller->m_verticalSpeed - fullWalkEnd;
+        m_moveStage.run = blendFactor / blendRange;
+        m_moveStage.walk = 1.f - m_moveStage.run;
+
+        // TODO: update footstep frequency
+    }
+    else if (m_controller->m_verticalSpeed > fullRunStart)
+    {
+        m_moveStage.idle = 0.f;
+        m_moveStage.walk = 0.f;
+        m_moveStage.run = 1.f;
+    }
+
+    syncFootstepFrequency();
+}
+
+void Character::interpolateValue(float &value, float newValue)
+{
+    value = CommonUtil::lerp(value, newValue, m_blendSpeed);
+}
+
+void Character::updateMoveCircleBlend(MoveCircle &circle, float value)
+{
+    interpolateValue(circle.m_forward->m_blendFactor, m_moveOrient.forward * value);
+    interpolateValue(circle.m_back->m_blendFactor, m_moveOrient.back * value);
+    interpolateValue(circle.m_left->m_blendFactor, m_moveOrient.left * value);
+    interpolateValue(circle.m_right->m_blendFactor, m_moveOrient.right * value);
+    interpolateValue(circle.m_backLeft->m_blendFactor, m_moveOrient.backLeft * value);
+    interpolateValue(circle.m_backRight->m_blendFactor, m_moveOrient.backRight * value);
+}
+
+void Character::updateMoveCircleTimer(MoveCircle &circle, float value)
+{
+    circle.m_forward->m_timer = m_moveOrient.forward * value;
+    circle.m_back->m_timer = m_moveOrient.back * value;
+    circle.m_left->m_timer = m_moveOrient.left * value;
+    circle.m_right->m_timer = m_moveOrient.right * value;
+    circle.m_backLeft->m_timer = m_moveOrient.backLeft * value;
+    circle.m_backRight->m_timer = m_moveOrient.backRight * value;
+}
+
+void Character::updateMoveCirclePlaybackSpeed(MoveCircle &circle, float value)
+{
+    circle.m_forward->m_playbackSpeed = value;
+    circle.m_back->m_playbackSpeed = value;
+    circle.m_left->m_playbackSpeed = value;
+    circle.m_right->m_playbackSpeed = value;
+    circle.m_backLeft->m_playbackSpeed = value;
+    circle.m_backRight->m_playbackSpeed = value;
 }
 
 void Character::updateHeadFollow(float deltaTime)
 {
     // update AnimPose blend
-    AnimPose &animPose = m_animator->m_state.poses[8];
-    animPose.blendFactor += deltaTime * m_aimStateChangeSpeed * (m_headFollow ? 1.f : -1.f);
-    animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
+    Anim &animPose = *m_animPoseHeadFollow;
+    animPose.m_blendFactor += deltaTime * m_aimStateChangeSpeed * (m_headFollow ? 1.f : -1.f);
+    animPose.m_blendFactor = std::max(0.0f, std::min(animPose.m_blendFactor, 1.0f));
 
-    Bone *bone = m_animator->m_animations[21]->getBone("mixamorig:Head");
+    Bone *bone = animPose.m_animation->getBone("mixamorig:Head");
     glm::quat &boneRot = bone->m_rotations[0].value;
 
     bool shouldSlerp = true;
@@ -461,7 +461,7 @@ void Character::updateHeadFollow(float deltaTime)
     else
         m_clampedHeadRot = glm::quat(1.f, 0.f, 0.f, 0.f);
 
-    shouldSlerp = shouldSlerp && animPose.blendFactor != 0.f;
+    shouldSlerp = shouldSlerp && animPose.m_blendFactor != 0.f;
 
     boneRot = shouldSlerp ? glm::slerp(boneRot, m_clampedHeadRot, 0.1f) : m_clampedHeadRot;
     bone->updatePose();
@@ -507,7 +507,7 @@ bool Character::updateHeadFollowRotation(bool firstUpdate)
 
 glm::quat Character::getNeckRotation()
 {
-    int neckId = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:Neck"].id;
+    int neckId = m_animator->m_animations[0]->m_boneInfoMap["mixamorig:Neck"].id;
     glm::mat4 neckModel = m_animator->m_globalMatrices[neckId];
 
     glm::vec3 position, scale;
@@ -535,9 +535,13 @@ void Character::updateModelMatrix()
     }
     else
     {
-        model = glm::translate(model, m_position);
+        glm::vec3 position = m_position;
+        // if (m_controller->m_moving)
+        //     position.y -= m_controller->m_floatElevation;
+
+        model = glm::translate(model, position);
         model = glm::rotate(model, m_rotation.x, glm::vec3(1, 0, 0));
-        model = glm::rotate(model, m_rotation.y * (1.0f - getRagdolPose().blendFactor), glm::vec3(0, 1, 0));
+        model = glm::rotate(model, m_rotation.y * (1.0f - m_animPoseRagdoll->m_blendFactor), glm::vec3(0, 1, 0));
         model = glm::rotate(model, m_rotation.z, glm::vec3(0, 0, 1));
         model = glm::scale(model, glm::vec3(m_scale));
     }
@@ -548,26 +552,41 @@ void Character::updateModelMatrix()
     m_renderSource->updateModelMatrix();
 }
 
-void Character::interpolateBlendTargets()
+void Character::syncFootstepFrequency2()
 {
-    for (int i = 0; i < 13; i++)
-        m_animator->m_state.animations[i].blendFactor = CommonUtil::lerp(m_animator->m_state.animations[i].blendFactor, m_blendTargets[i], m_blendSpeed);
-    for (int i = 0; i < 2; i++)
-        m_animator->m_state.poses[i].blendFactor = CommonUtil::lerp(m_animator->m_state.poses[i].blendFactor, m_blendTargetsPose[i], m_blendSpeed);
+    m_walkPerc = m_walkCircle.m_forward->m_timer / m_walkCircle.m_forward->m_animation->m_duration;
+    m_runPerc = m_runCircle.m_forward->m_timer / m_runCircle.m_forward->m_animation->m_duration;
+
+    m_walkAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_moveStage.run) / m_walkStepFreq;
+    m_runAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_moveStage.run) / m_runStepFreq;
+
+    updateMoveCirclePlaybackSpeed(m_walkCircle, m_walkAnimSpeed);
+    updateMoveCirclePlaybackSpeed(m_runCircle, m_runAnimSpeed);
 }
 
 void Character::syncFootstepFrequency()
 {
-    if (m_runFactor > 0.f && m_runFactor < 1.f)
+    if (m_moveStage.walk == 1.f)
     {
-        m_walkPerc = m_animator->m_timers[1] / m_animator->m_animations[1]->m_Duration;
-        m_runPerc = m_animator->m_timers[4] / m_animator->m_animations[4]->m_Duration;
+        // float walkSpeedRange = m_controller->m_verticalSpeed / (m_controller->m_maxWalkRelative + m_moveStage.walkEndGap);
+        // updateMoveCirclePlaybackSpeed(m_walkCircle, walkSpeedRange);
 
-        m_walkAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_runFactor) / m_walkStepFreq;
-        m_runAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_runFactor) / m_runStepFreq;
+        updateMoveCirclePlaybackSpeed(m_walkCircle, 1.f);
+    }
+    else if (m_moveStage.run == 1.f)
+    {
+        updateMoveCirclePlaybackSpeed(m_runCircle, 1.f);
+    }
+    else if (m_moveStage.run > 0.f && m_moveStage.run < 1.f)
+    {
+        m_walkPerc = m_walkCircle.m_forward->m_timer / m_walkCircle.m_forward->m_animation->m_duration;
+        m_runPerc = m_runCircle.m_forward->m_timer / m_runCircle.m_forward->m_animation->m_duration;
 
-        setWalkPlaybackSpeed(m_walkAnimSpeed);
-        setRunPlaybackSpeed(m_runAnimSpeed);
+        m_walkAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_moveStage.run) / m_walkStepFreq;
+        m_runAnimSpeed = (m_walkStepFreq + (m_runStepFreq - m_walkStepFreq) * m_moveStage.run) / m_runStepFreq;
+
+        updateMoveCirclePlaybackSpeed(m_walkCircle, m_walkAnimSpeed);
+        updateMoveCirclePlaybackSpeed(m_runCircle, m_runAnimSpeed);
 
         // refresh to fix error gap
         float timerGap = std::fabs(m_walkPerc - m_runPerc);
@@ -576,34 +595,27 @@ void Character::syncFootstepFrequency()
         // if (timerOff)
         //     std::cout << "timerOff: timerGap: " << timerGap << std::endl;
 
-        if (m_prevRunFactor == 0.f || (timerOff && m_runFactor < 0.5f))
+        if (m_prevMoveStage.run == 0.f || (timerOff && m_moveStage.run < 0.5f))
         {
-            float runTimer = m_walkPerc * m_animator->m_animations[4]->m_Duration;
-            setRunTimer(runTimer);
+            float runTimer = m_walkPerc * m_runCircle.m_forward->m_animation->m_duration;
+            updateMoveCircleTimer(m_runCircle, runTimer);
         }
-        else if (m_prevRunFactor == 1.f || timerOff)
+        else if (m_prevMoveStage.run == 1.f || timerOff)
         {
-            float walkTimer = m_runPerc * m_animator->m_animations[1]->m_Duration;
-            setWalkTimer(walkTimer);
+            float walkTimer = m_runPerc * m_walkCircle.m_forward->m_animation->m_duration;
+            updateMoveCircleTimer(m_walkCircle, walkTimer);
         }
-    }
-    else
-    {
-        if (m_runFactor == 0.f)
-            setWalkPlaybackSpeed(1.f);
-        else if (m_runFactor == 1.f)
-            setRunPlaybackSpeed(1.f);
     }
 
     // return to idle
-    float gap = m_idleFactor - m_prevIdleFactor;
-    if (m_idleFactor != 1.f && gap > 0.01f) // stopping
+    /* float gap = m_moveStage.idle - m_prevMoveStage.idle;
+    if (!m_controller->m_moving && m_moveStage.idle != 1.f && gap > 0.01f) // stopping
     {
         float nextTime;
-        float fullTime = m_animator->m_animations[1]->m_Duration;
+        float fullTime = m_walkCircle.m_forward->m_animation->m_duration;
         float halfTime = fullTime / 2.f;
 
-        float time = m_animator->m_timers[1];
+        float time = m_walkCircle.m_forward->m_timer;
 
         // TODO: better sync
         if (time > halfTime)
@@ -611,55 +623,10 @@ void Character::syncFootstepFrequency()
         else
             nextTime = halfTime;
 
-        m_animator->m_timers[1] = CommonUtil::lerp(m_animator->m_timers[1], nextTime, m_stopBlendSpeed);
-        m_animator->m_timers[7] = CommonUtil::lerp(m_animator->m_timers[7], nextTime, m_stopBlendSpeed);
-        m_animator->m_timers[11] = CommonUtil::lerp(m_animator->m_timers[11], nextTime, m_stopBlendSpeed);
-        m_animator->m_timers[12] = CommonUtil::lerp(m_animator->m_timers[12], nextTime, m_stopBlendSpeed);
-        m_animator->m_timers[5] = CommonUtil::lerp(m_animator->m_timers[5], nextTime, m_stopBlendSpeed);
-        m_animator->m_timers[6] = CommonUtil::lerp(m_animator->m_timers[6], nextTime, m_stopBlendSpeed);
+        updateMoveCircleTimer(m_walkCircle, nextTime);
 
         // TODO: stop character at stop anim position
-    }
-}
-
-void Character::setWalkPlaybackSpeed(float animSpeed)
-{
-    m_animator->m_animations[1]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[7]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[11]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[12]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[5]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[6]->m_playbackSpeed = animSpeed;
-}
-
-void Character::setRunPlaybackSpeed(float animSpeed)
-{
-    m_animator->m_animations[4]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[10]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[8]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[9]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[13]->m_playbackSpeed = animSpeed;
-    m_animator->m_animations[14]->m_playbackSpeed = animSpeed;
-}
-
-void Character::setWalkTimer(float time)
-{
-    m_animator->m_timers[1] = time;
-    m_animator->m_timers[7] = time;
-    m_animator->m_timers[11] = time;
-    m_animator->m_timers[12] = time;
-    m_animator->m_timers[5] = time;
-    m_animator->m_timers[6] = time;
-}
-
-void Character::setRunTimer(float time)
-{
-    m_animator->m_timers[4] = time;
-    m_animator->m_timers[10] = time;
-    m_animator->m_timers[8] = time;
-    m_animator->m_timers[9] = time;
-    m_animator->m_timers[13] = time;
-    m_animator->m_timers[14] = time;
+    } */
 }
 
 void Character::activateRagdoll()
@@ -726,36 +693,11 @@ void Character::checkPhysicsStateChange()
     }
 }
 
-AnimPose &Character::getRagdolPose()
-{
-    return m_animator->m_state.poses[3];
-}
-
-AnimPose &Character::getAimPose()
-{
-    return m_animator->m_state.poses[2];
-}
-
-AnimPose &Character::getFiringPose()
-{
-    return m_animator->m_state.poses[4];
-}
-
-AnimPose &Character::getEnterCarAnim()
-{
-    return m_animator->m_state.poses[5];
-}
-
-AnimPose &Character::getExitCarAnim()
-{
-    return m_animator->m_state.poses[6];
-}
-
 // TODO: single run in a thread
 void Character::updateAimPoseBlendMask(float blendFactor)
 {
     // early exit
-    Bone *bone = m_animator->m_animations[15]->getBone("mixamorig:Head");
+    Bone *bone = m_animPosePistolAim->m_animation->getBone("mixamorig:Head");
     if (bone && bone->m_blendFactor == blendFactor)
         return;
 
@@ -797,7 +739,7 @@ void Character::updateAimPoseBlendMask(float blendFactor)
     blendMask["mixamorig:RightHandPinky3"] = 1.0f;
     blendMask["mixamorig:RightHandPinky4"] = 1.0f;
 
-    m_animator->m_animations[15]->setBlendMask(blendMask, 0.0f);
+    m_animPosePistolAim->m_animation->setBlendMask(blendMask, 0.0f);
 }
 
 // TODO: move

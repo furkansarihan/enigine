@@ -5,17 +5,57 @@ void CharacterUI::render()
     if (!ImGui::CollapsingHeader("Character", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    ImGui::DragFloat("m_ragdolActivateFactor", &m_character->m_ragdolActivateFactor, 0.5f);
+    renderState();
+    renderMovement();
+    renderPhysics();
+    renderController();
+    renderAttachments();
+    renderLastEnterCarPath();
+
     ImGui::DragFloat("m_scale", &m_character->m_scale, 0.1f);
+    VectorUI::renderVec3("m_rotation", m_character->m_rotation, 0.1f);
+    ImGui::Separator();
+    VectorUI::renderVec3("m_followOffsetNormal", m_character->m_followOffsetNormal, 0.1f);
+    VectorUI::renderVec3("m_followOffsetAim", m_character->m_followOffsetAim, 0.1f);
+    ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
+    ImGui::Separator();
+
+    if (ImGui::TreeNode("Footstep"))
+    {
+        ImGui::DragFloat("m_walkStepFreq", &m_character->m_walkStepFreq, 0.1f);
+        ImGui::DragFloat("m_runStepFreq", &m_character->m_runStepFreq, 0.1f);
+        ImGui::DragFloat("m_stopBlendSpeed", &m_character->m_stopBlendSpeed, 0.001f);
+        ImGui::Text("m_walkStepFreq: %.5f", m_character->m_walkStepFreq);
+        ImGui::Text("m_runStepFreq: %.5f", m_character->m_runStepFreq);
+        ImGui::Text("m_walkPerc: %.3f", m_character->m_walkPerc);
+        ImGui::Text("m_runPerc: %.3f", m_character->m_runPerc);
+        ImGui::Text("m_walkAnimSpeed: %.3f", m_character->m_walkAnimSpeed);
+        ImGui::Text("m_runAnimSpeed: %.3f", m_character->m_runAnimSpeed);
+        ImGui::TreePop();
+    }
+}
+
+void CharacterUI::renderState()
+{
+    if (!ImGui::TreeNode("State##CharacterUI::renderState"))
+        return;
+
+    ImGui::DragFloat("m_ragdolActivateFactor", &m_character->m_ragdolActivateFactor, 0.5f);
+
     // TODO: fps camera - change camera min pitch
     ImGui::Checkbox("m_aimLocked", &m_controller->m_aimLocked);
     ImGui::Checkbox("m_controlCharacter", &m_character->m_controlCharacter);
     ImGui::Checkbox("m_followCharacter", &m_character->m_followCharacter);
     ImGui::Checkbox("m_headFollow", &m_character->m_headFollow);
-    ImGui::Checkbox("m_renderLastEnterPath", &m_renderLastEnterPath);
-    renderLastEnterCarPath();
-    VectorUI::renderVec3("m_followOffsetNormal", m_character->m_followOffsetNormal, 0.1f);
-    VectorUI::renderVec3("m_followOffsetAim", m_character->m_followOffsetAim, 0.1f);
+
+    ImGui::TreePop();
+}
+
+void CharacterUI::renderAttachments()
+{
+    if (!ImGui::TreeNode("State##CharacterUI::renderAttachments"))
+        return;
+
     if (ImGui::TreeNode("Pistol"))
     {
         VectorUI::renderVec3("m_pistolOffset", m_character->m_pistolOffset, 0.1f);
@@ -32,26 +72,15 @@ void CharacterUI::render()
     ImGui::DragFloat("m_fireAnimStartTime", &m_character->m_fireAnimStartTime, 0.05f);
     ImGui::DragInt("m_fireAnimTimeMilli", &m_character->m_fireAnimTimeMilli, 25);
     ImGui::DragFloat("m_aimStateChangeSpeed", &m_character->m_aimStateChangeSpeed, 0.1f);
-    if (ImGui::TreeNode("Footstep"))
-    {
-        ImGui::DragFloat("m_walkStepFreq", &m_character->m_walkStepFreq, 0.1f);
-        ImGui::DragFloat("m_runStepFreq", &m_character->m_runStepFreq, 0.1f);
-        ImGui::DragFloat("m_verticalSpeed", &m_controller->m_verticalSpeed, 0.1f);
-        ImGui::DragFloat("m_stopBlendSpeed", &m_character->m_stopBlendSpeed, 0.001f);
-        ImGui::Text("m_walkStepFreq: %.5f", m_character->m_walkStepFreq);
-        ImGui::Text("m_runStepFreq: %.5f", m_character->m_runStepFreq);
-        ImGui::Text("m_walkPerc: %.3f", m_character->m_walkPerc);
-        ImGui::Text("m_runPerc: %.3f", m_character->m_runPerc);
-        ImGui::Text("m_walkAnimSpeed: %.3f", m_character->m_walkAnimSpeed);
-        ImGui::Text("m_runAnimSpeed: %.3f", m_character->m_runAnimSpeed);
-        ImGui::TreePop();
-    }
-    ImGui::DragFloat("m_followOffsetFactor", &m_character->m_followOffsetFactor, 0.1f);
-    ImGui::DragFloat("m_leftBlendEdge", &m_character->m_leftBlendEdge, 0.01f);
-    ImGui::DragFloat("m_rightBlendEdge", &m_character->m_rightBlendEdge, 0.01f);
-    ImGui::DragFloat("m_leftForward", &m_character->m_leftForward, 0.01f);
-    ImGui::DragFloat("m_rightForward", &m_character->m_rightForward, 0.01f);
-    ImGui::Separator();
+
+    ImGui::TreePop();
+}
+
+void CharacterUI::renderController()
+{
+    if (!ImGui::TreeNode("Controller##CharacterUI::renderController"))
+        return;
+
     renderSpeedLimiter(m_character->m_controller->m_walkSpeed, "m_walkSpeed");
     renderSpeedLimiter(m_character->m_controller->m_runSpeed, "m_runSpeed");
     ImGui::Text("m_lookDir: (%.1f, %.1f)", m_controller->m_lookDir.x, m_controller->m_lookDir.z);
@@ -77,7 +106,8 @@ void CharacterUI::render()
     ImGui::Text("m_speed: %.3f", m_controller->m_speed);
     ImGui::Text("m_elevationDistance: %.3f", m_controller->m_elevationDistance);
     ImGui::Text("m_speedAtJumpStart: %.3f", m_controller->m_speedAtJumpStart);
-    ImGui::DragFloat("m_moveForce", &m_controller->m_moveForce, 0.1f, 0);
+    ImGui::DragFloat("m_moveForce", &m_controller->m_moveForce, 1.f, 0);
+    ImGui::DragFloat("m_runForce", &m_controller->m_runForce, 1.f, 0);
     ImGui::DragFloat("m_jumpForce", &m_controller->m_jumpForce, 0.1f, 0);
     ImGui::DragFloat("m_turnForce", &m_controller->m_turnForce, 0.001f, 0);
     ImGui::DragFloat("m_toIdleForce", &m_controller->m_toIdleForce, 0.1f, 0);
@@ -88,10 +118,42 @@ void CharacterUI::render()
     ImGui::DragFloat("m_turnAnimForce", &m_controller->m_turnAnimForce, 0.01f, 0);
     ImGui::DragFloat("m_turnAnimMaxFactor", &m_controller->m_turnAnimMaxFactor, 0.1f, 0);
     ImGui::DragFloat("m_floatElevation", &m_controller->m_floatElevation, 0.001f, 0);
-    VectorUI::renderVec3("m_rotation", m_character->m_rotation, 0.1f);
-    // VectorUI::renderQuat("m_headRot", m_character->m_headRot, 0.1f);
-    // VectorUI::renderQuat("m_neckRot", m_character->m_neckRot, 0.1f);
-    VectorUI::renderNormalizedQuat("m_headRotOffset", m_character->m_headRotOffset, 0.1f);
+
+    ImGui::TreePop();
+}
+
+void CharacterUI::renderMovement()
+{
+    if (!ImGui::TreeNode("Movement##CharacterUI::renderMovement"))
+        return;
+
+    ImGui::DragFloat("m_verticalSpeed", &m_controller->m_verticalSpeed, 0.1f);
+    ImGui::Text("Move Stage");
+    ImGui::Text("idle: %.1f", m_character->m_moveStage.idle);
+    ImGui::Text("walk: %.1f", m_character->m_moveStage.walk);
+    ImGui::Text("run: %.1f", m_character->m_moveStage.run);
+    ImGui::DragFloat("idleEndGap", &m_character->m_moveStage.idleEndGap, 0.1f);
+    ImGui::DragFloat("walkStartGap", &m_character->m_moveStage.walkStartGap, 0.1f);
+    ImGui::DragFloat("walkEndGap", &m_character->m_moveStage.walkEndGap, 0.1f);
+    ImGui::DragFloat("runStartGap", &m_character->m_moveStage.runStartGap, 0.1f);
+    ImGui::Separator();
+    ImGui::Text("Move Orient");
+    ImGui::Text("forward: %.1f", m_character->m_moveOrient.forward);
+    ImGui::Text("back: %.1f", m_character->m_moveOrient.back);
+    ImGui::Text("left: %.1f", m_character->m_moveOrient.left);
+    ImGui::Text("right: %.1f", m_character->m_moveOrient.right);
+    ImGui::Text("backLeft: %.1f", m_character->m_moveOrient.backLeft);
+    ImGui::Text("backRight: %.1f", m_character->m_moveOrient.backRight);
+    ImGui::Separator();
+
+    ImGui::TreePop();
+}
+
+void CharacterUI::renderPhysics()
+{
+    if (!ImGui::TreeNode("Physics##CharacterUI::renderPhysics"))
+        return;
+
     float gravityY = m_rb->getGravity().getY();
     if (ImGui::DragFloat("gravity", &gravityY, 0.1f))
     {
@@ -128,7 +190,7 @@ void CharacterUI::render()
         m_rb->setFriction(friction);
     }
     float linearDamping = m_rb->getLinearDamping();
-    float angularDamping = m_rb->getLinearDamping();
+    float angularDamping = m_rb->getAngularDamping();
     if (ImGui::DragFloat("linearDamping", &linearDamping, 0.1))
     {
         m_rb->setDamping(linearDamping, angularDamping);
@@ -137,6 +199,8 @@ void CharacterUI::render()
     {
         m_rb->setDamping(linearDamping, angularDamping);
     }
+
+    ImGui::TreePop();
 }
 
 void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string name)
@@ -169,6 +233,8 @@ void CharacterUI::renderSpeedLimiter(SpeedLimiter &speedLimiter, std::string nam
         ImGui::DragFloat((name + nameLength + std::to_string(i)).c_str(), &point.lengthFactor, 0.1f);
         ImGui::Separator();
     }
+
+    ImGui::TreePop();
 }
 
 void CharacterUI::renderLastEnterCarPath()
@@ -176,7 +242,7 @@ void CharacterUI::renderLastEnterCarPath()
     if (!ImGui::TreeNode("Last Enter Path##CharacterUI::renderLastEnterCarPath"))
         return;
 
-    if (!m_renderLastEnterPath || m_character->m_lastCarEnterPath.empty)
+    if (m_character->m_lastCarEnterPath.empty)
         return;
 
     ImVec2 windowSize = ImVec2(400.f, 400.f);

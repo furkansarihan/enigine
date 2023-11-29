@@ -27,8 +27,7 @@ void EnterCar::interrupt()
     m_character->m_passengerInfo.car = nullptr;
 
     // TODO: animation adaptation
-    AnimPose &animPose = m_character->getEnterCarAnim();
-    animPose.blendFactor = 0.f;
+    m_character->m_animPoseEnterCar->m_blendFactor = 0.f;
 }
 
 // TODO: animation adaptation for car distance
@@ -52,12 +51,12 @@ bool EnterCar::update()
         if (m_car->m_vehicle->isDoorOpen(Door::frontLeft))
         {
             float startTime = 680.f;
-            m_character->m_animator->setAnimTime(18, startTime);
+            m_character->m_animPoseEnterCar->m_timer = startTime;
             m_doorOpened = true;
         }
         else
         {
-            m_character->m_animator->setAnimTime(18, 0.f);
+            m_character->m_animPoseEnterCar->m_timer = 0.f;
         }
         m_character->m_syncPositionFromPhysics = false;
         m_character->m_controller->m_rotate = true;
@@ -65,16 +64,17 @@ bool EnterCar::update()
         m_firstUpdate = true;
     }
 
-    AnimPose &animPose = m_character->getEnterCarAnim();
-    animPose.blendFactor += m_stateChangeSpeed;
-    animPose.blendFactor = std::max(0.0f, std::min(animPose.blendFactor, 1.0f));
+    Anim &animPose = *m_character->m_animPoseEnterCar;
+    animPose.m_blendFactor += m_stateChangeSpeed;
+    animPose.m_blendFactor = std::max(0.0f, std::min(animPose.m_blendFactor, 1.0f));
 
     // TODO: check if anim played - stop at the end
-    float animDuration = m_character->m_animator->m_animations[18]->m_Duration;
+    float animDuration = animPose.m_animation->m_duration;
     if (!m_sitting)
     {
         // TODO: better end detection?
-        float animTime = m_character->m_animator->m_timers[18];
+        // float animTime = m_character->m_animator->m_timers[18];
+        float animTime = 0.f;
         m_sitting = animTime >= animDuration - 34.f;
         if (m_sitting)
         {
@@ -99,8 +99,8 @@ bool EnterCar::update()
     }
     else
     {
-        m_character->m_animator->m_animations[18]->m_timed = true;
-        animPose.time = animDuration - 34.f;
+        animPose.m_timerActive = false;
+        animPose.m_timer = animDuration - 34.f;
     }
 
     updateRefValues();

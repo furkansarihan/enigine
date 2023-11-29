@@ -198,7 +198,7 @@ void PCharacter::update(float deltaTime)
 // TODO: transform link skeleton
 void PCharacter::updatePistolModelMatrix()
 {
-    int index = m_animator->m_animations[0]->m_BoneInfoMap["mixamorig:RightHand"].id;
+    int index = m_animator->m_animations[0]->m_boneInfoMap["mixamorig:RightHand"].id;
     glm::mat4 model = m_animator->m_globalMatrices[index];
 
     glm::mat4 model2 = m_modelMatrix;
@@ -226,7 +226,7 @@ void PCharacter::updatePistolModelMatrix()
 void PCharacter::fireWeapon()
 {
     m_firing = true;
-    m_animator->setAnimTime(17, m_fireAnimStartTime);
+    m_animPoseFiring->m_timer = m_fireAnimStartTime;
     auto fireCallback = [&]()
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(m_fireAnimTimeMilli / 2));

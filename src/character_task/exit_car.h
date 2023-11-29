@@ -47,8 +47,7 @@ public:
     void interruptUpdate();
     void endTask();
     void updateRefValues();
-    int exitAnimIndex();
-    int exitPoseIndex();
+    Anim *getExistPose();
 };
 
 #endif /* exit_car_hpp */
