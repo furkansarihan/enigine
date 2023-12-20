@@ -1,6 +1,6 @@
 #include "mesh.h"
 
-Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material material)
+Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material *material)
     : name(name),
       vertices(vertices),
       aabbMin(aabbMin),
@@ -9,12 +9,12 @@ Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned 
       material(material)
 {
     setupMesh();
-    updateTransmission();
 }
 
 Material::Material(const std::string &name, std::vector<Texture> &textures)
     : name(name),
       textures(textures),
+      blendMode(MaterialBlendMode::opaque),
       albedo(glm::vec4(0.f)),
       metallic(0.f),
       roughness(0.f),
@@ -76,12 +76,12 @@ void Mesh::bindTextures(Shader shader)
     unsigned int metalNr = 1;
     unsigned int opacityNr = 1;
     unsigned int unknownNr = 1;
-    for (unsigned int i = 0; i < material.textures.size(); i++)
+    for (unsigned int i = 0; i < material->textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
 
         std::string number;
-        std::string name = material.textures[i].type;
+        std::string name = material->textures[i].type;
         if (name == "texture_diffuse")
             number = std::to_string(diffuseNr++);
         else if (name == "texture_specular")
@@ -102,7 +102,7 @@ void Mesh::bindTextures(Shader shader)
             number = std::to_string(unknownNr++);
 
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
-        glBindTexture(GL_TEXTURE_2D, material.textures[i].id);
+        glBindTexture(GL_TEXTURE_2D, material->textures[i].id);
     }
 
     shader.setBool("material.albedoMap", diffuseNr > 1);
@@ -117,7 +117,7 @@ void Mesh::bindTextures(Shader shader)
 
 void Mesh::unbindTextures(Shader shader)
 {
-    for (unsigned int i = 0; i < material.textures.size(); i++)
+    for (unsigned int i = 0; i < material->textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -135,22 +135,22 @@ void Mesh::unbindTextures(Shader shader)
 
 void Mesh::bindProperties(Shader shader)
 {
-    shader.setVec4("material.albedo", material.albedo);
-    shader.setFloat("material.metallic", material.metallic);
-    shader.setFloat("material.roughness", material.roughness);
-    shader.setFloat("material.transmission", material.transmission);
-    shader.setFloat("material.opacity", material.opacity);
-    shader.setFloat("material.ior", material.ior);
+    shader.setVec4("material.albedo", material->albedo);
+    shader.setFloat("material.metallic", material->metallic);
+    shader.setFloat("material.roughness", material->roughness);
+    shader.setFloat("material.transmission", material->transmission);
+    shader.setFloat("material.opacity", material->opacity);
+    shader.setFloat("material.ior", material->ior);
 
-    shader.setVec4("material.emissiveColor", material.emissiveColor);
-    shader.setFloat("material.emissiveStrength", material.emissiveStrength);
+    shader.setVec4("material.emissiveColor", material->emissiveColor);
+    shader.setFloat("material.emissiveStrength", material->emissiveStrength);
 
-    shader.setFloat("material.thickness", material.thickness);
+    shader.setFloat("material.thickness", material->thickness);
 
-    shader.setFloat("material.parallaxMapMidLevel", material.parallaxMapMidLevel);
-    shader.setFloat("material.parallaxMapScale", material.parallaxMapScale);
-    shader.setFloat("material.parallaxMapSampleCount", material.parallaxMapSampleCount);
-    shader.setFloat("material.parallaxMapScaleMode", material.parallaxMapScaleMode);
+    shader.setFloat("material.parallaxMapMidLevel", material->parallaxMapMidLevel);
+    shader.setFloat("material.parallaxMapScale", material->parallaxMapScale);
+    shader.setFloat("material.parallaxMapSampleCount", material->parallaxMapSampleCount);
+    shader.setFloat("material.parallaxMapScaleMode", material->parallaxMapScaleMode);
 }
 
 // TODO: remove?
@@ -216,10 +216,4 @@ void Mesh::setupMesh()
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, weights));
 
     glBindVertexArray(0);
-}
-
-void Mesh::updateTransmission()
-{
-    opaque = material.transmission == 0.f &&
-             material.opacity == 1.f;
 }

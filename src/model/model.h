@@ -35,8 +35,7 @@ class Model
 public:
     Model(ResourceManager *resourceManager, std::string const &path);
     ~Model();
-    void draw(Shader shader, bool drawOpaque = true);
-    void drawInstanced(Shader shader, int instanceCount);
+
     std::vector<Mesh *> meshes;
     std::vector<Mesh *> opaqueMeshes;
     std::vector<Mesh *> transmissionMeshes;
@@ -53,10 +52,15 @@ public:
     Assimp::Importer *m_importer;
     const aiScene *m_scene;
 
+    void draw(Shader shader, bool drawOpaque = true);
+    void drawInstanced(Shader shader, int instanceCount);
+    void updateMeshTypes();
+
 private:
     void loadModel(std::string const &path);
     void processNode(aiNode *node, glm::mat4 parentTransform);
     Mesh *processMesh(aiMesh *mesh);
+    Material *loadMaterial(aiMaterial *material);
     std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);
     void setVertexBoneDataToDefault(Vertex &vertex);
     void setVertexBoneData(Vertex &vertex, int boneID, float weight);

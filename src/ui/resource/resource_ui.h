@@ -16,6 +16,10 @@ public:
     }
 
     void render() override;
+    void renderModels();
+    void renderTextures();
+    void renderMaterial(Model *model, Material &material, int index);
+    void renderTexture(const Texture &texture);
 };
 
 #endif /* resource_ui_hpp */

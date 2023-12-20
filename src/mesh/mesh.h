@@ -28,7 +28,13 @@ struct Texture
 {
     unsigned int id, width, height;
     int nrComponents;
-    std::string type;
+    std::string type; // TODO: change
+};
+
+enum MaterialBlendMode
+{
+    opaque,
+    alphaBlend,
 };
 
 // TODO: same instance inside model
@@ -37,6 +43,8 @@ class Material
 public:
     std::string name;
     std::vector<Texture> textures;
+
+    MaterialBlendMode blendMode;
 
     glm::vec4 albedo;
     float roughness;
@@ -63,7 +71,7 @@ class Mesh
 {
 public:
     // Constructors
-    Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material material);
+    Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material *material);
     ~Mesh();
     // Attributes
     std::string name;
@@ -71,9 +79,8 @@ public:
     std::vector<unsigned int> indices;
     glm::vec3 aabbMin;
     glm::vec3 aabbMax;
-    Material material;
+    Material *material;
     glm::mat4 offset = glm::mat4(1.0f);
-    bool opaque = true;
     unsigned int VAO;
     // Functions
     void draw(Shader shader);
@@ -82,7 +89,6 @@ public:
 private:
     unsigned int VBO, EBO;
     void setupMesh();
-    void updateTransmission();
     void bindTextures(Shader shader);
     void unbindTextures(Shader shader);
     void bindProperties(Shader shader);

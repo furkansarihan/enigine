@@ -48,6 +48,20 @@ void Model::drawInstanced(Shader shader, int instanceCount)
     }
 }
 
+void Model::updateMeshTypes()
+{
+    opaqueMeshes.clear();
+    transmissionMeshes.clear();
+
+    for (auto &&mesh : meshes)
+    {
+        if (mesh->material->blendMode == MaterialBlendMode::opaque)
+            opaqueMeshes.push_back(mesh);
+        else
+            transmissionMeshes.push_back(mesh);
+    }
+}
+
 void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
@@ -112,7 +126,7 @@ void Model::processNode(aiNode *node, glm::mat4 parentTransform)
         mesh->aabbMax = glm::vec3(aabbMax.x, aabbMax.y, aabbMax.z);
 
         meshes.push_back(mesh);
-        if (mesh->opaque)
+        if (mesh->material->blendMode == MaterialBlendMode::opaque)
             opaqueMeshes.push_back(mesh);
         else
             transmissionMeshes.push_back(mesh);
@@ -127,7 +141,6 @@ Mesh *Model::processMesh(aiMesh *mesh)
     // data to fill
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<Texture> textures;
 
     // Walk through each of the mesh's vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -180,12 +193,35 @@ Mesh *Model::processMesh(aiMesh *mesh)
     // process materials
     aiMaterial *material = m_scene->mMaterials[mesh->mMaterialIndex];
 
+    Material *mat = loadMaterial(material);
+
+    // animation
+    extractBoneWeightForVertices(vertices, mesh);
+
+    return new Mesh(mesh->mName.C_Str(),
+                    vertices,
+                    indices,
+                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMin),
+                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMax),
+                    mat);
+}
+
+// TODO: move to resource manager
+Material *Model::loadMaterial(aiMaterial *material)
+{
+    // return same material if exist
+    std::string materialName = material->GetName().C_Str();
+    auto it = m_resourceManager->m_materials.find(materialName);
+    if (it != m_resourceManager->m_materials.end())
+        return it->second;
+
     // TODO: merge detection for ao-rought-metal - validate unknown_map
     // TODO: transmission - thickness map
     // TODO: emissive map
     // TODO: material properties for use_ao-metal-rough map
     // TODO: opacity map - fix
 
+    std::vector<Texture> textures;
     // 1. diffuse maps
     std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
@@ -214,7 +250,7 @@ Mesh *Model::processMesh(aiMesh *mesh)
     std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
-    Material mat(material->GetName().C_Str(), textures);
+    Material &mat = *(new Material(materialName, textures));
 
     // material properties
     for (unsigned int i = 0; i < material->mNumProperties; i++)
@@ -261,7 +297,15 @@ Mesh *Model::processMesh(aiMesh *mesh)
         {
             mat.ior = *reinterpret_cast<float *>(property->mData);
         }
+        else if (propertyName == "$mat.blend")
+        {
+            // TODO:
+        }
     }
+
+    // predicted blend mode
+    if (mat.transmission > 0.f || mat.opacity < 1.f)
+        mat.blendMode = MaterialBlendMode::alphaBlend;
 
     // default parallax map properties
     if (!heightMaps.empty())
@@ -272,15 +316,8 @@ Mesh *Model::processMesh(aiMesh *mesh)
         mat.parallaxMapScaleMode = 1.0;
     }
 
-    // animation
-    extractBoneWeightForVertices(vertices, mesh);
-
-    return new Mesh(mesh->mName.C_Str(),
-                    vertices,
-                    indices,
-                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMin),
-                    AssimpToGLM::getGLMVec3(mesh->mAABB.mMax),
-                    mat);
+    m_resourceManager->m_materials[materialName] = &mat;
+    return &mat;
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)

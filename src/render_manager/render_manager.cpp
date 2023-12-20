@@ -749,6 +749,7 @@ void RenderManager::renderBlend()
     glDepthMask(GL_TRUE);
 }
 
+// TODO: skip if no transmission mesh
 void RenderManager::renderTransmission()
 {
     // create mipmap
@@ -799,6 +800,7 @@ void RenderManager::renderTransmission()
     glBindTexture(GL_TEXTURE_2D, m_postProcess->m_texture);
 
     // TODO: only blend transparent meshes
+    // glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -811,7 +813,7 @@ void RenderManager::renderTransmission()
     }
 
     glDisable(GL_BLEND);
-    glDepthMask(GL_TRUE);
+    // glDepthMask(GL_TRUE);
 }
 
 void RenderManager::renderPostProcess()

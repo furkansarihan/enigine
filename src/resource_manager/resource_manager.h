@@ -32,6 +32,7 @@ public:
     std::string m_executablePath;
     std::unordered_map<std::string, Model *> m_models;
     std::unordered_map<std::string, Texture> m_textures;
+    std::unordered_map<std::string, Material *> m_materials;
 
     Model *getModel(const std::string &path, bool isCopy = false);
     Model *getModelFullPath(const std::string &fullPath, bool isCopy = false);

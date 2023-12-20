@@ -82,7 +82,6 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
         moving = false;
 }
 
-// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
 void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
 {
     float velocity = movementSpeed * deltaTime;

@@ -10,7 +10,6 @@ ResourceManager::ResourceManager(std::string executablePath)
 
 ResourceManager::~ResourceManager()
 {
-    // TODO: destruction
     for (auto &pair : m_models)
         delete pair.second;
     m_models.clear();
@@ -18,6 +17,10 @@ ResourceManager::~ResourceManager()
     for (auto &pair : m_textures)
         glDeleteTextures(1, &pair.second.id);
     m_textures.clear();
+
+    for (auto &pair : m_materials)
+        delete pair.second;
+    m_materials.clear();
 }
 
 Model *ResourceManager::getModel(const std::string &path, bool isCopy)
@@ -90,7 +93,7 @@ void ResourceManager::textureFromMemory(Texture &texture, const aiTexture *embed
     {
         std::vector<void *> tdata;
         tdata.push_back(data);
-        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, true));
         texture.nrComponents = nrComponents;
         texture.width = w;
         texture.height = h;
@@ -115,7 +118,7 @@ void ResourceManager::textureFromFile(Texture &texture, const char *path, const 
     {
         std::vector<void *> tdata;
         tdata.push_back(data);
-        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, false));
+        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, true));
         texture.nrComponents = nrComponents;
         texture.width = w;
         texture.height = h;
@@ -246,6 +249,9 @@ unsigned int ResourceManager::loadTexture(TextureLoadParams params)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     glGenerateMipmap(GL_TEXTURE_2D);
+
+    if (params.anisotropicFiltering)
+        setupAnisotropicFiltering();
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
