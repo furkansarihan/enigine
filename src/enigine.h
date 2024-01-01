@@ -68,12 +68,15 @@ public:
 
     Camera *mainCamera;
 
-    Shader simpleShader, lineShader, textureArrayShader;
+    Shader simpleShader, simpleDeferredShader, lineShader, textureArrayShader;
 
     RootUI *rootUI;
     SystemMonitorUI *systemMonitorUI;
     ShadowmapUI *shadowmapUI;
+    CameraUI *cameraUI;
+    ResourceUI *resourceUI;
     RenderUI *renderUI;
+    PhysicsWorldUI *physicsWorldUI;
 
     int init();
     void start();

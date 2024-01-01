@@ -18,8 +18,12 @@ Enigine::~Enigine()
     delete mainCamera;
 
     // cleanup ui
-    for (int i = 0; i < rootUI->m_uiList.size(); i++)
-        delete rootUI->m_uiList[i];
+    delete systemMonitorUI;
+    delete shadowmapUI;
+    delete cameraUI;
+    delete resourceUI;
+    delete renderUI;
+    delete physicsWorldUI;
     delete rootUI;
 
     // cleanup imgui
@@ -103,6 +107,7 @@ int Enigine::init()
     // Shaders
     shaderManager = new ShaderManager(executablePath);
     shaderManager->addShader(ShaderDynamic(&simpleShader, "assets/shaders/simple-shader.vs", "assets/shaders/simple-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&simpleDeferredShader, "assets/shaders/pbr.vs", "assets/shaders/simple-deferred.fs"));
     shaderManager->addShader(ShaderDynamic(&lineShader, "assets/shaders/line-shader.vs", "assets/shaders/line-shader.fs"));
     shaderManager->addShader(ShaderDynamic(&textureArrayShader, "assets/shaders/simple-texture.vs", "assets/shaders/texture-array.fs"));
 
@@ -146,10 +151,10 @@ int Enigine::init()
     rootUI = new RootUI();
     systemMonitorUI = new SystemMonitorUI(&t_info);
     shadowmapUI = new ShadowmapUI(renderManager->m_shadowManager, renderManager->m_shadowmapManager);
-    CameraUI *cameraUI = new CameraUI(mainCamera);
-    ResourceUI *resourceUI = new ResourceUI(resourceManager);
+    cameraUI = new CameraUI(mainCamera);
+    resourceUI = new ResourceUI(resourceManager);
     renderUI = new RenderUI(inputManager, renderManager, resourceManager);
-    PhysicsWorldUI *physicsWorldUI = new PhysicsWorldUI(physicsWorld, debugDrawer);
+    physicsWorldUI = new PhysicsWorldUI(physicsWorld, debugDrawer);
     rootUI->m_uiList.push_back(systemMonitorUI);
     rootUI->m_uiList.push_back(shadowmapUI);
     rootUI->m_uiList.push_back(cameraUI);
