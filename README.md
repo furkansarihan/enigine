@@ -3,10 +3,7 @@
 is a 3D game engine.
 
 ![5](showcase/5.jpg)
-
-## 🚧 Work In Progress
-
-Documents, API and files possibly have conflicts. Some parts are designed to be a part of the final product and some not. This section will be removed when it's time.
+![6](showcase/6.jpg)
 
 ## How to install?
 
@@ -25,7 +22,5 @@ There is a playground project for library development at [dev](dev). Acts as a c
 
 ## Videos
 
-[![Drifting](https://img.youtube.com/vi/G3zdnXcK1r0/0.jpg)](https://www.youtube.com/shorts/G3zdnXcK1r0)
+[![Running](https://img.youtube.com/vi/iAK9vnIaqGc/0.jpg)](https://www.youtube.com/shorts/iAK9vnIaqGc)
 [![Watermelons](https://img.youtube.com/vi/Fay0oSuhUVA/0.jpg)](https://www.youtube.com/shorts/Fay0oSuhUVA)
-[![Deferred Lighting](https://img.youtube.com/vi/EUUhGQD2OSU/0.jpg)](https://www.youtube.com/shorts/EUUhGQD2OSU)
-[![Parallax Occlusion Mapping](https://img.youtube.com/vi/cMjfwCiVaWk/0.jpg)](https://www.youtube.com/watch?v=cMjfwCiVaWk)

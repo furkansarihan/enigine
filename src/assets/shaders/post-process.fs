@@ -25,6 +25,7 @@ uniform float u_E;
 uniform float u_F;
 uniform float u_W;
 uniform float u_exposure;
+uniform float u_gamma;
 
 in vec2 UV;
 
@@ -118,6 +119,9 @@ void main(void)
     // fragColor = blur(renderedTexture, UV);
     fragColor = fxaa(renderedTexture, UV);
 
+    // exposure
+    fragColor *= pow(2.0, u_exposure);
+
     float brightness = dot(fragColor, vec3(0.2126, 0.7152, 0.0722));
     float darkness = 1 - brightness;
     if (darkness < 0) darkness = 0;
@@ -130,11 +134,10 @@ void main(void)
     fragColor = mix(fragColor, bloomColor.xyz, bloomIntensity);
 
     // tone mapping
-    fragColor = Tonemap_Filmic_UC2(fragColor * u_exposure, u_W, u_A, u_B, u_C, u_D, u_E, u_F);
+    fragColor = Tonemap_Filmic_UC2(fragColor, u_W, u_A, u_B, u_C, u_D, u_E, u_F);
 
     // gamma correction 
-    const float gamma = 2.2;
-    fragColor = pow(fragColor, vec3(1.0 / gamma));
+    fragColor = pow(fragColor, vec3(1.0 / u_gamma));
 
     // debug
     // fragColor = bloomColor.xyz;

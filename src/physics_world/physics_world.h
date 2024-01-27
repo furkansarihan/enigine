@@ -32,19 +32,23 @@ public:
     btRigidBody *createTerrain(const int width, const int height, const float *heightfieldData,
                                btScalar minHeight, btScalar maxHeight, int upAxis, bool flipQuadEdges, const btVector3 &position);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btVector3 &position);
+    btRigidBody *createRigidBody(btCollisionShape *shape, btMotionState *motionState, const btScalar mass, const btTransform &transform);
     btRigidBody *createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform);
 
+    void clearObjects();
     void update(float deltaTime);
     btSoftRigidDynamicsWorld *softDynamicsWorld();
 
     // TODO: freeze rigidbody
 
+    btCollisionDispatcher *m_dispatcher;
+    btBroadphaseInterface *m_overlappingPairCache;
+
 private:
     bool m_useMCLPSolver;
     bool m_useSoftBodyWorld;
     btDefaultCollisionConfiguration *m_collisionConfiguration;
-    btCollisionDispatcher *m_dispatcher;
-    btBroadphaseInterface *m_overlappingPairCache;
+
     btSequentialImpulseConstraintSolver *m_solver;
     btAlignedObjectArray<btCollisionShape *> m_collisionShapes;
 

@@ -7,6 +7,17 @@ PhysicsWorld::PhysicsWorld()
 
 PhysicsWorld::~PhysicsWorld()
 {
+    clearObjects();
+
+    delete m_dynamicsWorld;
+    delete m_solver;
+    delete m_overlappingPairCache;
+    delete m_dispatcher;
+    delete m_collisionConfiguration;
+}
+
+void PhysicsWorld::clearObjects()
+{
     // remove the rigidbodies from the dynamics world and delete them
     for (int i = m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
     {
@@ -15,6 +26,10 @@ PhysicsWorld::~PhysicsWorld()
         if (body && body->getMotionState())
         {
             delete body->getMotionState();
+        }
+        else
+        {
+            continue;
         }
         m_dynamicsWorld->removeCollisionObject(obj);
 
@@ -38,12 +53,6 @@ PhysicsWorld::~PhysicsWorld()
         // Delete the collision shape
         delete shape;
     }
-
-    delete m_dynamicsWorld;
-    delete m_solver;
-    delete m_overlappingPairCache;
-    delete m_dispatcher;
-    delete m_collisionConfiguration;
 }
 
 void PhysicsWorld::init()
@@ -198,6 +207,18 @@ btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScal
     transform.setOrigin(position);
 
     return createRigidBody(shape, mass, transform);
+}
+
+btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, btMotionState *motionState, const btScalar mass, const btTransform &transform)
+{
+    bool isDynamic = (mass != 0.f);
+    btVector3 localInertia(0, 0, 0);
+    if (isDynamic)
+        shape->calculateLocalInertia(mass, localInertia);
+    btRigidBody::btRigidBodyConstructionInfo RigidBodyCI(mass, motionState, shape, localInertia);
+    btRigidBody *rigidBody = new btRigidBody(RigidBodyCI);
+    m_dynamicsWorld->addRigidBody(rigidBody);
+    return rigidBody;
 }
 
 btRigidBody *PhysicsWorld::createRigidBody(btCollisionShape *shape, const btScalar mass, const btTransform &transform)

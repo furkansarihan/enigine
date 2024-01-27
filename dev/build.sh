@@ -5,7 +5,7 @@ set -x
 
 BUILD_DIR="build"
 CLEAN_BUILD=false
-BUILD_TYPE="Debug"
+BUILD_TYPE="Debug"  # Default build type is Debug
 
 # Parse command line parameters
 for arg in "$@"; do
@@ -13,8 +13,8 @@ for arg in "$@"; do
     --clean)
       CLEAN_BUILD=true
       ;;
-    --release)
-      BUILD_TYPE="Release"
+    --build-type=*)
+      BUILD_TYPE="${arg#*=}"
       ;;
   esac
 done

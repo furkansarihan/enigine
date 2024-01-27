@@ -36,6 +36,7 @@ public:
     float m_F; // Toe Denominator
     float m_W; // Linear White
     float m_exposure;
+    float m_gamma;
 
     void updateResolution(int width, int height);
 

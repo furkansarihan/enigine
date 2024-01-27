@@ -1,8 +1,8 @@
 #include "ssao.h"
 
-SSAO::SSAO(int width, int heigth)
+SSAO::SSAO(int width, int height)
     : m_width(width),
-      m_height(heigth),
+      m_height(height),
       noiseSize(4),
       kernelSize(32),
       radius(1.0f),

@@ -56,7 +56,7 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     // shaderIds.push_back(terrainBasicShader.id);
 
     m_shadowManager = new ShadowManager(m_camera, shaderIds);
-    m_shadowmapManager = new ShadowmapManager(m_shadowManager->m_splitCount, 1024);
+    m_shadowmapManager = new ShadowmapManager(m_shadowManager->m_splitCount, 512);
 
     m_cullingManager = new CullingManager();
     m_gBuffer = new GBuffer(1, 1);
@@ -77,8 +77,6 @@ RenderManager::~RenderManager()
 
     for (int i = 0; i < m_pbrSources.size(); i++)
     {
-        if (m_pbrSources[i]->transformLink)
-            delete m_pbrSources[i]->transformLink;
         delete m_pbrSources[i];
     }
 }
@@ -844,6 +842,7 @@ void RenderManager::renderPostProcess()
     postProcessShader.setFloat("u_F", m_postProcess->m_F);
     postProcessShader.setFloat("u_W", m_postProcess->m_W);
     postProcessShader.setFloat("u_exposure", m_postProcess->m_exposure);
+    postProcessShader.setFloat("u_gamma", m_postProcess->m_gamma);
 
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(postProcessShader.id, "renderedTexture"), 0);

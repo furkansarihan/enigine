@@ -22,6 +22,9 @@ public:
     }
 
     void render() override;
+    void renderRigidbodies();
+    void renderRigidbody(btRigidBody *body, int i);
+    void renderSoftbody(btSoftBody *body, int i);
 };
 
 #endif /* physics_world_ui_hpp */

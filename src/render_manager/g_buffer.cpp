@@ -1,8 +1,8 @@
 #include "g_buffer.h"
 
-GBuffer::GBuffer(int width, int heigth)
+GBuffer::GBuffer(int width, int height)
     : m_width(width),
-      m_height(heigth)
+      m_height(height)
 {
     glGenFramebuffers(1, &m_fbo);
 

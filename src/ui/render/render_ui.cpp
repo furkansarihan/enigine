@@ -364,7 +364,6 @@ void RenderUI::drawSelectedArmature(Shader &simpleShader)
     for (int i = 0; i < animator->m_globalMatrices.size(); i++)
     {
         glm::mat4 boneModel = animator->m_globalMatrices[i] * boneScaleModel;
-        glm::quat rot = glm::quat_cast(boneModel);
 
         simpleShader.setMat4("MVP", m_renderManager->m_viewProjection * sourceModel * boneModel);
         m_renderManager->cube->draw(simpleShader);
@@ -442,7 +441,7 @@ void RenderUI::renderSelectedSourceWindow()
         followOffset *= scale;
         followDistanceBase *= (scale.x + scale.z);
         glm::vec3 newPosition = position - m_renderManager->m_camera->front * (followDistanceBase + m_followDistance) + followOffset;
-        m_renderManager->m_camera->position = glm::mix(m_renderManager->m_camera->position, newPosition, 0.8f);
+        m_renderManager->m_camera->position = glm::mix(m_renderManager->m_camera->position, newPosition, 1.f);
     }
     ImGui::Checkbox("Draw Normals", &m_drawNormals);
     if (ImGui::DragFloat("Normal Size", &m_normalSize, 0.001f))
@@ -646,6 +645,7 @@ void RenderUI::renderPostProcess()
     renderToneMapping();
     renderBloom();
     ImGui::DragFloat("m_exposure", &m_renderManager->m_postProcess->m_exposure, 0.001f);
+    ImGui::DragFloat("m_gamma", &m_renderManager->m_postProcess->m_gamma, 0.001f);
     ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
     ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
     //

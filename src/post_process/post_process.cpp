@@ -1,8 +1,8 @@
 #include "post_process.h"
 
-PostProcess::PostProcess(int width, int heigth)
+PostProcess::PostProcess(int width, int height)
     : m_width(width),
-      m_height(heigth),
+      m_height(height),
       m_contrastBright(0.25f),
       m_contrastDark(0.2f),
       m_bloomIntensity(0.06f),
@@ -13,7 +13,8 @@ PostProcess::PostProcess(int width, int heigth)
       m_E(0.026f),
       m_F(0.309f),
       m_W(6.f),
-      m_exposure(2.25f)
+      m_exposure(2.25f),
+      m_gamma(2.2f)
 {
     glGenFramebuffers(1, &m_framebufferObject);
 
