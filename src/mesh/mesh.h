@@ -26,8 +26,8 @@ struct Vertex
 
 struct Texture
 {
-    unsigned int id, width, height;
-    int nrComponents;
+    unsigned int id;
+    int width, height, nrComponents;
     std::string type; // TODO: change
 };
 

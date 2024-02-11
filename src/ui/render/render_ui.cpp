@@ -1,12 +1,14 @@
 #include "render_ui.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <filesystem>
 
 RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, ResourceManager *resourceManager)
     : m_inputManager(inputManager),
       m_renderManager(renderManager),
       m_resourceManager(resourceManager),
       m_selectedSource(nullptr),
+      m_drawSelectedSourceAABB(true),
       m_followSelectedSource(false),
       m_lastSelectScreenPosition(glm::vec2(0.f, 0.f)),
       m_selectDepth(0),
@@ -52,6 +54,28 @@ void RenderUI::render()
     renderSelectedSourceWindow();
 }
 
+void RenderUI::update(float deltaTime)
+{
+    if (m_selectedSource && m_followSelectedSource)
+    {
+        glm::vec3 position = CommonUtil::positionFromModel(m_selectedSource->transform.getModelMatrix());
+        // glm::vec3 position = m_selectedSource->transform.getPosition();
+        glm::vec3 followOffset = glm::vec3(0.f);
+        float followDistanceBase = 0.f;
+        if (m_selectedSource->model != nullptr)
+        {
+            followOffset.y = (m_selectedSource->model->aabbMax.y - m_selectedSource->model->aabbMin.y) / 4.f;
+            followDistanceBase += (m_selectedSource->model->aabbMax.x - m_selectedSource->model->aabbMin.x) / 2.f;
+            followDistanceBase += (m_selectedSource->model->aabbMax.z - m_selectedSource->model->aabbMin.z) / 2.f;
+        }
+        glm::vec3 scale = m_selectedSource->transform.getScale();
+        followOffset *= scale;
+        followDistanceBase *= (scale.x + scale.z);
+        glm::vec3 newPosition = position - m_renderManager->m_camera->front * (followDistanceBase + m_followDistance) + followOffset;
+        m_renderManager->m_camera->position = glm::mix(m_renderManager->m_camera->position, newPosition, 0.2f);
+    }
+}
+
 void RenderUI::keyListener(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     GLFWwindow *m_window = m_inputManager->m_window;
@@ -76,6 +100,11 @@ void RenderUI::keyListener(GLFWwindow *window, int key, int scancode, int action
 
         m_followDistance = 8.0f;
     }
+
+    if (key == GLFW_KEY_V && action == GLFW_PRESS)
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
 void RenderUI::mouseButtonListener(GLFWwindow *window, int button, int action, int mods)
@@ -91,7 +120,7 @@ void RenderUI::mouseButtonListener(GLFWwindow *window, int button, int action, i
 
 void RenderUI::mouseScrollListener(GLFWwindow *window, double xoffset, double yoffset)
 {
-    float factor = 1.f;
+    float factor = 0.1f;
     m_followDistance += yoffset * factor;
 }
 
@@ -99,10 +128,23 @@ void RenderUI::fileDropListener(GLFWwindow *window, int count, const char **path
 {
     for (int i = 0; i < count; i++)
     {
-        const char *path = paths[i];
+        std::string path = std::string(paths[i]);
+        std::string extension = std::filesystem::path(path).extension().string();
 
-        addRenderSource(std::string(path));
+        if (extension == ".hdr")
+            updateEnvironmentTexture(path);
+        else
+            addRenderSource(path);
     }
+}
+
+void RenderUI::updateEnvironmentTexture(std::string path)
+{
+    TextureParams textureParams;
+    textureParams.dataType = TextureDataType::Float32;
+    // textureParams.generateMipmaps = true;
+    Texture envTexture = m_resourceManager->textureFromFile(textureParams, path, path);
+    m_renderManager->updateEnvironmentTexture(envTexture);
 }
 
 void RenderUI::addRenderSource(std::string path)
@@ -198,6 +240,9 @@ void RenderUI::selectSource(RenderSource *source)
 void RenderUI::drawSelectedSource(Shader &simpleShader, glm::mat4 mvp)
 {
     if (m_selectedSource == nullptr || m_selectedSource->model == nullptr)
+        return;
+
+    if (!m_drawSelectedSourceAABB)
         return;
 
     glm::vec3 center = (m_selectedSource->model->aabbMin + m_selectedSource->model->aabbMax) / 2.f;
@@ -425,24 +470,8 @@ void RenderUI::renderSelectedSourceWindow()
     if (VectorUI::renderTransform(("offset##" + ss.str()).c_str(), m_selectedSource->offset, 0.001f, 0.001f, 0.001f))
         m_selectedSource->updateModelMatrix();
 
-    ImGui::Checkbox("Follow", &m_followSelectedSource);
-    if (m_followSelectedSource)
-    {
-        glm::vec3 position = CommonUtil::positionFromModel(m_selectedSource->transform.getModelMatrix());
-        glm::vec3 followOffset = glm::vec3(0.f);
-        float followDistanceBase = 0.f;
-        if (m_selectedSource->model != nullptr)
-        {
-            followOffset.y = (m_selectedSource->model->aabbMax.y - m_selectedSource->model->aabbMin.y) / 4.f;
-            followDistanceBase += (m_selectedSource->model->aabbMax.x - m_selectedSource->model->aabbMin.x) / 2.f;
-            followDistanceBase += (m_selectedSource->model->aabbMax.z - m_selectedSource->model->aabbMin.z) / 2.f;
-        }
-        glm::vec3 scale = m_selectedSource->transform.getScale();
-        followOffset *= scale;
-        followDistanceBase *= (scale.x + scale.z);
-        glm::vec3 newPosition = position - m_renderManager->m_camera->front * (followDistanceBase + m_followDistance) + followOffset;
-        m_renderManager->m_camera->position = glm::mix(m_renderManager->m_camera->position, newPosition, 1.f);
-    }
+    ImGui::Checkbox("Follow Selected", &m_followSelectedSource);
+    ImGui::Checkbox("Draw Selected AABB", &m_drawSelectedSourceAABB);
     ImGui::Checkbox("Draw Normals", &m_drawNormals);
     if (ImGui::DragFloat("Normal Size", &m_normalSize, 0.001f))
         m_drawNormalSource = nullptr;
@@ -658,6 +687,11 @@ void RenderUI::renderPostProcess()
         VectorUI::renderVec3("m_sunColor", m_renderManager->m_sunColor, 1.f);
         ImGui::DragFloat("m_sunIntensity", &m_renderManager->m_sunIntensity, 0.1f);
     }
+    //
+    ImGui::DragInt("Cubemap Face Size", &m_renderManager->m_pbrManager->m_cubemapFaceSize, 16);
+    ImGui::DragInt("Irradiance Size", &m_renderManager->m_pbrManager->m_irradianceSize, 16);
+    ImGui::DragInt("Prefilter Size", &m_renderManager->m_pbrManager->m_prefilterSize, 16);
+    ImGui::DragInt("Brdf Lut Size", &m_renderManager->m_pbrManager->m_brdfLutSize, 16);
 
     ImGui::TreePop();
 }

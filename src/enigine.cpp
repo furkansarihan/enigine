@@ -162,6 +162,8 @@ int Enigine::init()
     rootUI->m_uiList.push_back(renderUI);
     rootUI->m_uiList.push_back(physicsWorldUI);
 
+    updateManager->add(renderUI);
+
     return 0;
 }
 

@@ -15,12 +15,15 @@
 class PbrManager
 {
 public:
-    PbrManager(std::string executablePath);
+    PbrManager();
     ~PbrManager();
 
-    std::string m_executablePath;
+    int m_cubemapFaceSize;
+    int m_irradianceSize;
+    int m_prefilterSize;
+    int m_brdfLutSize;
 
-    unsigned int m_skyboxTexture;
+    Texture m_environmentTexture;
 
     unsigned int captureFBO, captureRBO;
 
@@ -39,13 +42,10 @@ public:
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
     };
 
-    void setupCubemap(Model *cube, Shader hdrToCubemapShader);
-    void setupIrradianceMap(Model *cube, Shader irradianceShader);
-    void setupPrefilterMap(Model *cube, Shader prefilterShader);
-    void setupBrdfLUTTexture(unsigned int quadVAO, Shader brdfShader);
-
-private:
-    unsigned int m_cubemapFaceSize;
+    void setupCubemap(Model *cube, Shader &hdrToCubemapShader);
+    void setupIrradianceMap(Model *cube, Shader &irradianceShader);
+    void setupPrefilterMap(Model *cube, Shader &prefilterShader);
+    void setupBrdfLUTTexture(unsigned int quadVAO, Shader &brdfShader);
 };
 
 #endif /* pbr_manager_hpp */

@@ -77,7 +77,7 @@ void Model::loadModel(std::string const &path)
         return;
     }
     // retrieve the directory path of the filepath
-    directory = path.substr(0, path.find_last_of('/'));
+    m_directory = path.substr(0, path.find_last_of('/'));
 
     for (unsigned int i = 0; i < m_scene->mNumTextures; i++)
     {
@@ -328,8 +328,30 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         aiString str;
         mat->GetTexture(type, i, &str);
 
-        std::string path = std::string(str.C_Str());
-        Texture texture = m_resourceManager->getTexture(*this, path, typeName);
+        std::string texturePath = std::string(str.C_Str());
+        Texture texture;
+
+        TextureParams textureParams;
+        textureParams.generateMipmaps = true;
+        textureParams.anisotropicFiltering = true;
+        textureParams.maxAnisotropy = 4.f;
+
+        const aiTexture *embeddedTexture = m_scene->GetEmbeddedTexture(str.C_Str());
+        if (embeddedTexture != nullptr)
+        {
+            std::string key = m_path + "/" + texturePath;
+            void *buffer = embeddedTexture->pcData;
+            unsigned int bufferSize = embeddedTexture->mWidth;
+            texture = m_resourceManager->textureFromMemory(textureParams, key, buffer, bufferSize);
+        }
+        else
+        {
+            // TODO: check relative or absolute path
+            std::string path = m_directory + "/" + texturePath;
+            texture = m_resourceManager->textureFromFile(textureParams, path, path);
+        }
+
+        texture.type = typeName;
         textures.push_back(texture);
     }
     return textures;

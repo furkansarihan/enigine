@@ -42,7 +42,7 @@ public:
     glm::vec3 aabbMin;
     glm::vec3 aabbMax;
     std::string m_path;
-    std::string directory;
+    std::string m_directory;
     bool gammaCorrection;
 
     std::map<std::string, BoneInfo> m_boneInfoMap;

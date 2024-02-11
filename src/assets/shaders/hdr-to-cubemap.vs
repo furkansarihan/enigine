@@ -10,6 +10,6 @@ uniform mat4 model;
 
 void main()
 {
-    localPos = aPos;  
-    gl_Position =  projection * view * model * vec4(localPos, 1.0);
+    localPos = aPos;
+    gl_Position = projection * view * model * vec4(localPos, 1.0);
 }

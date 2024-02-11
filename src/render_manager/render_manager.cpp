@@ -39,12 +39,7 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // PBR Setup
-    m_pbrManager = new PbrManager(CommonUtil::getExecutablePath());
-    // TODO: variable skybox
-    // TODO: cache the textures?
-    m_pbrManager->setupCubemap(cube, hdrToCubemapShader);
-    m_pbrManager->setupIrradianceMap(cube, irradianceShader);
-    m_pbrManager->setupPrefilterMap(cube, prefilterShader);
+    m_pbrManager = new PbrManager();
     m_pbrManager->setupBrdfLUTTexture(quad_vao, brdfShader);
 
     // Shadowmap setup
@@ -79,6 +74,16 @@ RenderManager::~RenderManager()
     {
         delete m_pbrSources[i];
     }
+}
+
+// TODO: default gradient environment map
+
+void RenderManager::updateEnvironmentTexture(const Texture &newTexture)
+{
+    m_pbrManager->m_environmentTexture = newTexture;
+    m_pbrManager->setupCubemap(cube, hdrToCubemapShader);
+    m_pbrManager->setupIrradianceMap(cube, irradianceShader);
+    m_pbrManager->setupPrefilterMap(cube, prefilterShader);
 }
 
 glm::vec3 RenderManager::getWorldOrigin()
@@ -544,7 +549,7 @@ void RenderManager::renderDeferredShading()
     skyboxShader.setVec3("sunColor", m_sunColor * m_sunIntensity);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(skyboxShader.id, "environmentMap"), 0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->m_skyboxTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_pbrManager->envCubemap);
     cube->draw(skyboxShader);
 
     // TODO: frustum culling

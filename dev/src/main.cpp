@@ -167,6 +167,13 @@ int main()
     // terrain.m_playerPos = character.m_position;
     renderManager->addRenderable(&terrain);
 
+    // environment map
+    std::string path = resourceManager->m_executablePath + "/assets/hdr_skybox/skybox-7.hdr";
+    TextureParams textureParams;
+    textureParams.dataType = TextureDataType::Float32;
+    Texture envTexture = resourceManager->textureFromFile(textureParams, path, path);
+    renderManager->updateEnvironmentTexture(envTexture);
+
     enigine.start();
 
     return 0;

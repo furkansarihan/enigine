@@ -4,12 +4,13 @@
 #include "../base_ui.h"
 #include "../../render_manager/render_manager.h"
 #include "../../input_manager/input_manager.h"
+#include "../../update_manager/update_manager.h"
 #include "../../external/imfilebrowser/imfilebrowser.h"
 
 #include <sstream>
 #include <functional>
 
-class RenderUI : public BaseUI
+class RenderUI : public BaseUI, public Updatable
 {
 public:
     RenderUI(InputManager *inputManager, RenderManager *renderManager, ResourceManager *resourceManager);
@@ -21,6 +22,7 @@ public:
     ImGui::FileBrowser m_fileDialog;
 
     RenderSource *m_selectedSource;
+    bool m_drawSelectedSourceAABB;
     bool m_followSelectedSource;
     glm::vec2 m_lastSelectScreenPosition;
     int m_selectDepth;
@@ -39,6 +41,8 @@ public:
     glm::vec3 m_followOffset;
 
     void render() override;
+    void update(float deltaTime) override;
+
     void keyListener(GLFWwindow *window, int key, int scancode, int action, int mods);
     void mouseButtonListener(GLFWwindow *window, int button, int action, int mods);
     void mouseScrollListener(GLFWwindow *window, double xoffset, double yoffset);
@@ -66,6 +70,7 @@ public:
 
 private:
     void setupDrawNormals();
+    void updateEnvironmentTexture(std::string path);
     void addRenderSource(std::string path);
 };
 

@@ -9,18 +9,55 @@
 class Model;
 #include "../model/model.h"
 
-struct TextureLoadParams
+enum class TextureDataType
 {
-    std::vector<void *> data;
-    int width, height, nrComponents;
-    bool anisotropicFiltering;
+    UnsignedByte,
+    Float16,
+    Float32
+};
 
-    TextureLoadParams(std::vector<void *> data, int width, int height, int nrComponents, bool anisotropicFiltering)
-        : data(data),
-          width(width),
-          height(height),
-          nrComponents(nrComponents),
-          anisotropicFiltering(anisotropicFiltering) {}
+enum class TextureWrapMode
+{
+    ClampToEdge,
+    ClampToBorder,
+    Repeat,
+};
+
+enum class TextureFilterMode
+{
+    Nearest,
+    Linear
+};
+
+struct TextureParams
+{
+    TextureDataType dataType;
+    TextureWrapMode wrapModeS;
+    TextureWrapMode wrapModeT;
+    TextureFilterMode minFilter;
+    TextureFilterMode magFilter;
+    bool anisotropicFiltering;
+    float maxAnisotropy;
+    bool generateMipmaps;
+
+    TextureParams(TextureDataType dataType = TextureDataType::UnsignedByte,
+                  TextureWrapMode wrapModeS = TextureWrapMode::Repeat,
+                  TextureWrapMode wrapModeT = TextureWrapMode::Repeat,
+                  TextureFilterMode minFilter = TextureFilterMode::Linear,
+                  TextureFilterMode magFilter = TextureFilterMode::Linear,
+                  bool anisotropicFiltering = false,
+                  float maxAnisotropy = 4.0f,
+                  bool generateMipmaps = false)
+        : dataType(dataType),
+          anisotropicFiltering(anisotropicFiltering),
+          wrapModeS(wrapModeS),
+          wrapModeT(wrapModeT),
+          minFilter(minFilter),
+          magFilter(magFilter),
+          maxAnisotropy(maxAnisotropy),
+          generateMipmaps(generateMipmaps)
+    {
+    }
 };
 
 class ResourceManager
@@ -37,15 +74,14 @@ public:
     Model *getModel(const std::string &path, bool isCopy = false);
     Model *getModelFullPath(const std::string &fullPath, bool isCopy = false);
     void disposeModel(std::string fullPath);
-    Texture getTexture(const Model &model, const std::string &path, const std::string &typeName);
-    void textureFromMemory(Texture &texture, const aiTexture *embeddedTexture);
-    void textureFromFile(Texture &texture, const char *path, const std::string &directory);
+    Texture textureFromMemory(const TextureParams &params, const std::string &key, void *buffer, unsigned int bufferSize);
+    Texture textureFromFile(const TextureParams &params, const std::string &key, const std::string &path);
     Texture getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering = false);
-    unsigned int loadTexture(TextureLoadParams params);
-    unsigned int loadTextureArray(TextureLoadParams params);
+    void loadTexture(Texture &texture, const TextureParams &params, void *data);
+    void loadTextureArray(Texture &texture, std::vector<void *> data);
 
 private:
-    void setupAnisotropicFiltering();
+    void setupAnisotropicFiltering(float maxAnisotropy);
 };
 
 #endif /* resource_manager_hpp */

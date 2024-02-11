@@ -54,81 +54,79 @@ void ResourceManager::disposeModel(std::string fullPath)
     m_models.erase(fullPath);
 }
 
-Texture ResourceManager::getTexture(const Model &model, const std::string &path, const std::string &typeName)
+Texture ResourceManager::textureFromMemory(const TextureParams &params, const std::string &key,
+                                           void *buffer, unsigned int bufferSize)
 {
-    const aiTexture *embeddedTexture = model.m_scene->GetEmbeddedTexture(path.c_str());
-
-    // embedded texture path
-    std::string refPath = path;
-    if (embeddedTexture != nullptr)
-        refPath = model.m_path + path;
-
-    if (m_textures.find(refPath) != m_textures.end())
-    {
-        // std::cout << "ResourceManager: found loaded texture: path: " << path << std::endl;
-        return m_textures[refPath];
-    }
+    if (m_textures.find(key) != m_textures.end())
+        return m_textures[key];
 
     Texture texture;
-    texture.type = typeName;
-
-    if (embeddedTexture != nullptr)
-        textureFromMemory(texture, embeddedTexture);
+    // TODO: data type?
+    void *data;
+    if (params.dataType == TextureDataType::UnsignedByte)
+    {
+        data = stbi_load_from_memory((const stbi_uc *)buffer,
+                                     bufferSize,
+                                     &texture.width,
+                                     &texture.height,
+                                     &texture.nrComponents, 0);
+    }
     else
-        textureFromFile(texture, path.c_str(), model.directory);
+    {
+        // TODO: data type?
+        data = stbi_loadf_from_memory((const stbi_uc *)buffer,
+                                      bufferSize,
+                                      &texture.width,
+                                      &texture.height,
+                                      &texture.nrComponents, 0);
+    }
 
-    m_textures[refPath] = texture;
+    if (data)
+    {
+        loadTexture(texture, params, data);
+        stbi_image_free(data);
+    }
+    else
+        std::cout << "ResourceManager: texture failed to load from memory" << std::endl;
 
+    m_textures[key] = texture;
     return texture;
 }
 
-void ResourceManager::textureFromMemory(Texture &texture, const aiTexture *embeddedTexture)
+Texture ResourceManager::textureFromFile(const TextureParams &params, const std::string &key,
+                                         const std::string &path)
 {
-    int w, h, nrComponents;
-    void *pData = embeddedTexture->pcData;
-    unsigned int bufferSize = embeddedTexture->mWidth;
+    if (m_textures.find(key) != m_textures.end())
+        return m_textures[key];
 
-    void *data = stbi_load_from_memory((const stbi_uc *)pData, bufferSize, &w, &h, &nrComponents, 0);
-    if (data)
+    Texture texture;
+    void *data;
+    if (params.dataType == TextureDataType::UnsignedByte)
     {
-        std::vector<void *> tdata;
-        tdata.push_back(data);
-        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, true));
-        texture.nrComponents = nrComponents;
-        texture.width = w;
-        texture.height = h;
+        data = stbi_load(path.c_str(),
+                         &texture.width,
+                         &texture.height,
+                         &texture.nrComponents, 0);
     }
     else
     {
-        std::cout << "ResourceManager: texture failed to load from memory" << std::endl;
+        // TODO: data type?
+        data = stbi_loadf(path.c_str(),
+                          &texture.width,
+                          &texture.height,
+                          &texture.nrComponents, 0);
     }
 
-    stbi_image_free(data);
-}
-
-void ResourceManager::textureFromFile(Texture &texture, const char *path, const std::string &directory)
-{
-    std::string filename = std::string(path);
-    filename = directory + '/' + filename;
-    std::cout << filename << std::endl;
-
-    int w, h, nrComponents;
-    void *data = stbi_load(filename.c_str(), &w, &h, &nrComponents, 0);
     if (data)
     {
-        std::vector<void *> tdata;
-        tdata.push_back(data);
-        texture.id = loadTexture(TextureLoadParams(tdata, w, h, nrComponents, true));
-        texture.nrComponents = nrComponents;
-        texture.width = w;
-        texture.height = h;
+        loadTexture(texture, params, data);
+        stbi_image_free(data);
     }
     else
-    {
         std::cout << "ResourceManager: texture failed to load at path: " << path << std::endl;
-    }
 
-    stbi_image_free(data);
+    m_textures[key] = texture;
+    return texture;
 }
 
 Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering)
@@ -162,7 +160,7 @@ Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, 
     texture.width = tWidth;
     texture.height = tHeight;
     texture.nrComponents = tNrComponents;
-    texture.id = loadTextureArray(TextureLoadParams(tdata, tWidth, tHeight, tNrComponents, anisotropicFiltering));
+    loadTextureArray(texture, tdata);
     std::cout << "ResourceManager: loaded texture: " << texture.id << std::endl;
 
     for (int i = 0; i < nrTextures; i++)
@@ -171,13 +169,14 @@ Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, 
     return texture;
 }
 
-unsigned int ResourceManager::loadTextureArray(TextureLoadParams params)
+// TODO: TextureParams
+void ResourceManager::loadTextureArray(Texture &texture, std::vector<void *> data)
 {
-    int nrTextures = params.data.size();
+    int nrTextures = data.size();
 
     GLenum iformat;
     GLenum tformat;
-    switch (params.nrComponents)
+    switch (texture.nrComponents)
     {
     case 1:
         iformat = GL_R8;
@@ -195,16 +194,15 @@ unsigned int ResourceManager::loadTextureArray(TextureLoadParams params)
         tformat = GL_RGBA;
         break;
     default:
-        std::cout << "ResourceManager: loadTextureArray: " << params.nrComponents << " component is not implemented" << std::endl;
+        std::cout << "ResourceManager: loadTextureArray: " << texture.nrComponents << " component is not implemented" << std::endl;
     }
 
-    unsigned int textureArrayId = 0;
-    glGenTextures(1, &textureArrayId);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayId);
+    glGenTextures(1, &texture.id);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, texture.id);
 
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, iformat, params.width, params.height, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, iformat, texture.width, texture.height, nrTextures, 0, tformat, GL_UNSIGNED_BYTE, NULL);
     for (int i = 0; i < nrTextures; i++)
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, i, params.width, params.height, 1, tformat, GL_UNSIGNED_BYTE, params.data[i]);
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, i, texture.width, texture.height, 1, tformat, GL_UNSIGNED_BYTE, data[i]);
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -213,64 +211,148 @@ unsigned int ResourceManager::loadTextureArray(TextureLoadParams params)
 
     glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
-    if (params.anisotropicFiltering)
-        setupAnisotropicFiltering();
-
-    return textureArrayId;
+    setupAnisotropicFiltering(4.f);
 }
 
-unsigned int ResourceManager::loadTexture(TextureLoadParams params)
+void ResourceManager::loadTexture(Texture &texture, const TextureParams &params, void *data)
 {
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    glGenTextures(1, &texture.id);
+    glBindTexture(GL_TEXTURE_2D, texture.id);
 
-    switch (params.nrComponents)
+    // internal format, format, data type
+    unsigned int internalFormat;
+    unsigned int format;
+    unsigned int dataType;
+    if (params.dataType == TextureDataType::UnsignedByte)
     {
-    case 1:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, params.width, params.height, 0, GL_RED, GL_UNSIGNED_BYTE, params.data[0]);
-        break;
-    case 2:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, params.width, params.height, 0, GL_RG, GL_UNSIGNED_BYTE, params.data[0]);
-    case 3:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, params.width, params.height, 0, GL_RGB, GL_UNSIGNED_BYTE, params.data[0]);
-        break;
-    case 4:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, params.width, params.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, params.data[0]);
-        break;
-    default:
-        std::cout << "ResourceManager: loadTexture: " << params.nrComponents << " component is not implemented" << std::endl;
+        if (texture.nrComponents == 1)
+        {
+            internalFormat = GL_RED;
+            format = GL_RED;
+        }
+        else if (texture.nrComponents == 2)
+        {
+            internalFormat = GL_RG;
+            format = GL_RG;
+        }
+        else if (texture.nrComponents == 3)
+        {
+            internalFormat = GL_RGB;
+            format = GL_RGB;
+        }
+        else if (texture.nrComponents == 4)
+        {
+            internalFormat = GL_RGBA;
+            format = GL_RGBA;
+        }
+        dataType = GL_UNSIGNED_BYTE;
+    }
+    else
+    {
+        if (texture.nrComponents == 1)
+        {
+            if (params.dataType == TextureDataType::Float16)
+                internalFormat = GL_R16F;
+            if (params.dataType == TextureDataType::Float32)
+                internalFormat = GL_R32F;
+
+            format = GL_RED;
+        }
+        else if (texture.nrComponents == 2)
+        {
+            if (params.dataType == TextureDataType::Float16)
+                internalFormat = GL_RG16F;
+            if (params.dataType == TextureDataType::Float32)
+                internalFormat = GL_RG32F;
+
+            format = GL_RG;
+        }
+        else if (texture.nrComponents == 3)
+        {
+            if (params.dataType == TextureDataType::Float16)
+                internalFormat = GL_RGB16F;
+            if (params.dataType == TextureDataType::Float32)
+                internalFormat = GL_RGB32F;
+
+            format = GL_RGB;
+        }
+        else if (texture.nrComponents == 4)
+        {
+            if (params.dataType == TextureDataType::Float16)
+                internalFormat = GL_RGBA16F;
+            if (params.dataType == TextureDataType::Float32)
+                internalFormat = GL_RGBA32F;
+
+            format = GL_RGBA;
+        }
+        dataType = GL_FLOAT;
     }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, texture.width, texture.height, 0, format, dataType, data);
 
-    glGenerateMipmap(GL_TEXTURE_2D);
+    // min filter
+    if (params.generateMipmaps)
+    {
+        if (params.minFilter == TextureFilterMode::Nearest)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+        else if (params.minFilter == TextureFilterMode::Linear)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    }
+    else
+    {
+        if (params.minFilter == TextureFilterMode::Nearest)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        else if (params.minFilter == TextureFilterMode::Linear)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    }
+
+    // mag filter
+    if (params.magFilter == TextureFilterMode::Nearest)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    else if (params.magFilter == TextureFilterMode::Linear)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+
+    // wrap s
+    if (params.wrapModeS == TextureWrapMode::ClampToEdge)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    else if (params.wrapModeS == TextureWrapMode::ClampToBorder)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    else if (params.wrapModeS == TextureWrapMode::Repeat)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+    // wrap t
+    if (params.wrapModeT == TextureWrapMode::ClampToEdge)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    else if (params.wrapModeT == TextureWrapMode::ClampToBorder)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    else if (params.wrapModeT == TextureWrapMode::Repeat)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    if (params.generateMipmaps)
+        glGenerateMipmap(GL_TEXTURE_2D);
 
     if (params.anisotropicFiltering)
-        setupAnisotropicFiltering();
+        setupAnisotropicFiltering(params.maxAnisotropy);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    return textureID;
 }
 
-void ResourceManager::setupAnisotropicFiltering()
+void ResourceManager::setupAnisotropicFiltering(float maxAnisotropy)
 {
+    // TODO: check once?
     if (!glewIsSupported("GL_EXT_texture_filter_anisotropic"))
     {
         std::cerr << "ResourceManager: Anisotropic filtering is not supported" << std::endl;
         return;
     }
 
-    GLfloat maxAnisotropy;
-    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
-    // std::cout << "ResourceManager: Max anisotropy supported: " << maxAnisotropy << std::endl;
+    GLfloat maxSupported;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxSupported);
+    // std::cout << "ResourceManager: Max anisotropy supported: " << maxSupported << std::endl;
 
-    float amount = std::min(4.0f, maxAnisotropy);
+    float amount = std::min(maxAnisotropy, maxSupported);
 
     glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
 }

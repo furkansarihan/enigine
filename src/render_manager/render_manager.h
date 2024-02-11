@@ -255,8 +255,8 @@ public:
     glm::vec3 m_depthNearPlaneCenter;
 
     // TODO: light source
-    glm::vec3 m_sunColor = glm::vec3(3.5f, 4.1f, 4.5f);
-    float m_sunIntensity = 1.5f;
+    glm::vec3 m_sunColor = glm::vec3(1.f, 1.f, 1.f);
+    float m_sunIntensity = 10.f;
     float m_lightPower = 10.0;
 
     glm::vec3 m_shadowBias;
@@ -282,6 +282,8 @@ public:
     void renderBlend();
     void renderTransmission();
     void renderPostProcess();
+
+    void updateEnvironmentTexture(const Texture &newTexture);
 
     void addSource(RenderSource *source);
     void removeSource(RenderSource *source);

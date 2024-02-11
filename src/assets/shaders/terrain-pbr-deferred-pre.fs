@@ -451,7 +451,7 @@ void main()
         return;
     }
 
-    // TODO: should allign with base renderer
+    // TODO: should align with base renderer
     vec3 tangentNormal = sampleTex(texture_normal1, hs, pTexCoords) * 2.0 - 1.0;
     vec3 Q1  = dFdx(pWorldPos);
     vec3 Q2  = dFdy(pWorldPos);
