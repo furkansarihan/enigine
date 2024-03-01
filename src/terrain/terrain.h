@@ -94,8 +94,8 @@ public:
     float m_cellScaleMult = 1.0f;
     bool m_drawHeightCells = false;
 
-    void renderDepth();
-    void renderColor();
+    void renderDepth() override;
+    void renderColor() override;
 
     void drawDepth(Shader terrainShadow, glm::mat4 view, glm::mat4 projection, glm::vec3 viewPos);
     void drawColor(PbrManager *pbrManager, Shader terrainShader, glm::vec3 lightPosition, glm::vec3 lightColor, float lightPower,

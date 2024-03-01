@@ -22,6 +22,8 @@ uniform mat4 view;
 uniform mat4 model;
 uniform mat4 u_meshOffset;
 
+uniform bool u_flipNormals;
+
 void main()
 {
     TexCoords = aTexCoords;
@@ -32,15 +34,20 @@ void main()
 
     gl_Position = projection * vec4(ViewPos, 1.0);
 
+    vec3 normal = aNormal;
+
+    if (u_flipNormals)
+        normal *= -1.0;
+
     // world space normals
     mat3 normalMatrix = transpose(inverse(mat3(TransformedModel)));
-    Normal = normalize(normalMatrix * aNormal);
+    Normal = normalize(normalMatrix * normal);
     Tangent = normalize(normalMatrix * aTangent);
     Bitangent = cross(Normal, Tangent);
 
     // view space normals
     mat3 viewNormalMatrix = transpose(inverse(mat3(view * TransformedModel)));
-    ViewNormal = normalize(viewNormalMatrix * aNormal);
+    ViewNormal = normalize(viewNormalMatrix * normal);
 
     vec3 viewT = normalize(viewNormalMatrix * aTangent);
     viewT = normalize(viewT - dot(viewT, ViewNormal) * ViewNormal);

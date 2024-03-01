@@ -74,6 +74,7 @@ public:
     Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material *material);
     ~Mesh();
     // Attributes
+    unsigned int VAO, VBO, EBO;
     std::string name;
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
@@ -81,13 +82,11 @@ public:
     glm::vec3 aabbMax;
     Material *material;
     glm::mat4 offset = glm::mat4(1.0f);
-    unsigned int VAO;
     // Functions
     void draw(Shader shader);
     void drawInstanced(Shader shader, int instanceCount);
 
 private:
-    unsigned int VBO, EBO;
     void setupMesh();
     void bindTextures(Shader shader);
     void unbindTextures(Shader shader);

@@ -66,7 +66,11 @@ void Model::loadModel(std::string const &path)
 {
     // read file via ASSIMP
     m_scene = m_importer->ReadFile(path,
-                                   aiProcess_Triangulate |
+                                   aiProcess_JoinIdenticalVertices |
+                                       aiProcess_ImproveCacheLocality |
+                                       aiProcess_OptimizeGraph |
+                                       aiProcess_RemoveComponent |
+                                       aiProcess_Triangulate |
                                        aiProcess_FlipUVs |
                                        aiProcess_CalcTangentSpace |
                                        aiProcess_GenBoundingBoxes);
@@ -138,11 +142,9 @@ void Model::processNode(aiNode *node, glm::mat4 parentTransform)
 
 Mesh *Model::processMesh(aiMesh *mesh)
 {
-    // data to fill
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
-    // Walk through each of the mesh's vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
         Vertex vertex;
@@ -151,7 +153,7 @@ Mesh *Model::processMesh(aiMesh *mesh)
         if (mesh->HasNormals())
             vertex.normal = AssimpToGLM::getGLMVec3(mesh->mNormals[i]);
         // texture coordinates
-        if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
+        if (mesh->mTextureCoords[0])
         {
             glm::vec2 vec;
             // a vertex can contain up to 8 different texture coordinates. We thus make the assumption that we won't
@@ -163,7 +165,7 @@ Mesh *Model::processMesh(aiMesh *mesh)
         else
             vertex.texCoords = glm::vec2(0.0f, 0.0f);
         // tangent
-        if (mesh->mTangents) // does the mesh contain Tangents
+        if (mesh->mTangents)
         {
             glm::vec3 vector;
             vector.x = mesh->mTangents[i].x;
@@ -172,7 +174,7 @@ Mesh *Model::processMesh(aiMesh *mesh)
             vertex.tangent = vector;
         }
         // bitangent
-        if (mesh->mBitangents) // does the mesh contain Bitangents
+        if (mesh->mBitangents)
         {
             glm::vec3 vector;
             vector.x = mesh->mBitangents[i].x;
@@ -182,11 +184,10 @@ Mesh *Model::processMesh(aiMesh *mesh)
         }
         vertices.push_back(vertex);
     }
-    // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex indices.
+    // indices
     for (unsigned int i = 0; i < mesh->mNumFaces; i++)
     {
         aiFace face = mesh->mFaces[i];
-        // retrieve all indices of the face and store them in the indices vector
         for (unsigned int j = 0; j < face.mNumIndices; j++)
             indices.push_back(face.mIndices[j]);
     }

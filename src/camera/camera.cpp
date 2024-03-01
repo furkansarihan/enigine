@@ -41,6 +41,9 @@ glm::mat4 Camera::getProjectionMatrix(float width, float height)
 // TODO: EditorCamera
 void Camera::processInput(GLFWwindow *window, float deltaTime)
 {
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        deltaTime *= 0.2f;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         processKeyboard(FORWARD, deltaTime);
 
@@ -52,7 +55,7 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         processKeyboard(RIGHT, deltaTime);
-    
+
     // TODO: move?
     // if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
