@@ -13,8 +13,8 @@
 
 struct frustum
 {
-    float near;
-    float far;
+    float fnear;
+    float ffar;
     float farExtend;
     float fov;
     float ratio;

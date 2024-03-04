@@ -104,6 +104,18 @@ struct RagdollSize
                spineHeight == other.spineHeight &&
                headHeight == other.headHeight;
     }
+
+    bool operator!=(const RagdollSize &other) const
+    {
+        return upperArmLength != other.upperArmLength ||
+               lowerArmLength != other.lowerArmLength ||
+               shoulderOffset != other.shoulderOffset ||
+               upperLegLength != other.upperLegLength ||
+               lowerLegLength != other.lowerLegLength ||
+               pelvisHeight != other.pelvisHeight ||
+               spineHeight != other.spineHeight ||
+               headHeight != other.headHeight;
+    }
 };
 
 class Ragdoll

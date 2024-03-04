@@ -29,15 +29,11 @@ enum ProjectionMode
     Ortho,
 };
 
-// Default camera values
-const float NEAR = 0.1f;
-const float FAR = 20000.0f;
-
 class Camera
 {
 public:
     // Contructors
-    Camera(glm::vec3 position, glm::vec3 up, float near = NEAR, float far = FAR);
+    Camera(glm::vec3 position, glm::vec3 up, float near = 0.1f, float far = 20000.0f);
     ~Camera();
     // Camera Attributes
     glm::vec3 position;
@@ -47,8 +43,8 @@ public:
     glm::vec3 worldUp;
     ProjectionMode projectionMode = ProjectionMode::Perspective;
     glm::vec3 frustumPoints[8];
-    float near;
-    float far;
+    float m_near;
+    float m_far;
     float fov = M_PI_4;
     float scaleOrtho = 1.f;
     // Camera options

@@ -1,7 +1,10 @@
 #include "playable_character.h"
 
-PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
-    : Character(renderManager, taskManager, resourceManager, physicsWorld, followCamera),
+#include <thread>
+#include <chrono>
+
+PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera)
+    : Character(renderManager, resourceManager, physicsWorld, followCamera),
       m_soundEngine(soundEngine),
       m_window(window),
       m_followOffsetAim(glm::vec3(-0.4f, 1.6f, -1.f)),
@@ -13,7 +16,7 @@ PCharacter::PCharacter(ShaderManager *shaderManager, RenderManager *renderManage
     try
     {
         // TODO: resource manager
-        m_fireSoundBuffer = m_soundEngine->loadSound((resourceManager->m_executablePath + "/assets/sounds/colt-fire.mp3").c_str());
+        m_fireSoundBuffer = m_soundEngine->loadWav((resourceManager->m_executablePath + "/assets/sounds/colt-fire.wav").c_str());
     }
     catch (const char *e)
     {
@@ -99,24 +102,8 @@ void PCharacter::update(float deltaTime)
                         m_controller->m_actionState.left ||
                         m_controller->m_actionState.right ||
                         m_controller->m_actionState.jump;
-        // TODO: better way?
-        if (anyInput)
-        {
-            if (m_passengerInfo.state == PassengerState::entering)
-                cancelEnterCar();
-            else if (m_passengerInfo.state == PassengerState::exiting)
-                interruptExitCar();
-        }
 
-        if (!m_controlCharacter || m_passengerInfo.state != PassengerState::outside)
-        {
-            m_controller->m_actionState.forward = false;
-            m_controller->m_actionState.backward = false;
-            m_controller->m_actionState.left = false;
-            m_controller->m_actionState.right = false;
-            m_controller->m_actionState.jump = false;
-        }
-        else if (m_controlCharacter)
+        if (m_controlCharacter)
             m_controller->updateFollowVectors();
     }
 
@@ -164,32 +151,10 @@ void PCharacter::update(float deltaTime)
         applyImpulseChest(m_followCamera->front * m_ragdolActivateFactor);
     }
 
-    if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS)
-    {
-        float now = (float)glfwGetTime();
-        if (m_passengerInfo.state == PassengerState::outside)
-        {
-            if (now - m_lastCarRequest > m_carRequestLimit)
-            {
-                m_lastCarRequest = now;
-                enterNearestCar();
-            }
-        }
-        else if (m_passengerInfo.state == PassengerState::inside)
-        {
-            if (now - m_lastCarRequest > m_carRequestLimit)
-            {
-                m_lastCarRequest = now;
-                exitFromCar();
-            }
-        }
-    }
-
     // TODO: single key event
     if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
     {
         m_controller->m_aimLocked = true;
-        cancelEnterCar();
     }
     if (glfwGetKey(m_window, GLFW_KEY_T) == GLFW_PRESS)
         m_controller->m_aimLocked = false;

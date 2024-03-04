@@ -1,8 +1,6 @@
 #ifndef particle_ui_hpp
 #define particle_ui_hpp
 
-#include <mach/mach.h>
-
 #include "../base_ui.h"
 #include "../../particle_engine/particle_engine.h"
 

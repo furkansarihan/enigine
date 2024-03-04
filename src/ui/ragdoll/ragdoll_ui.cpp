@@ -145,7 +145,7 @@ void RagdollUI::renderRagdollSize()
     ImGui::DragFloat("upperArmLength", &size.upperArmLength, 0.01f);
     ImGui::DragFloat("lowerLegLength", &size.lowerLegLength, 0.01f);
     ImGui::DragFloat("upperLegLength", &size.upperLegLength, 0.01f);
-    if (size != copy)
+    if (m_ragdoll->m_size != copy)
     {
         m_ragdoll->updateJointSizes();
         m_ragdoll->updateJointFrames();

@@ -27,6 +27,8 @@ void ResourceUI::renderModels()
                 Material &material = *mesh.material;
                 renderMaterial(model, material, i);
             }
+
+            ImGui::TreePop();
         }
     }
 

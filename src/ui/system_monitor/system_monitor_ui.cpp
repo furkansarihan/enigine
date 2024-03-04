@@ -7,5 +7,10 @@ void SystemMonitorUI::render()
 
     ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("FPS: %.1f", io.Framerate);
-    ImGui::Text("RAM: %.2f MB", static_cast<float>(m_info->resident_size) / (1024.0f * 1024.0f));
+    ImGui::Text("RAM: %.2f MB", static_cast<float>(m_ramUsage) / (1024.0f * 1024.0f));
+}
+
+void SystemMonitorUI::update(float deltaTime)
+{
+    m_ramUsage = CommonUtil::getRamUsage();
 }

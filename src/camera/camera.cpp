@@ -4,8 +4,8 @@
 Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float near, float far)
     : position(position),
       worldUp(worldUp),
-      near(near),
-      far(far)
+      m_near(near),
+      m_far(far)
 {
     processMouseMovement(0, 0, true);
 }
@@ -30,11 +30,11 @@ glm::mat4 Camera::getProjectionMatrix(float width, float height)
     {
         float halfW = (width / 2) * scaleOrtho;
         float halfH = (height / 2) * scaleOrtho;
-        return glm::ortho(-halfW, halfW, -halfH, halfH, near, far);
+        return glm::ortho(-halfW, halfW, -halfH, halfH, m_near, m_far);
     }
     else
     {
-        return glm::perspective(fov, width / height, near, far);
+        return glm::perspective(fov, width / height, m_near, m_far);
     }
 }
 
@@ -127,8 +127,8 @@ void Camera::updateFrustumPoints(float width, float height)
 
     up = normalize(cross(right, front));
 
-    glm::vec3 fc = position + front * far;
-    glm::vec3 nc = position + front * near;
+    glm::vec3 fc = position + front * m_far;
+    glm::vec3 nc = position + front * m_near;
 
     float near_height;
     float near_width;
@@ -145,9 +145,9 @@ void Camera::updateFrustumPoints(float width, float height)
     else
     {
         float ratio = width / height;
-        near_height = tan(fov / 2.0f) * near;
+        near_height = tan(fov / 2.0f) * m_near;
         near_width = near_height * ratio;
-        far_height = tan(fov / 2.0f) * far;
+        far_height = tan(fov / 2.0f) * m_far;
         far_width = far_height * ratio;
     }
 

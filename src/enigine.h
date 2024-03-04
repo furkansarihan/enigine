@@ -40,7 +40,6 @@
 #include "character/np_character.h"
 #include "resource_manager/resource_manager.h"
 #include "car_controller/car_controller.h"
-#include "task_manager/task_manager.h"
 #include "render_manager/render_manager.h"
 #include "transform/transform.h"
 #include "update_manager/update_manager.h"
@@ -59,11 +58,9 @@ public:
     ResourceManager *resourceManager;
     RenderManager *renderManager;
     UpdateManager *updateManager;
-    TaskManager *taskManager;
     InputManager *inputManager;
 
     GLFWwindow *window;
-    task_basic_info t_info;
     float deltaTime;
 
     Camera *mainCamera;

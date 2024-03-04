@@ -1,5 +1,0 @@
-[requires]
-enigine/0.0.1@user/dev
-
-[generators]
-cmake

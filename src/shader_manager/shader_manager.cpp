@@ -1,6 +1,7 @@
 #include "shader_manager.h"
 
 #include <filesystem>
+#include <iostream>
 
 ShaderManager::ShaderManager(std::string executablePath)
     : m_executablePath(executablePath)
@@ -30,8 +31,11 @@ void ShaderManager::initShader(const ShaderDynamic &shaderDynamic)
 {
     std::filesystem::path vsPath = m_executablePath + '/' + shaderDynamic.m_vsPath;
     std::filesystem::path fsPath = m_executablePath + '/' + shaderDynamic.m_fsPath;
-    std::string vsCode = FileManager::read(vsPath);
-    std::string fsCode = FileManager::read(fsPath);
+    std::string vsPathStr = std::string(m_executablePath + '/' + shaderDynamic.m_vsPath);
+    std::string fsPathStr = std::string(m_executablePath + '/' + shaderDynamic.m_fsPath);
+    std::cout << vsPathStr << std::endl;
+    std::string vsCode = FileManager::read(vsPathStr);
+    std::string fsCode = FileManager::read(fsPathStr);
     std::string vsDirectory = vsPath.parent_path().string();
     std::string fsDirectory = fsPath.parent_path().string();
     shaderDynamic.m_shader->init(processIncludes(vsDirectory, vsCode), processIncludes(fsDirectory, fsCode));

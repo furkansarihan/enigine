@@ -13,7 +13,6 @@ Enigine::~Enigine()
     delete shaderManager;
     delete resourceManager;
     delete renderManager;
-    delete taskManager;
     delete inputManager;
     delete mainCamera;
 
@@ -60,13 +59,13 @@ int Enigine::init()
     const char *glsl_version = "#version 410";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
     // Create window with graphics context
     // TODO: EnigineBuilder()
-    window = glfwCreateWindow(1500, 1200, "enigine", NULL, NULL);
+    window = glfwCreateWindow(1280, 720, "enigine", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -125,7 +124,6 @@ int Enigine::init()
     mainCamera = new Camera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     renderManager = new RenderManager(shaderManager, mainCamera, &cube, &quad, &icosahedron, q_vao);
     updateManager = new UpdateManager();
-    taskManager = new TaskManager();
     inputManager = new InputManager(window);
 
     // Time
@@ -149,7 +147,7 @@ int Enigine::init()
 
     // UI
     rootUI = new RootUI();
-    systemMonitorUI = new SystemMonitorUI(&t_info);
+    systemMonitorUI = new SystemMonitorUI();
     shadowmapUI = new ShadowmapUI(renderManager->m_shadowManager, renderManager->m_shadowmapManager);
     cameraUI = new CameraUI(mainCamera);
     resourceUI = new ResourceUI(resourceManager);
@@ -163,6 +161,7 @@ int Enigine::init()
     rootUI->m_uiList.push_back(physicsWorldUI);
 
     updateManager->add(renderUI);
+    updateManager->add(systemMonitorUI);
 
     return 0;
 }
@@ -171,9 +170,6 @@ void Enigine::start()
 {
     while (!glfwWindowShouldClose(window))
     {
-        // System monitor
-        CommonUtil::refreshSystemMonitor(t_info);
-
         // Calculate deltaTime
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -202,9 +198,6 @@ void Enigine::start()
         listenerOrientation.push_back(mainCamera->up.y);
         listenerOrientation.push_back(mainCamera->up.z);
         soundEngine->setListenerOrientation(&listenerOrientation);
-
-        // Update tasks - should called at last - ?
-        taskManager->update();
 
         // render manager - start
         renderManager->setupFrame(window);

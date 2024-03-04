@@ -38,16 +38,16 @@ void ShadowManager::updateSplitDist(float nd, float fd)
 {
     float lambda = m_splitWeight;
     float ratio = fd / nd;
-    m_frustums[0].near = nd;
+    m_frustums[0].fnear = nd;
 
     for (int i = 1; i < m_splitCount; i++)
     {
         float si = i / (float)m_splitCount;
 
-        m_frustums[i].near = lambda * (nd * powf(ratio, si)) + (1 - lambda) * (nd + (fd - nd) * si);
-        m_frustums[i - 1].far = m_frustums[i].near * 1.005f;
+        m_frustums[i].fnear = lambda * (nd * powf(ratio, si)) + (1 - lambda) * (nd + (fd - nd) * si);
+        m_frustums[i - 1].ffar = m_frustums[i].fnear * 1.005f;
     }
-    m_frustums[m_splitCount - 1].far = fd;
+    m_frustums[m_splitCount - 1].ffar = fd;
     m_frustums[m_splitCount - 1].farExtend = fd;
 }
 
@@ -60,12 +60,12 @@ void ShadowManager::updateFrustumPoints(frustum &f, glm::vec3 &center, glm::vec3
     up = normalize(cross(right, view_dir));
 
     // view_dir must be normalized
-    glm::vec3 fc = center + view_dir * f.far;
-    glm::vec3 nc = center + view_dir * f.near;
+    glm::vec3 fc = center + view_dir * f.ffar;
+    glm::vec3 nc = center + view_dir * f.fnear;
 
-    float near_height = tan(f.fov / 2.0f) * f.near;
+    float near_height = tan(f.fov / 2.0f) * f.fnear;
     float near_width = near_height * f.ratio;
-    float far_height = tan(f.fov / 2.0f) * f.far;
+    float far_height = tan(f.fov / 2.0f) * f.ffar;
     float far_width = far_height * f.ratio;
 
     f.points[0] = nc - up * near_height - right * near_width;
@@ -206,7 +206,7 @@ void ShadowManager::setupFrustum(float screenWidth, float screenHeight, glm::mat
         glm::vec3 cameraPosition = m_camera->position + worldOrigin;
         updateFrustumPoints(m_frustums[i], cameraPosition, m_camera->front);
 
-        float dist = 0.5f * (-m_frustums[i].far * projection[2][2] + projection[3][2]) / m_frustums[i].far + 0.5f;
+        float dist = 0.5f * (-m_frustums[i].ffar * projection[2][2] + projection[3][2]) / m_frustums[i].ffar + 0.5f;
         m_frustumDistances.push_back(dist);
     }
 

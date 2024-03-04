@@ -1,19 +1,21 @@
 #ifndef system_monitor_ui_hpp
 #define system_monitor_ui_hpp
 
-#include <mach/mach.h>
-
 #include "../base_ui.h"
+#include "../../update_manager/update_manager.h"
+#include "../../utils/common.h"
 
-class SystemMonitorUI : public BaseUI
+class SystemMonitorUI : public BaseUI, public Updatable
 {
 private:
-    task_basic_info *m_info;
 
 public:
-    SystemMonitorUI(task_basic_info *info) : m_info(info) {}
+    SystemMonitorUI() {}
+
+    uint64_t m_ramUsage;
 
     void render() override;
+    void update(float deltaTime) override;
 };
 
 #endif /* system_monitor_ui_hpp */

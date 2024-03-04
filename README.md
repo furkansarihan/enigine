@@ -7,18 +7,16 @@ is a 3D game engine.
 
 ## How to install?
 
-enigine uses `CMake` (build system) and `conan` (package manager).
+enigine uses `CMake` (build system) and `Conan` (package manager).
 
 1. Have C++ on your machine.
 2. Install CMake: https://cmake.org/install/
-3. Install conan: https://docs.conan.io/en/latest/installation.html
-4. Run: `build.sh`
-
-If you're not unlucky, enigine is installed on your machine at the conan cache. Now, you can create a project with the installed library as a dependency. The [examples/hello_world](examples/hello_world) project can be a starting point of your journey.
-
-## How to contribute?
-
-There is a playground project for library development at [dev](dev). Acts as a client project but enigine linked as a source rather than a library. Modify any source and run the project.
+3. Install Conan: https://docs.conan.io/2/tutorial.html
+4. Build and run.
+   ``` sh
+   cd dev
+   ./build.sh --run
+   ```
 
 ## Videos
 

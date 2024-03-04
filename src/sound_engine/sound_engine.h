@@ -7,11 +7,12 @@
 #include <iostream>
 #include <vector>
 #include <mutex>
+#include <cstdint>
 
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
-#include <sndfile.h>
+// #include <sndfile.h>
 #include <glm/glm.hpp>
 
 struct SoundSource
@@ -28,7 +29,9 @@ public:
     std::mutex m_mutex;
     bool init();
     // Buffer
-    ALuint loadSound(const char *path);
+    // TODO: resource manager
+    // TODO: mp3
+    ALuint loadWav(const char *path);
     void deleteSound(ALuint bufferId);
     // Source
     SoundSource createSource(ALuint bufferId);

@@ -6,6 +6,7 @@ set -x
 BUILD_DIR="build"
 CLEAN_BUILD=false
 BUILD_TYPE="Debug"  # Default build type is Debug
+RUN_AFTER_BUILD=false  # Default is not to run
 
 # Parse command line parameters
 for arg in "$@"; do
@@ -13,8 +14,14 @@ for arg in "$@"; do
     --clean)
       CLEAN_BUILD=true
       ;;
-    --build-type=*)
-      BUILD_TYPE="${arg#*=}"
+    --release)
+      BUILD_TYPE="Release"
+      ;;
+    --debug)
+      BUILD_TYPE="Debug"
+      ;;
+    --run)
+      RUN_AFTER_BUILD=true
       ;;
   esac
 done
@@ -32,10 +39,12 @@ fi
 
 pushd $BUILD_DIR
 
-conan install .. --build=missing
-cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+conan install .. --output-folder=. --build=missing --settings=build_type=$BUILD_TYPE
+cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
 cmake --build .
 
-bin/enigine_dev
+if [ "$RUN_AFTER_BUILD" = true ]; then
+  ./enigine_dev
+fi
 
 popd

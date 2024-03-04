@@ -12,10 +12,9 @@
 class PCharacter : public Character
 {
 public:
-    PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, TaskManager *taskManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    PCharacter(ShaderManager *shaderManager, RenderManager *renderManager, SoundEngine *soundEngine, GLFWwindow *window, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~PCharacter();
 
-    TaskManager *m_taskManager;
     SoundEngine *m_soundEngine;
     // TODO: input manager
     GLFWwindow *m_window;

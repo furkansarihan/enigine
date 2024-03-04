@@ -15,9 +15,6 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include "btBulletDynamicsCommon.h"
 
-#include "../external/jps3d/include/jps_planner/jps_planner/jps_planner.h"
-#include "../external/jps3d/include/jps_planner/distance_map_planner/distance_map_planner.h"
-
 #include "../camera/camera.h"
 #include "../model/model.h"
 #include "../ragdoll/ragdoll.h"
@@ -27,41 +24,8 @@
 #include "../utils/bullet_glm.h"
 #include "../shader_manager/shader_manager.h"
 #include "../resource_manager/resource_manager.h"
-#include "../car_controller/car_controller.h"
-class TaskManager;
-#include "../task_manager/task_manager.h"
-#include "../character_task/follow_path.h"
-#include "../character_task/enter_car.h"
-#include "../character_task/exit_car.h"
 #include "../render_manager/render_manager.h"
 #include "../update_manager/update_manager.h"
-
-struct PathResult
-{
-    bool empty = true;
-    Vec2i dim;
-    JPS::Tmap data;
-    Vec2f start;
-    Vec2f startWorld;
-    Vec2f goal;
-    vec_Vec2f path;
-};
-
-enum PassengerState
-{
-    outside,
-    entering,
-    inside,
-    exiting,
-    exitInterrupt
-};
-
-struct PassengerInfo
-{
-    PassengerState state = PassengerState::outside;
-    bool exitRequested = false;
-    CarController *car = nullptr;
-};
 
 struct MoveCircle
 {
@@ -100,7 +64,6 @@ class Character : public Updatable
 public:
     RenderManager *m_renderManager;
     RenderSource *m_renderSource;
-    TaskManager *m_taskManager;
     ResourceManager *m_resourceManager;
     ShaderManager *m_shaderManager;
     PhysicsWorld *m_physicsWorld;
@@ -110,8 +73,6 @@ public:
     Ragdoll *m_ragdoll;
     btRigidBody *m_rigidbody;
     Model *m_model;
-    PathResult m_lastCarEnterPath;
-    PassengerInfo m_passengerInfo;
     bool m_syncPositionFromPhysics = true;
 
     RenderSource *m_transform;
@@ -178,7 +139,7 @@ public:
     bool m_headFollow;
     bool m_lastHeadFollow;
 
-    Character(RenderManager *renderManager, TaskManager *taskManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
+    Character(RenderManager *renderManager, ResourceManager *resourceManager, PhysicsWorld *physicsWorld, Camera *followCamera);
     ~Character();
     void init();
     void update(float deltaTime);
@@ -204,10 +165,6 @@ public:
     void inactivateCollider();
     void checkPhysicsStateChange();
     void updateAimPoseBlendMask(float blendFactor);
-    void enterNearestCar();
-    void cancelEnterCar();
-    void interruptExitCar();
-    void exitFromCar();
 };
 
 #endif /* character_hpp */

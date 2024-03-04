@@ -1,5 +1,7 @@
 #include "update_manager.h"
 
+#include <algorithm>
+
 UpdateManager::UpdateManager()
 {
 }
