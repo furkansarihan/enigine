@@ -2,7 +2,6 @@
 *.slo
 *.lo
 *.o
-*.obj
 
 # Precompiled Headers
 *.gch
@@ -32,9 +31,10 @@
 __pycache__/*
 test_package/__pycache__/*
 test_package/build/*
-build/*
+build
 *.pyc
 tmp/
+CMakeUserPresets.json
 
 # IDE
 .vscode/*
@@ -44,5 +44,8 @@ tmp/
 .settings/*
 .ropeproject/*
 
-# 3d object assets
-!src/assets/models/*.obj
+# ImGui
+imgui.ini
+
+# macOS
+.DS_STORE

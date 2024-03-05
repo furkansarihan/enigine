@@ -63,35 +63,5 @@ private:
     ALCdevice *openALDevice;
     ALCcontext *openALContext;
     ALCboolean contextMadeCurrent;
-    // Functions
-    bool check_al_errors(const std::string &filename, const std::uint_fast32_t line);
-    template <typename alFunction, typename... Params>
-    auto alCallImpl(const char *filename,
-                    const std::uint_fast32_t line,
-                    alFunction function,
-                    Params... params)
-        -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, decltype(function(params...))>;
-    template <typename alFunction, typename... Params>
-    auto alCallImpl(const char *filename,
-                    const std::uint_fast32_t line,
-                    alFunction function,
-                    Params... params)
-        -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>;
-    bool check_alc_errors(const std::string &filename, const std::uint_fast32_t line, ALCdevice *device);
-    template <typename alcFunction, typename... Params>
-    auto alcCallImpl(const char *filename,
-                     const std::uint_fast32_t line,
-                     alcFunction function,
-                     ALCdevice *device,
-                     Params... params)
-        -> typename std::enable_if_t<std::is_same_v<void, decltype(function(params...))>, bool>;
-    template <typename alcFunction, typename ReturnType, typename... Params>
-    auto alcCallImpl(const char *filename,
-                     const std::uint_fast32_t line,
-                     alcFunction function,
-                     ReturnType &returnValue,
-                     ALCdevice *device,
-                     Params... params)
-        -> typename std::enable_if_t<!std::is_same_v<void, decltype(function(params...))>, bool>;
 };
 #endif /* sound_engine */
