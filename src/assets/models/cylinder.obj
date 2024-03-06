@@ -1,6 +1,4 @@
-# Blender v3.6.4 OBJ File: ''
-# www.blender.org
-o Cylinder
+o cylinder
 v 0.000000 -0.500000 -0.500000
 v 0.000000 0.500000 -0.500000
 v 0.191342 -0.500000 -0.461940
