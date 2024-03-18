@@ -22,6 +22,7 @@
 #include "../transform_link/transform_link.h"
 #include "../particle_engine/particle_engine.h"
 #include "../culling_manager/culling_manager.h"
+#include "../resource_manager/resource_manager.h"
 #include "../utils/common.h"
 
 #include "g_buffer.h"
@@ -179,17 +180,24 @@ public:
 class RenderManager
 {
 public:
-    RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, Model *sphere, unsigned int quad_vao);
+    RenderManager(ShaderManager *shaderManager, ResourceManager *resourceManager, Camera *camera);
     ~RenderManager();
 
     ShaderManager *m_shaderManager;
+    ResourceManager *m_resourceManager;
     Camera *m_camera;
     Camera *m_debugCamera;
-    // TODO: move?
+
+    // objects
+    Model *pointLightVolume;
+    unsigned int vbo, vao, ebo;
+    unsigned int quad_vao, quad_vbo, quad_ebo;
+
+    // common objects
     Model *cube;
     Model *quad;
     Model *sphere;
-    unsigned int quad_vao;
+    Model *icosahedron;
 
     PbrManager *m_pbrManager;
     ShadowManager *m_shadowManager;
@@ -224,11 +232,14 @@ public:
     Shader lightVolumeDebug;
     Shader shaderSSAO, shaderSSAOBlur;
 
-    // Skybox
+    // common shaders
+    Shader simpleShader, simpleDeferredShader, lineShader, textureArrayShader;
+
+    // skybox
     Shader skyboxShader;
     Shader postProcessShader;
 
-    // PBR Shaders
+    // PBR shaders
     Shader hdrToCubemapShader;
     Shader irradianceShader;
     Shader prefilterShader;

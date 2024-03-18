@@ -1,5 +1,33 @@
 #include "physics_ui.h"
 
+void PhysicsWorldUI::renderDepth()
+{
+}
+
+void PhysicsWorldUI::renderColor()
+{
+    if (!m_selectedObject)
+        return;
+
+    eTransform transform;
+    transform.setPosition(BulletGLM::getGLMVec3(m_selectedObject->getWorldTransform().getOrigin()));
+    transform.setScale(glm::vec3(0.05));
+
+    Shader &shader = m_renderManager->simpleDeferredShader;
+
+    shader.use();
+    shader.setMat4("u_meshOffset", glm::mat4(1.f));
+    shader.setMat4("view", m_renderManager->m_view);
+    shader.setMat4("projection", m_renderManager->m_projection);
+    shader.setVec3("lightDirection", m_renderManager->m_shadowManager->m_lightPos);
+    shader.setVec3("u_albedo", glm::vec4(1.f, 0.f, 1.f, 1.f));
+    shader.setMat4("model", transform.getModelMatrix());
+
+    // glDisable(GL_DEPTH_TEST);
+    m_renderManager->sphere->draw(shader);
+    // glEnable(GL_DEPTH_TEST);
+}
+
 void PhysicsWorldUI::render()
 {
     if (!ImGui::CollapsingHeader("Physics", ImGuiTreeNodeFlags_NoTreePushOnOpen))
@@ -17,35 +45,71 @@ void PhysicsWorldUI::render()
     int lines = m_debugDrawer->getLines().size();
     ImGui::DragInt("lines", &lines);
 
+    ImGui::Separator();
+
     renderRigidbodies();
+    renderSelectedObject();
+}
+
+void PhysicsWorldUI::renderSelectedObject()
+{
+    if (!m_selectedObject)
+        return;
+
+    ImGui::Text("Selected Object");
+
+    if (m_selectedObject->getInternalType() == btCollisionObject::CO_RIGID_BODY)
+    {
+        btRigidBody *rigidBody = btRigidBody::upcast(m_selectedObject);
+        if (rigidBody)
+            renderRigidbody(rigidBody, 0);
+    }
+    else if (m_selectedObject->getInternalType() == btCollisionObject::CO_SOFT_BODY)
+    {
+        btSoftBody *softBody = btSoftBody::upcast(m_selectedObject);
+        if (softBody)
+            renderSoftbody(softBody, 0);
+    }
+
+    ImGui::Separator();
 }
 
 void PhysicsWorldUI::renderRigidbodies()
 {
-    if (!ImGui::TreeNode("Rigidbodies##PhysicsWorldUI::renderRigidbodies"))
+    ImGui::Text("Collision Objects");
+
+    int objectCount = m_physicsWorld->m_dynamicsWorld->getNumCollisionObjects();
+    if (objectCount == 0)
         return;
 
-    for (int i = m_physicsWorld->m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+    float maxHeight = 200.0f;
+    float height = ImGui::GetFrameHeight() * objectCount;
+    if (height > maxHeight)
+        height = maxHeight;
+
+    ImGui::BeginChild("PhysicsWorldUI::renderRigidbodies", ImVec2(0, height), false);
+
+    for (int i = 0; i < objectCount; i++)
     {
         btCollisionObject *obj = m_physicsWorld->m_dynamicsWorld->getCollisionObjectArray()[i];
         if (!obj)
             continue;
 
-        if (obj->getInternalType() == btCollisionObject::CO_RIGID_BODY)
+        std::stringstream ss;
+        ss << obj;
+
+        if (ImGui::Selectable(ss.str().c_str(), m_selectedObject == obj))
         {
-            btRigidBody *rigidBody = btRigidBody::upcast(obj);
-            if (rigidBody)
-                renderRigidbody(rigidBody, i);
-        }
-        else if (obj->getInternalType() == btCollisionObject::CO_SOFT_BODY)
-        {
-            btSoftBody *softBody = btSoftBody::upcast(obj);
-            if (softBody)
-                renderSoftbody(softBody, i);
+            if (m_selectedObject == obj)
+                m_selectedObject = nullptr;
+            else
+                m_selectedObject = obj;
         }
     }
 
-    ImGui::TreePop();
+    ImGui::EndChild();
+
+    ImGui::Separator();
 }
 
 void PhysicsWorldUI::renderRigidbody(btRigidBody *body, int i)
@@ -92,6 +156,15 @@ void PhysicsWorldUI::renderRigidbody(btRigidBody *body, int i)
     btVector3 size = body->getCollisionShape()->getLocalScaling();
     if (VectorUI::renderVec3((std::string("localScalingSize##") + std::to_string(i)).c_str(), size, 0.1f))
         body->getCollisionShape()->setLocalScaling(size);
+
+    bool active = body->isActive();
+    if (ImGui::Checkbox("Activation", &active))
+    {
+        if (active)
+            body->activate(true);
+        else
+            body->setActivationState(0);
+    }
 }
 
 void PhysicsWorldUI::renderSoftbody(btSoftBody *body, int i)

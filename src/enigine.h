@@ -65,8 +65,6 @@ public:
 
     Camera *mainCamera;
 
-    Shader simpleShader, simpleDeferredShader, lineShader, textureArrayShader;
-
     RootUI *rootUI;
     SystemMonitorUI *systemMonitorUI;
     ShadowmapUI *shadowmapUI;
@@ -77,10 +75,6 @@ public:
 
     int init();
     void start();
-
-    // TODO: move
-    unsigned int vbo, vao, ebo;
-    unsigned int q_vbo, q_vao, q_ebo;
 
 private:
     float lastFrame;

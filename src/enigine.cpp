@@ -59,8 +59,8 @@ int Enigine::init()
     const char *glsl_version = "#version 410";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);           // 3.0+ only
 #endif
 
     // Create window with graphics context
@@ -103,26 +103,10 @@ int Enigine::init()
     debugDrawer->setDebugMode(btIDebugDraw::DBG_NoDebug);
     physicsWorld->m_dynamicsWorld->setDebugDrawer(debugDrawer);
 
-    // Shaders
     shaderManager = new ShaderManager(executablePath);
-    shaderManager->addShader(ShaderDynamic(&simpleShader, "assets/shaders/simple-shader.vs", "assets/shaders/simple-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&simpleDeferredShader, "assets/shaders/pbr.vs", "assets/shaders/simple-deferred.fs"));
-    shaderManager->addShader(ShaderDynamic(&lineShader, "assets/shaders/line-shader.vs", "assets/shaders/line-shader.fs"));
-    shaderManager->addShader(ShaderDynamic(&textureArrayShader, "assets/shaders/simple-texture.vs", "assets/shaders/texture-array.fs"));
-
-    // Create geometries
     resourceManager = new ResourceManager(executablePath);
-
-    Model &cube = *resourceManager->getModel("assets/models/cube.obj");
-    Model &sphere = *resourceManager->getModel("assets/models/sphere.obj");
-    Model &icosahedron = *resourceManager->getModel("assets/models/icosahedron.obj");
-    Model &quad = *resourceManager->getModel("assets/models/quad.obj");
-
-    // Shadowmap display quad
-    CommonUtil::createQuad(q_vbo, q_vao, q_ebo);
-
     mainCamera = new Camera(glm::vec3(10.0f, 3.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    renderManager = new RenderManager(shaderManager, mainCamera, &cube, &quad, &icosahedron, q_vao);
+    renderManager = new RenderManager(shaderManager, resourceManager, mainCamera);
     updateManager = new UpdateManager();
     inputManager = new InputManager(window);
 
@@ -140,11 +124,6 @@ int Enigine::init()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Debug draw objects
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
     // UI
     rootUI = new RootUI();
     systemMonitorUI = new SystemMonitorUI();
@@ -152,7 +131,7 @@ int Enigine::init()
     cameraUI = new CameraUI(mainCamera);
     resourceUI = new ResourceUI(resourceManager);
     renderUI = new RenderUI(inputManager, renderManager, resourceManager);
-    physicsWorldUI = new PhysicsWorldUI(physicsWorld, debugDrawer);
+    physicsWorldUI = new PhysicsWorldUI(renderManager, physicsWorld, debugDrawer);
     rootUI->m_uiList.push_back(systemMonitorUI);
     rootUI->m_uiList.push_back(shadowmapUI);
     rootUI->m_uiList.push_back(cameraUI);
@@ -162,6 +141,8 @@ int Enigine::init()
 
     updateManager->add(renderUI);
     updateManager->add(systemMonitorUI);
+
+    renderManager->addRenderable(physicsWorldUI);
 
     return 0;
 }
@@ -212,32 +193,38 @@ void Enigine::start()
         debugDrawer->getLines().clear();
         physicsWorld->m_dynamicsWorld->debugDrawWorld();
 
+        // TODO: move debug draws to each Renderable
+        unsigned int vao = renderManager->vao;
+        unsigned int vbo = renderManager->vbo;
+        unsigned int ebo = renderManager->ebo;
+
         // Draw physics debug lines
         glm::mat4 mvp = renderManager->m_viewProjection;
-        debugDrawer->drawLines(lineShader, mvp, vbo, vao, ebo);
+        debugDrawer->drawLines(renderManager->lineShader, mvp, vbo, vao, ebo);
 
         // culling debug
         renderManager->m_cullingManager->m_debugDrawer->getLines().clear();
         renderManager->m_cullingManager->m_collisionWorld->debugDrawWorld();
-        renderManager->m_cullingManager->m_debugDrawer->drawLines(lineShader, mvp, vbo, vao, ebo);
+        renderManager->m_cullingManager->m_debugDrawer->drawLines(renderManager->lineShader, mvp, vbo, vao, ebo);
 
         // Shadowmap debug
-        shadowmapUI->drawFrustum(simpleShader, mvp, vbo, vao, ebo);
-        shadowmapUI->drawFrustumAABB(simpleShader, mvp, vbo, vao, ebo);
-        shadowmapUI->drawLightAABB(simpleShader, mvp, renderManager->m_inverseDepthViewMatrix, vbo, vao, ebo);
+        shadowmapUI->drawFrustum(renderManager->simpleShader, mvp, vbo, vao, ebo);
+        shadowmapUI->drawFrustumAABB(renderManager->simpleShader, mvp, vbo, vao, ebo);
+        shadowmapUI->drawLightAABB(renderManager->simpleShader, mvp, renderManager->m_inverseDepthViewMatrix, vbo, vao, ebo);
 
         // render manager debug
-        renderUI->drawSelectedSource(simpleShader, mvp);
-        renderUI->drawSelectedNormals(lineShader, mvp, vbo, vao, ebo);
-        renderUI->drawSelectedArmature(simpleShader);
+        renderUI->drawSelectedSource(renderManager->simpleShader, mvp);
+        renderUI->drawSelectedNormals(renderManager->lineShader, mvp, vbo, vao, ebo);
+        renderUI->drawSelectedArmature(renderManager->simpleShader);
 
         // render manager - end
         renderManager->renderBlend();
         renderManager->renderTransmission();
         renderManager->renderPostProcess();
 
+        // TODO: renderManager->renderAfterPostProcess(); ?
         // Shadowmap debug - should be called after post process
-        shadowmapUI->drawShadowmap(textureArrayShader, renderManager->m_screenW, renderManager->m_screenH, q_vao);
+        shadowmapUI->drawShadowmap(renderManager->textureArrayShader, renderManager->m_screenW, renderManager->m_screenH, renderManager->quad_vao);
 
         // Render UI
         rootUI->render();

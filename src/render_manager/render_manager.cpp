@@ -1,12 +1,9 @@
 #include "render_manager.h"
 
-RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model *cube, Model *quad, Model *sphere, unsigned int quad_vao)
+RenderManager::RenderManager(ShaderManager *shaderManager, ResourceManager *resourceManager, Camera *camera)
     : m_shaderManager(shaderManager),
+      m_resourceManager(resourceManager),
       m_camera(camera),
-      cube(cube),
-      quad(quad),
-      sphere(sphere),
-      quad_vao(quad_vao),
       m_worldOrigin(glm::vec3(0.f)),
       m_shadowBias(glm::vec3(0.015, 0.050, 0.200))
 {
@@ -27,7 +24,13 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&skyboxShader, "assets/shaders/cubemap.vs", "assets/shaders/skybox.fs"));
     shaderManager->addShader(ShaderDynamic(&postProcessShader, "assets/shaders/post-process.vs", "assets/shaders/post-process.fs"));
 
-    // PBR Shaders
+    // common shaders
+    shaderManager->addShader(ShaderDynamic(&simpleShader, "assets/shaders/simple-shader.vs", "assets/shaders/simple-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&simpleDeferredShader, "assets/shaders/pbr.vs", "assets/shaders/simple-deferred.fs"));
+    shaderManager->addShader(ShaderDynamic(&lineShader, "assets/shaders/line-shader.vs", "assets/shaders/line-shader.fs"));
+    shaderManager->addShader(ShaderDynamic(&textureArrayShader, "assets/shaders/simple-texture.vs", "assets/shaders/texture-array.fs"));
+
+    // PBR shaders
     shaderManager->addShader(ShaderDynamic(&hdrToCubemapShader, "assets/shaders/hdr-to-cubemap.vs", "assets/shaders/hdr-to-cubemap.fs"));
     shaderManager->addShader(ShaderDynamic(&irradianceShader, "assets/shaders/cubemap.vs", "assets/shaders/irradiance.fs"));
     shaderManager->addShader(ShaderDynamic(&prefilterShader, "assets/shaders/cubemap.vs", "assets/shaders/prefilter.fs"));
@@ -36,13 +39,30 @@ RenderManager::RenderManager(ShaderManager *shaderManager, Camera *camera, Model
     shaderManager->addShader(ShaderDynamic(&downsampleShader, "assets/shaders/sample.vs", "assets/shaders/downsample.fs"));
     shaderManager->addShader(ShaderDynamic(&upsampleShader, "assets/shaders/sample.vs", "assets/shaders/upsample.fs"));
 
+    // TODO: quad.obj?
+    CommonUtil::createQuad(quad_vbo, quad_vao, quad_ebo);
+
+    // TODO: don't share vao?
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    // objects
+    pointLightVolume = m_resourceManager->getModel("assets/models/icosahedron.obj", true);
+
+    // common objects
+    cube = m_resourceManager->getModel("assets/models/cube.obj");
+    quad = m_resourceManager->getModel("assets/models/quad.obj");
+    sphere = m_resourceManager->getModel("assets/models/sphere.obj");
+    icosahedron = m_resourceManager->getModel("assets/models/icosahedron.obj");
+
     m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-    // PBR Setup
+    // PBR setup
     m_pbrManager = new PbrManager();
     m_pbrManager->setupBrdfLUTTexture(quad_vao, brdfShader);
 
-    // Shadowmap setup
+    // shadowmap setup
     // TODO: why works without ids?
     std::vector<unsigned int> shaderIds;
     shaderIds.push_back(pbrDeferredPre.id);
@@ -103,16 +123,14 @@ void RenderManager::setWorldOrigin(glm::vec3 newWorldOrigin)
 
 void RenderManager::setupLights()
 {
-    Model *lightVolume = sphere;
-
     glGenBuffers(1, &m_lightArrayBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, m_lightArrayBuffer);
     // TODO: ?
     glBufferData(GL_ARRAY_BUFFER, m_pointLights.size() * sizeof(LightInstance), m_lightBufferList.data(), GL_STATIC_DRAW);
 
-    for (unsigned int i = 0; i < lightVolume->meshes.size(); i++)
+    for (unsigned int i = 0; i < pointLightVolume->meshes.size(); i++)
     {
-        unsigned int VAO = lightVolume->meshes[i]->VAO;
+        unsigned int VAO = pointLightVolume->meshes[i]->VAO;
         glBindVertexArray(VAO);
 
         float size = sizeof(LightInstance);
@@ -595,7 +613,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
     lightVolume.setMat4("projection", m_projection);
     lightVolume.setMat4("view", m_view);
     lightVolume.setMat4("model", glm::mat4(1.0f));
-    sphere->drawInstanced(lightVolume, lights.size());
+    pointLightVolume->drawInstanced(lightVolume, lights.size());
 
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -627,7 +645,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
         lightVolumeDebug.setVec4("DiffuseColor", glm::vec4(1.0f, 0.0f, 1.0f, 0.1f));
         glm::mat4 model(1.0f);
         lightVolumeDebug.setMat4("model", model);
-        sphere->drawInstanced(lightVolumeDebug, lights.size());
+        pointLightVolume->drawInstanced(lightVolumeDebug, lights.size());
     }
     else
     {
@@ -653,7 +671,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
         glUniform1i(glGetUniformLocation(pbrDeferredPointLight.id, "gAoRoughMetal"), 3);
         glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gAoRoughMetal);
 
-        sphere->drawInstanced(pbrDeferredPointLight, lights.size());
+        pointLightVolume->drawInstanced(pbrDeferredPointLight, lights.size());
     }
 
     glCullFace(GL_BACK);
@@ -679,7 +697,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
         lightVolumeDebug.setVec4("DiffuseColor", glm::vec4(1.0f, 1.0f, 1.0f, 0.1f));
         glm::mat4 model(1.0f);
         lightVolumeDebug.setMat4("model", model);
-        sphere->drawInstanced(lightVolumeDebug, lights.size());
+        pointLightVolume->drawInstanced(lightVolumeDebug, lights.size());
     }
 
     glDisable(GL_BLEND);
@@ -699,7 +717,7 @@ void RenderManager::renderLightVolumes(std::vector<LightSource> &lights, bool ca
     model = glm::scale(model, glm::vec3(0.01f));
     lightVolume.setMat4("model", model);
     // TODO: bilboarded circle
-    sphere->drawInstanced(lightVolume, lights.size());
+    pointLightVolume->drawInstanced(lightVolume, lights.size());
 }
 
 // TODO: only update changed

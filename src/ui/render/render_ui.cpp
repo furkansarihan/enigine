@@ -491,12 +491,19 @@ void RenderUI::renderRenderSources()
     if (!ImGui::TreeNode("Render Sources##RenderUI::renderRenderSources"))
         return;
 
-    float maxHeight = 400.0f;
-    float height = ImGui::GetFrameHeight() * m_renderManager->m_pbrSources.size();
+    int sourceCount = m_renderManager->m_pbrSources.size();
+    if (sourceCount == 0)
+    {
+        ImGui::TreePop();
+        return;
+    }
+
+    float maxHeight = 200.0f;
+    float height = ImGui::GetFrameHeight() * sourceCount;
     if (height > maxHeight)
         height = maxHeight;
 
-    ImGui::BeginChild("scrollableArea##RenderUI::renderRenderSources", ImVec2(400, height), true);
+    ImGui::BeginChild("scrollableArea##RenderUI::renderRenderSources", ImVec2(0.f, height), true);
 
     for (const auto &source : m_renderManager->m_pbrSources)
         renderRenderSource(source);
