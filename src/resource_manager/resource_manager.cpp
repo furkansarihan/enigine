@@ -21,6 +21,10 @@ ResourceManager::~ResourceManager()
     for (auto &pair : m_materials)
         delete pair.second;
     m_materials.clear();
+
+    for (auto &pair : m_copyMaterials)
+        delete pair;
+    m_copyMaterials.clear();
 }
 
 Model *ResourceManager::getModel(const std::string &path, bool isCopy)
@@ -38,7 +42,8 @@ Model *ResourceManager::getModelFullPath(const std::string &fullPath, bool isCop
         return m_models[fullPath];
     }
 
-    Model *model = new Model(this, fullPath);
+    // TODO: reuse vao option for copy model
+    Model *model = new Model(this, fullPath, isCopy);
     if (!isCopy)
         m_models[fullPath] = model;
 
@@ -74,7 +79,7 @@ Texture ResourceManager::textureFromMemory(const TextureParams &params, const st
     else
     {
         // TODO: data type?
-        data = stbi_loadf_from_memory((const stbi_uc *)buffer,
+        data = stbi_loadf_from_memory((const stbi_uc *)buffer, 
                                       bufferSize,
                                       &texture.width,
                                       &texture.height,

@@ -1,8 +1,9 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path)
+Model::Model(ResourceManager *resourceManager, std::string const &path, bool isCopyMaterial)
     : m_resourceManager(resourceManager),
-      m_path(path)
+      m_path(path),
+      m_isCopyMaterial(isCopyMaterial)
 {
     m_importer = new Assimp::Importer();
 
@@ -212,9 +213,12 @@ Material *Model::loadMaterial(aiMaterial *material)
 {
     // return same material if exist
     std::string materialName = material->GetName().C_Str();
-    auto it = m_resourceManager->m_materials.find(materialName);
-    if (it != m_resourceManager->m_materials.end())
-        return it->second;
+    if (!m_isCopyMaterial)
+    {
+        auto it = m_resourceManager->m_materials.find(materialName);
+        if (it != m_resourceManager->m_materials.end())
+            return it->second;
+    }
 
     // TODO: merge detection for ao-rought-metal - validate unknown_map
     // TODO: transmission - thickness map
@@ -317,7 +321,11 @@ Material *Model::loadMaterial(aiMaterial *material)
         mat.parallaxMapScaleMode = 1.0;
     }
 
-    m_resourceManager->m_materials[materialName] = &mat;
+    if (m_isCopyMaterial)
+        m_resourceManager->m_copyMaterials.push_back(&mat);
+    else
+        m_resourceManager->m_materials[materialName] = &mat;
+
     return &mat;
 }
 
