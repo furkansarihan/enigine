@@ -26,7 +26,9 @@
 
 struct ControlState
 {
-    bool left, right, forward, back, handbreak;
+    float steer;
+    float gas;
+    bool handbreak;
 };
 
 enum Door

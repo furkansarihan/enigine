@@ -4,6 +4,7 @@ CarController::CarController(GLFWwindow *window,
                              ShaderManager *shaderManager,
                              RenderManager *renderManager,
                              ResourceManager *resourceManager,
+                             InputManager *inputManager,
                              Vehicle *vehicle,
                              Camera *followCamera,
                              Models models,
@@ -44,7 +45,7 @@ CarController::CarController(GLFWwindow *window,
     for (int i = 0; i < 4; i++)
     {
         bool front = i < 2;
-        ParticleEngine *particle = new ParticleEngine(resourceManager,m_models.smokeParticleModel, followCamera);
+        ParticleEngine *particle = new ParticleEngine(resourceManager, m_models.smokeParticleModel, followCamera);
         particle->m_particlesPerSecond = 0.f;
         particle->m_randomness = 1.f;
         particle->m_minVelocity = front ? 0.2f : 0.4f;
@@ -134,6 +135,10 @@ CarController::CarController(GLFWwindow *window,
         m_tireSmokeSources.push_back(renderSource);
         renderManager->addParticleSource(renderSource);
     }
+
+    //
+    inputManager->addKeyListener(
+        std::bind(&CarController::keyListener, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 }
 
 CarController::~CarController()
@@ -157,17 +162,32 @@ void CarController::keyListener(GLFWwindow *window, int key, int scancode, int a
     {
         btTransform tr;
         tr.setIdentity();
-        tr.setOrigin(m_vehicle->m_carChassis->getWorldTransform().getOrigin() + btVector3(0, 5, 0));
+        tr.setOrigin(m_vehicle->m_carChassis->getWorldTransform().getOrigin() + btVector3(0, 2.f, 0));
         m_vehicle->resetVehicle(tr);
     }
-    else if ((key == GLFW_KEY_3 || key == GLFW_KEY_4) && action == GLFW_PRESS)
+    else if ((key == GLFW_KEY_5 || key == GLFW_KEY_6) && action == GLFW_PRESS)
     {
-        int doorIndex = key == GLFW_KEY_3 ? 0 : 1;
+        int doorIndex = key == GLFW_KEY_5 ? 0 : 1;
         if (m_vehicle->m_doors[doorIndex].hingeState == HingeState::active)
             m_vehicle->closeDoor(doorIndex);
         else
             m_vehicle->openDoor(doorIndex);
     }
+    else if (key == GLFW_KEY_J && action == GLFW_PRESS)
+    {
+        m_followCamera->position = glm::vec3(0.f, 0.f, 0.f);
+        m_followCamera->front = glm::vec3(0.f, 0.f, -1.f);
+        m_followCamera->processMouseMovement(0.f, 0.f, true);
+    }
+}
+
+float CarController::processAxisInput(float axisValue)
+{
+    const float DEADZONE = 0.1;
+    if (std::abs(axisValue) < DEADZONE)
+        return 0.0f;
+
+    return axisValue;
 }
 
 void CarController::update(float deltaTime)
@@ -175,12 +195,41 @@ void CarController::update(float deltaTime)
     m_vehicle->update(deltaTime);
     if (m_controlVehicle)
     {
-        // TODO: better?
-        m_vehicle->m_controlState.forward = glfwGetKey(m_window, m_keyForward) == GLFW_PRESS;
-        m_vehicle->m_controlState.back = glfwGetKey(m_window, m_keyBack) == GLFW_PRESS;
-        m_vehicle->m_controlState.left = glfwGetKey(m_window, m_keyLeft) == GLFW_PRESS;
-        m_vehicle->m_controlState.right = glfwGetKey(m_window, m_keyRight) == GLFW_PRESS;
-        m_vehicle->m_controlState.handbreak = glfwGetKey(m_window, m_keySpace) == GLFW_PRESS;
+        m_vehicle->m_controlState.gas = 0.f;
+        m_vehicle->m_controlState.steer = 0.f;
+        m_vehicle->m_controlState.handbreak = false;
+
+        // gamepad
+        GLFWgamepadstate state;
+        int result = glfwGetGamepadState(GLFW_JOYSTICK_1, &state);
+        if (result)
+        {
+            float axisValueLeftX = processAxisInput(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]);
+            // float axisValueLeftY = -processAxisInputtt(state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+            float rightTrigger = (state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] + 1.f) / 2.f;
+            float leftTrigger = (state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] + 1.f) / 2.f;
+
+            m_vehicle->m_controlState.steer = -axisValueLeftX;
+            m_vehicle->m_controlState.gas = rightTrigger - leftTrigger;
+
+            if (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS)
+                m_vehicle->m_controlState.handbreak = true;
+        }
+
+        // keyboard
+        if (glfwGetKey(m_window, m_keyForward) == GLFW_PRESS)
+            m_vehicle->m_controlState.gas += 1.f;
+        if (glfwGetKey(m_window, m_keyBack) == GLFW_PRESS)
+            m_vehicle->m_controlState.gas -= 1.f;
+        if (glfwGetKey(m_window, m_keyLeft) == GLFW_PRESS)
+            m_vehicle->m_controlState.steer += 1.f;
+        if (glfwGetKey(m_window, m_keyRight) == GLFW_PRESS)
+            m_vehicle->m_controlState.steer -= 1.f;
+        if (glfwGetKey(m_window, m_keySpace) == GLFW_PRESS)
+            m_vehicle->m_controlState.handbreak = true;
+
+        m_vehicle->m_controlState.gas = std::clamp(m_vehicle->m_controlState.gas, -1.f, 1.f);
+        m_vehicle->m_controlState.steer = std::clamp(m_vehicle->m_controlState.steer, -1.f, 1.f);
     }
 
     for (int i = 0; i < m_exhaustCount; i++)
@@ -211,7 +260,11 @@ void CarController::followCar(float deltaTime)
     follow.stretch = CommonUtil::lerp(follow.stretch, follow.stretchTarget, lerpFactor);
 
     m_pos = CommonUtil::positionFromModel(m_vehicle->m_chassisModel);
-    m_followCamera->position = m_pos - m_followCamera->front * glm::vec3(follow.distance + follow.stretch) + follow.offset;
+    glm::vec3 pos = m_pos - m_followCamera->front * glm::vec3(follow.distance + follow.stretch) + follow.offset;
+    if (isnan(pos.x) || isnan(pos.y) || isnan(pos.z))
+        return;
+
+    m_followCamera->position = pos;
 
     if (m_followCamera->moving)
         return;
@@ -233,6 +286,9 @@ void CarController::followCar(float deltaTime)
     float slerpFactor = std::clamp(cubicBlend * follow.angularSpeed, 0.f, 1.f);
     glm::vec3 xzFront = glm::vec3(m_followCamera->front.x, 0.f, m_followCamera->front.z);
     glm::vec3 xzResult = glm::slerp(xzFront, xzTarget, slerpFactor);
+
+    if (isnan(xzResult.x) || isnan(xzResult.y) || isnan(xzResult.z))
+        return;
 
     m_followCamera->front.x = xzResult.x;
     m_followCamera->front.z = xzResult.z;

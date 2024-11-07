@@ -1,6 +1,7 @@
 #include "root_ui.h"
 
 RootUI::RootUI()
+    : m_enabled(true)
 {
     ImGuiStyle &style = ImGui::GetStyle();
 
@@ -19,6 +20,9 @@ RootUI::~RootUI()
 
 void RootUI::render()
 {
+    if (!m_enabled)
+        return;
+
     // start imgui
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -34,7 +38,17 @@ void RootUI::render()
     }
 
     bool p_open = true;
-    if (ImGui::Begin("RootUI", &p_open, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin(
+            "RootUI",
+            &p_open,
+            (corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav))
     {
         for (int i = 0; i < m_uiList.size(); i++)
             m_uiList.at(i)->render();

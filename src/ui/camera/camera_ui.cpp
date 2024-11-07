@@ -2,11 +2,17 @@
 
 void CameraUI::render()
 {
+    ImGui::PushID(this);
+
     if (!ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+        ImGui::PopID();
         return;
+    }
 
     VectorUI::renderVec3("position##camera", m_camera->position, 0.1f);
-    VectorUI::renderVec3("front##camera", m_camera->front, 0.001f);
+    if (VectorUI::renderVec3("front##camera", m_camera->front, 0.001f))
+        m_camera->front = glm::normalize(m_camera->front);
     ImGui::DragFloat("near", &m_camera->m_near, 0.001f);
     ImGui::DragFloat("far", &m_camera->m_far, 10.0f);
     ImGui::DragFloat("mouseSensitivity", &m_camera->mouseSensitivity, 0.001f);
@@ -24,4 +30,6 @@ void CameraUI::render()
     {
         m_camera->projectionMode = ProjectionMode::Ortho;
     }
+
+    ImGui::PopID();
 }

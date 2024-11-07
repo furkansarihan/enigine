@@ -2,9 +2,9 @@
 #define car_controller_hpp
 
 #include <fstream>
-#include <string>
-#include <sstream>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 #include "btBulletDynamicsCommon.h"
 #include <glm/glm.hpp>
@@ -12,17 +12,18 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 
-#include "../vehicle/vehicle.h"
-#include "../utils/bullet_glm.h"
-#include "../particle_engine/particle_engine.h"
 #include "../camera/camera.h"
+#include "../input_manager/input_manager.h"
+#include "../particle_engine/particle_engine.h"
 #include "../render_manager/render_manager.h"
 #include "../shader_manager/shader_manager.h"
 #include "../transform_link/link_rigidbody.h"
 #include "../update_manager/update_manager.h"
+#include "../utils/bullet_glm.h"
+#include "../vehicle/vehicle.h"
 
-#include "link_wheel.h"
 #include "link_door.h"
+#include "link_wheel.h"
 
 struct Follow
 {
@@ -56,6 +57,7 @@ public:
                   ShaderManager *shaderManager,
                   RenderManager *renderManager,
                   ResourceManager *resourceManager,
+                  InputManager *inputManager,
                   Vehicle *vehicle,
                   Camera *followCamera,
                   Models models,
@@ -108,6 +110,7 @@ public:
     glm::mat4 translateOffset(glm::vec3 offset);
     void followCar(float deltaTime);
     void keyListener(GLFWwindow *window, int key, int scancode, int action, int mods);
+    float processAxisInput(float axisValue);
 
 private:
     int m_keyForward = GLFW_KEY_W;

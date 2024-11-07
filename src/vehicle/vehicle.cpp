@@ -401,12 +401,9 @@ void Vehicle::updateSteering(float deltaTime)
     m_speedSteerFactor = CommonUtil::lerp(1.f, 0.2f, m_speedRate);
 
     float steeringGoal = 0.f;
-    if (m_controlState.left)
-        steeringGoal += steeringLimit;
-    if (m_controlState.right)
-        steeringGoal -= steeringLimit;
+    steeringGoal += steeringLimit * m_controlState.steer;
 
-    if (!m_controlState.left && !m_controlState.right)
+    if (m_controlState.steer == 0.f)
     {
         steeringGoal = 0.f;
         m_speedSteerFactor *= m_returnIdleFactor;
@@ -424,7 +421,7 @@ void Vehicle::updateSteering(float deltaTime)
 // TODO: cubic curve acceleration, transmission
 void Vehicle::updateAcceleration(float deltaTime)
 {
-    if (m_controlState.forward)
+    if (m_controlState.gas > 0.f)
     {
         if (gEngineForce >= 0)
         {
@@ -440,7 +437,7 @@ void Vehicle::updateAcceleration(float deltaTime)
         gEngineForce -= decreaseVelocity * deltaTime;
     }
 
-    if (m_controlState.back)
+    if (m_controlState.gas < 0.f)
     {
         if (gEngineForce <= 0)
         {
@@ -456,7 +453,7 @@ void Vehicle::updateAcceleration(float deltaTime)
         gEngineForce += decreaseVelocity * deltaTime;
     }
 
-    m_inAction = m_controlState.forward || m_controlState.back;
+    m_inAction = m_controlState.gas != 0.f;
 
     if (!m_inAction)
     {
@@ -485,11 +482,11 @@ void Vehicle::updateAcceleration(float deltaTime)
     }
 
     // TODO: front bias
-    m_vehicle->applyEngineForce(gEngineForce, 0);
-    m_vehicle->applyEngineForce(gEngineForce, 1);
+    m_vehicle->applyEngineForce(gEngineForce * std::abs(m_controlState.gas), 0);
+    m_vehicle->applyEngineForce(gEngineForce * std::abs(m_controlState.gas), 1);
 
-    if ((gEngineForce > 0.f && m_controlState.back) ||
-        (gEngineForce < 0.f && m_controlState.forward))
+    if ((gEngineForce > 0.f && m_controlState.gas < 0.f) ||
+        (gEngineForce < 0.f && m_controlState.gas > 0.f))
     {
         for (int i = 0; i < 4; i++)
             m_vehicle->setBrake(breakingVelocity, i);
