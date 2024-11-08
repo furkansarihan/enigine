@@ -10,6 +10,29 @@ Model::Model(ResourceManager *resourceManager, std::string const &path, bool isC
     loadModel(path);
 }
 
+Model::Model(Model *model, int meshIndex)
+    : m_resourceManager(model->m_resourceManager),
+      m_path(model->m_path),
+      aabbMin(model->meshes[meshIndex]->aabbMin),
+      aabbMax(model->meshes[meshIndex]->aabbMax),
+      m_directory(model->m_directory),
+      gammaCorrection(model->gammaCorrection),
+      m_isCopyMaterial(model->m_isCopyMaterial)
+{
+    if (model->meshes.size() <= meshIndex || meshIndex < 0)
+    {
+        std::cout << "Model: Can't create a model from meshIndex: " << meshIndex << std::endl;
+        return;
+    }
+
+    Mesh *mesh = model->meshes[meshIndex];
+
+    if (mesh->material->blendMode == MaterialBlendMode::opaque)
+        opaqueMeshes.push_back(mesh);
+    else
+        transmissionMeshes.push_back(mesh);
+}
+
 Model::~Model()
 {
     // TODO: delete when?
