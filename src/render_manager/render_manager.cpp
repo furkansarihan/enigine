@@ -385,8 +385,17 @@ void RenderManager::renderOpaque()
         else if (source->faceCullType == FaceCullType::frontFaces)
             glCullFace(GL_FRONT);
 
+        if (source->polygonMode == PolygonMode::fill)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        else if (source->polygonMode == PolygonMode::line)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else if (source->polygonMode == PolygonMode::point)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+
         source->model->draw(pbrDeferredPre, true);
     }
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // setup pbr anim shader
     pbrDeferredPreAnim.use();
@@ -764,6 +773,12 @@ void RenderManager::renderBlend()
         }
 
         particle->drawParticles(m_particleSources[i]->shader, m_viewProjection, m_worldOrigin);
+    }
+
+    // render transparent renderables
+    for (int i = 0; i < m_transparentRenderables.size(); i++)
+    {
+        m_transparentRenderables[i]->renderTransparent();
     }
 
     glDisable(GL_BLEND);

@@ -28,11 +28,20 @@
 #include "g_buffer.h"
 #include "ssao.h"
 
-enum FaceCullType
+enum class FaceCullType
 {
     backFaces,
     frontFaces,
     none,
+    COUNT
+};
+
+enum class PolygonMode
+{
+    point,
+    line,
+    fill,
+    COUNT
 };
 
 class RenderManager;
@@ -44,6 +53,7 @@ public:
     eTransform offset;
     glm::mat4 modelMatrix;
     FaceCullType faceCullType;
+    PolygonMode polygonMode;
     Model *model = nullptr;
     Animator *animator = nullptr;
     TransformLink *transformLink = nullptr;
@@ -54,6 +64,7 @@ public:
           offset(offset),
           modelMatrix(glm::mat4(1.f)),
           faceCullType(faceCullType),
+          polygonMode(PolygonMode::fill),
           model(model),
           animator(animator),
           transformLink(transformLink){};
@@ -153,8 +164,8 @@ struct LightSource
           color(color),
           intensity(intensity),
           radius(1.f),
-          linear(1.f),
-          quadratic(1.f){};
+          linear(0.09f),
+          quadratic(0.032f){};
 };
 
 struct LightInstance
@@ -175,6 +186,14 @@ public:
 
     virtual void renderDepth() = 0;
     virtual void renderColor() = 0;
+};
+
+class TransparentRenderable
+{
+public:
+    virtual ~TransparentRenderable() {}
+
+    virtual void renderTransparent() = 0;
 };
 
 class RenderManager
@@ -214,6 +233,7 @@ public:
     std::vector<RenderSource *> m_visiblePbrSources;
     std::vector<RenderSource *> m_visiblePbrAnimSources;
     std::vector<Renderable *> m_renderables;
+    std::vector<TransparentRenderable *> m_transparentRenderables;
 
     std::vector<RenderSource *> m_pbrSources;
     std::vector<RenderSource *> m_linkSources;
