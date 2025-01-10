@@ -88,6 +88,8 @@ void Model::updateMeshTypes()
 
 void Model::loadModel(std::string const &path)
 {
+    unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
     // read file via ASSIMP
     m_scene = m_importer->ReadFile(path,
                                    aiProcess_JoinIdenticalVertices |
@@ -98,20 +100,16 @@ void Model::loadModel(std::string const &path)
                                        aiProcess_FlipUVs |
                                        aiProcess_CalcTangentSpace |
                                        aiProcess_GenBoundingBoxes);
+
     // check for errors
     if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) // if is Not Zero
     {
-        std::cout << "ERROR::ASSIMP:: " << m_importer->GetErrorString() << std::endl;
+        std::cout << "Model: ASSIMP Error: " << m_importer->GetErrorString() << std::endl;
         return;
     }
+
     // retrieve the directory path of the filepath
     m_directory = path.substr(0, path.find_last_of('/'));
-
-    for (unsigned int i = 0; i < m_scene->mNumTextures; i++)
-    {
-        aiTexture *texture = m_scene->mTextures[i];
-        std::cout << "path: " << texture->mFilename.C_Str() << ", format: " << texture->achFormatHint << std::endl;
-    }
 
     // process ASSIMP's root node recursively
     processNode(m_scene->mRootNode, glm::mat4(1.0));
@@ -132,6 +130,11 @@ void Model::loadModel(std::string const &path)
         aabbMax.y = std::max(aabbMax.y, meshes[i]->aabbMax.y);
         aabbMax.z = std::max(aabbMax.z, meshes[i]->aabbMax.z);
     }
+
+    unsigned int end = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    unsigned int duration = end - start;
+    std::string fileName = path.substr(path.find_last_of('/'), path.size());
+    std::cout << std::setfill(' ') << std::setw(4) << duration << "ms - Model - " << fileName << std::endl;
 }
 
 void Model::processNode(aiNode *node, glm::mat4 parentTransform)

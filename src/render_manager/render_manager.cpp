@@ -48,13 +48,13 @@ RenderManager::RenderManager(ShaderManager *shaderManager, ResourceManager *reso
     glGenBuffers(1, &ebo);
 
     // objects
-    pointLightVolume = m_resourceManager->getModel("assets/models/icosahedron.obj", true);
+    pointLightVolume = m_resourceManager->getModel("assets/models/icosahedron.glb", true);
 
     // common objects
-    cube = m_resourceManager->getModel("assets/models/cube.obj");
-    quad = m_resourceManager->getModel("assets/models/quad.obj");
-    sphere = m_resourceManager->getModel("assets/models/sphere.obj");
-    icosahedron = m_resourceManager->getModel("assets/models/icosahedron.obj");
+    cube = m_resourceManager->getModel("assets/models/cube.glb");
+    quad = m_resourceManager->getModel("assets/models/quad.glb");
+    sphere = m_resourceManager->getModel("assets/models/sphere.glb");
+    icosahedron = m_resourceManager->getModel("assets/models/icosahedron.glb", true);
 
     m_debugCamera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 

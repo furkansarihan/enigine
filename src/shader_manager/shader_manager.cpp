@@ -29,16 +29,21 @@ void ShaderManager::initShaders()
 
 void ShaderManager::initShader(const ShaderDynamic &shaderDynamic)
 {
+    unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
     std::filesystem::path vsPath = m_executablePath + '/' + shaderDynamic.m_vsPath;
     std::filesystem::path fsPath = m_executablePath + '/' + shaderDynamic.m_fsPath;
     std::string vsPathStr = std::string(m_executablePath + '/' + shaderDynamic.m_vsPath);
     std::string fsPathStr = std::string(m_executablePath + '/' + shaderDynamic.m_fsPath);
-    std::cout << vsPathStr << std::endl;
     std::string vsCode = FileManager::read(vsPathStr);
     std::string fsCode = FileManager::read(fsPathStr);
     std::string vsDirectory = vsPath.parent_path().string();
     std::string fsDirectory = fsPath.parent_path().string();
     shaderDynamic.m_shader->init(processIncludes(vsDirectory, vsCode), processIncludes(fsDirectory, fsCode));
+
+    unsigned int end = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    unsigned int duration = end - start;
+    std::cout << std::setfill(' ') << std::setw(4) << duration << "ms - Shader - vs: " << shaderDynamic.m_vsPath << " - fs: " << shaderDynamic.m_fsPath << std::endl;
 }
 
 // Function to process and replace #include directives

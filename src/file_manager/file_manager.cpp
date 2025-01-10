@@ -21,7 +21,7 @@ std::string FileManager::read(const std::string &filename)
     }
     catch (std::ifstream::failure e)
     {
-        std::cout << "Error reading Shader File!" << std::endl;
+        std::cout << "FileManager: Error reading file: " << filename << std::endl;
     }
     return fileStream.str();
 }

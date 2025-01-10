@@ -153,7 +153,7 @@ void Shader::checkCompileError(unsigned int shader, std::string type)
     if (!success)
     {
         glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-        std::cout << "Error compiling : " << type << ":\n"
+        std::cout << "Shader: Error compiling : " << type << ":\n"
                   << infoLog << std::endl;
     }
 }
@@ -166,7 +166,7 @@ void Shader::checkLinkingError()
     if (!success)
     {
         glGetProgramInfoLog(id, 1024, NULL, infoLog);
-        std::cout << "Error Linking Shader Program:\n"
+        std::cout << "Shader: Error Linking Shader Program:\n"
                   << infoLog << std::endl;
     }
 }

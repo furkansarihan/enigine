@@ -65,6 +65,8 @@ Texture ResourceManager::textureFromMemory(const TextureParams &params, const st
     if (m_textures.find(key) != m_textures.end())
         return m_textures[key];
 
+    unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
     Texture texture;
     // TODO: data type?
     void *data;
@@ -79,7 +81,7 @@ Texture ResourceManager::textureFromMemory(const TextureParams &params, const st
     else
     {
         // TODO: data type?
-        data = stbi_loadf_from_memory((const stbi_uc *)buffer, 
+        data = stbi_loadf_from_memory((const stbi_uc *)buffer,
                                       bufferSize,
                                       &texture.width,
                                       &texture.height,
@@ -94,6 +96,10 @@ Texture ResourceManager::textureFromMemory(const TextureParams &params, const st
     else
         std::cout << "ResourceManager: texture failed to load from memory" << std::endl;
 
+    unsigned int end = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    unsigned int duration = end - start;
+    std::cout << std::setfill(' ') << std::setw(4) << duration << "ms - Texture - " << key << std::endl;
+
     m_textures[key] = texture;
     return texture;
 }
@@ -103,6 +109,8 @@ Texture ResourceManager::textureFromFile(const TextureParams &params, const std:
 {
     if (m_textures.find(key) != m_textures.end())
         return m_textures[key];
+
+    unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     Texture texture;
     void *data;
@@ -129,6 +137,11 @@ Texture ResourceManager::textureFromFile(const TextureParams &params, const std:
     }
     else
         std::cout << "ResourceManager: texture failed to load at path: " << path << std::endl;
+
+    unsigned int end = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    unsigned int duration = end - start;
+    std::string fileName = path.substr(path.find_last_of('/'), path.size());
+    std::cout << std::setfill(' ') << std::setw(4) << duration << "ms - Texture - path: " << fileName << std::endl;
 
     m_textures[key] = texture;
     return texture;
