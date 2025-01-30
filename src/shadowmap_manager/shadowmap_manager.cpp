@@ -57,28 +57,22 @@ void ShadowmapManager::createTextureArray()
 void ShadowmapManager::bindFramebuffer()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferObject);
-    GLfloat clearDepth[] = {1.0f};
 
-    glClearBufferfv(GL_DEPTH, 0, clearDepth);
     glViewport(0, 0, m_shadowmapSize, m_shadowmapSize);
 }
 
 void ShadowmapManager::bindTextureArray(int index)
 {
+    // Bind texture array
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_textureArray);
 
-    // TODO: better way?
-    // Create an array of floating-point depth values
-    float *depthData = new float[m_shadowmapSize * m_shadowmapSize];
-    std::fill_n(depthData, m_shadowmapSize * m_shadowmapSize, 1.0f);
-
-    // Set the texture's data to the depth array
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, index, m_shadowmapSize, m_shadowmapSize, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depthData);
-
-    // Delete the depth data array
-    delete[] depthData;
-
+    // Bind layer to framebuffer
     glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_textureArray, 0, index);
 
+    // Clear value for depth buffer
+    glClearDepth(1.0f);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    // No color output for shadow map
     glDrawBuffer(GL_NONE);
 }
