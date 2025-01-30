@@ -335,6 +335,11 @@ void RenderManager::renderDepth()
 
 void RenderManager::renderOpaque()
 {
+    if (m_visiblePbrSources.empty() &&
+        m_visiblePbrAnimSources.empty() &&
+        m_renderables.empty())
+        return;
+
     // render to post process texture
     m_gBuffer->updateResolution(m_screenW, m_screenH);
     m_ssao->updateResolution(m_screenW, m_screenH);
@@ -355,88 +360,94 @@ void RenderManager::renderOpaque()
 
     glFrontFace(GL_CCW);
 
-    // setup pbr shader
-    pbrDeferredPre.use();
-    pbrDeferredPre.setMat4("view", m_view);
-    pbrDeferredPre.setMat4("projection", m_projection);
-    pbrDeferredPre.setVec3("lightDirection", m_shadowManager->m_lightPos);
-    pbrDeferredPre.setVec4("FrustumDistances", m_frustumDistances);
-    pbrDeferredPre.setVec3("u_camPosition", m_camera->position);
-    pbrDeferredPre.setFloat("u_shadowFar", m_shadowManager->m_far);
-    pbrDeferredPre.setVec3("Bias", m_shadowBias);
-
-    glActiveTexture(GL_TEXTURE0 + 8);
-    glUniform1i(glGetUniformLocation(pbrDeferredPre.id, "ShadowMap"), 8);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
-
-    // draw each pbr
-    for (int i = 0; i < m_visiblePbrSources.size(); i++)
+    if (!m_visiblePbrSources.empty())
     {
-        RenderSource *source = m_visiblePbrSources[i];
-        pbrDeferredPre.setMat4("model", m_originTransform * source->modelMatrix);
+        // setup pbr shader
+        pbrDeferredPre.use();
+        pbrDeferredPre.setMat4("view", m_view);
+        pbrDeferredPre.setMat4("projection", m_projection);
+        pbrDeferredPre.setVec3("lightDirection", m_shadowManager->m_lightPos);
+        pbrDeferredPre.setVec4("FrustumDistances", m_frustumDistances);
+        pbrDeferredPre.setVec3("u_camPosition", m_camera->position);
+        pbrDeferredPre.setFloat("u_shadowFar", m_shadowManager->m_far);
+        pbrDeferredPre.setVec3("Bias", m_shadowBias);
 
-        if (source->faceCullType == FaceCullType::none)
-            glDisable(GL_CULL_FACE);
-        else
-            glEnable(GL_CULL_FACE);
+        glActiveTexture(GL_TEXTURE0 + 8);
+        glUniform1i(glGetUniformLocation(pbrDeferredPre.id, "ShadowMap"), 8);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
-        if (source->faceCullType == FaceCullType::backFaces)
-            glCullFace(GL_BACK);
-        else if (source->faceCullType == FaceCullType::frontFaces)
-            glCullFace(GL_FRONT);
-
-        if (source->polygonMode == PolygonMode::fill)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        else if (source->polygonMode == PolygonMode::line)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        else if (source->polygonMode == PolygonMode::point)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-
-        source->model->draw(pbrDeferredPre, true);
-    }
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    // setup pbr anim shader
-    pbrDeferredPreAnim.use();
-    pbrDeferredPreAnim.setMat4("view", m_view);
-    pbrDeferredPreAnim.setMat4("projection", m_projection);
-    pbrDeferredPreAnim.setVec3("lightDirection", m_shadowManager->m_lightPos);
-    pbrDeferredPreAnim.setVec4("FrustumDistances", m_frustumDistances);
-    pbrDeferredPreAnim.setVec3("u_camPosition", m_camera->position);
-    pbrDeferredPreAnim.setFloat("u_shadowFar", m_shadowManager->m_far);
-    pbrDeferredPreAnim.setVec3("Bias", m_shadowBias);
-
-    glActiveTexture(GL_TEXTURE0 + 8);
-    glUniform1i(glGetUniformLocation(pbrDeferredPreAnim.id, "ShadowMap"), 8);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
-
-    // render each anim
-    for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
-    {
-        RenderSource *source = m_visiblePbrAnimSources[i];
-
-        if (source->animator)
+        // draw each pbr
+        for (int i = 0; i < m_visiblePbrSources.size(); i++)
         {
-            // TODO: set as block
-            auto transforms = source->animator->m_finalBoneMatrices;
-            for (int i = 0; i < transforms.size(); ++i)
-                pbrDeferredPreAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+            RenderSource *source = m_visiblePbrSources[i];
+            pbrDeferredPre.setMat4("model", m_originTransform * source->modelMatrix);
+
+            if (source->faceCullType == FaceCullType::none)
+                glDisable(GL_CULL_FACE);
+            else
+                glEnable(GL_CULL_FACE);
+
+            if (source->faceCullType == FaceCullType::backFaces)
+                glCullFace(GL_BACK);
+            else if (source->faceCullType == FaceCullType::frontFaces)
+                glCullFace(GL_FRONT);
+
+            if (source->polygonMode == PolygonMode::fill)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            else if (source->polygonMode == PolygonMode::line)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            else if (source->polygonMode == PolygonMode::point)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+
+            source->model->draw(pbrDeferredPre, true);
         }
 
-        pbrDeferredPreAnim.setMat4("model", m_originTransform * source->modelMatrix);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 
-        if (source->faceCullType == FaceCullType::none)
-            glDisable(GL_CULL_FACE);
-        else
-            glEnable(GL_CULL_FACE);
+    // setup pbr anim shader
+    if (!m_visiblePbrAnimSources.empty())
+    {
+        pbrDeferredPreAnim.use();
+        pbrDeferredPreAnim.setMat4("view", m_view);
+        pbrDeferredPreAnim.setMat4("projection", m_projection);
+        pbrDeferredPreAnim.setVec3("lightDirection", m_shadowManager->m_lightPos);
+        pbrDeferredPreAnim.setVec4("FrustumDistances", m_frustumDistances);
+        pbrDeferredPreAnim.setVec3("u_camPosition", m_camera->position);
+        pbrDeferredPreAnim.setFloat("u_shadowFar", m_shadowManager->m_far);
+        pbrDeferredPreAnim.setVec3("Bias", m_shadowBias);
 
-        if (source->faceCullType == FaceCullType::backFaces)
-            glCullFace(GL_BACK);
-        else if (source->faceCullType == FaceCullType::frontFaces)
-            glCullFace(GL_FRONT);
+        glActiveTexture(GL_TEXTURE0 + 8);
+        glUniform1i(glGetUniformLocation(pbrDeferredPreAnim.id, "ShadowMap"), 8);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, m_shadowmapManager->m_textureArray);
 
-        source->model->draw(pbrDeferredPreAnim, true);
+        // render each anim
+        for (int i = 0; i < m_visiblePbrAnimSources.size(); i++)
+        {
+            RenderSource *source = m_visiblePbrAnimSources[i];
+
+            if (source->animator)
+            {
+                // TODO: set as block
+                auto transforms = source->animator->m_finalBoneMatrices;
+                for (int i = 0; i < transforms.size(); ++i)
+                    pbrDeferredPreAnim.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+            }
+
+            pbrDeferredPreAnim.setMat4("model", m_originTransform * source->modelMatrix);
+
+            if (source->faceCullType == FaceCullType::none)
+                glDisable(GL_CULL_FACE);
+            else
+                glEnable(GL_CULL_FACE);
+
+            if (source->faceCullType == FaceCullType::backFaces)
+                glCullFace(GL_BACK);
+            else if (source->faceCullType == FaceCullType::frontFaces)
+                glCullFace(GL_FRONT);
+
+            source->model->draw(pbrDeferredPreAnim, true);
+        }
     }
 
     glDisable(GL_CULL_FACE);
@@ -756,6 +767,9 @@ void RenderManager::updateLightBuffer(std::vector<LightSource> &lights)
 
 void RenderManager::renderBlend()
 {
+    if (m_particleSources.empty() && m_transparentRenderables.empty())
+        return;
+
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -785,9 +799,22 @@ void RenderManager::renderBlend()
     glDepthMask(GL_TRUE);
 }
 
-// TODO: skip if no transmission mesh
 void RenderManager::renderTransmission()
 {
+    bool anyTransmission = false;
+    for (int i = 0; i < m_visiblePbrSources.size(); i++)
+    {
+        RenderSource *source = m_visiblePbrSources[i];
+        if (!source->model->transmissionMeshes.empty())
+        {
+            anyTransmission = true;
+            break;
+        }
+    }
+
+    if (!anyTransmission)
+        return;
+
     // create mipmap
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, m_screenW, m_screenH);
