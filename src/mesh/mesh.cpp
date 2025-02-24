@@ -15,7 +15,8 @@ Material::Material(const std::string &name, std::vector<Texture> &textures)
     : name(name),
       textures(textures),
       blendMode(MaterialBlendMode::opaque),
-      albedo(glm::vec4(0.f)),
+      uvScale(glm::vec2(1.f)),
+      albedo(glm::vec4(1.f)),
       metallic(0.f),
       roughness(0.f),
       transmission(0.f),
@@ -135,6 +136,7 @@ void Mesh::unbindTextures(Shader shader)
 
 void Mesh::bindProperties(Shader shader)
 {
+    shader.setVec2("material.uvScale", material->uvScale);
     shader.setVec4("material.albedo", material->albedo);
     shader.setFloat("material.metallic", material->metallic);
     shader.setFloat("material.roughness", material->roughness);
@@ -156,7 +158,8 @@ void Mesh::bindProperties(Shader shader)
 // TODO: remove?
 void Mesh::unbindProperties(Shader shader)
 {
-    shader.setVec4("material.albedo", glm::vec4(0.f));
+    shader.setVec2("material.uvScale", glm::vec2(1.f));
+    shader.setVec4("material.albedo", glm::vec4(1.f));
     shader.setFloat("material.metallic", 0.f);
     shader.setFloat("material.roughness", 0.f);
     shader.setFloat("material.transmission", 0.f);

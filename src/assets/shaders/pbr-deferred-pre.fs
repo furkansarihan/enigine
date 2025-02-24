@@ -21,6 +21,7 @@ in mat3 ViewTBN;
 in mat4 TransformedModel;
 
 struct Material {
+    vec2 uvScale;
     vec4 albedo;
     float roughness;
     float metallic;
@@ -251,7 +252,7 @@ void node_parallax_occlusion_map(vec3 co,
 
 void main()
 {
-    vec2 pTexCoords = TexCoords;
+    vec2 pTexCoords = TexCoords * material.uvScale;
     vec3 pNormal = Normal;
     vec3 pWorldPos = WorldPos;
 
@@ -261,7 +262,7 @@ void main()
 
         // TODO: variable
         node_parallax_occlusion_map(
-            vec3(TexCoords, 0.0),
+            vec3(pTexCoords, 0.0),
             material.parallaxMapMidLevel,
             material.parallaxMapScale,
             material.parallaxMapSampleCount,

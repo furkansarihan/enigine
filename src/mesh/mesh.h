@@ -1,13 +1,7 @@
 #ifndef mesh_hpp
 #define mesh_hpp
 
-#include <fstream>
 #include <string>
-#include <sstream>
-#include <iostream>
-
-#include <glm/gtx/string_cast.hpp>
-#include <assimp/scene.h>
 
 #include "../shader/shader.h"
 
@@ -46,6 +40,7 @@ public:
 
     MaterialBlendMode blendMode;
 
+    glm::vec2 uvScale;
     glm::vec4 albedo;
     float roughness;
     float metallic;
