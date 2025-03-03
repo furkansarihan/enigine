@@ -104,6 +104,8 @@ void Mesh::bindTextures(Shader shader)
 
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
         glBindTexture(GL_TEXTURE_2D, material->textures[i].id);
+
+        shader.setVec2("uvScale_" + name + number, material->textures[i].uvScale);
     }
 
     shader.setBool("material.albedoMap", diffuseNr > 1);

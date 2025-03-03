@@ -23,6 +23,7 @@ struct Texture
     unsigned int id;
     int width, height, nrComponents;
     std::string type; // TODO: change
+    glm::vec2 uvScale = glm::vec2(1.f);
 };
 
 enum MaterialBlendMode

@@ -355,6 +355,29 @@ Material *Model::loadMaterial(aiMaterial *material)
     return &mat;
 }
 
+glm::vec2 getUVScale(aiMaterial *material, aiTextureType type)
+{
+    glm::vec2 uvScale(1.f);
+
+    for (unsigned int i = 0; i < material->mNumProperties; i++)
+    {
+        const aiMaterialProperty *property = material->mProperties[i];
+        std::string propertyName = property->mKey.C_Str();
+
+        if (propertyName == "$tex.uvtrafo" && property->mSemantic == type)
+        {
+            glm::vec4 uv = *reinterpret_cast<glm::vec4 *>(property->mData);
+            int index = property->mIndex;
+            uvScale.x = uv[2];
+            uvScale.y = uv[3];
+
+            break;
+        }
+    }
+
+    return uvScale;
+}
+
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
 {
     std::vector<Texture> textures;
@@ -387,6 +410,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
         }
 
         texture.type = typeName;
+        texture.uvScale = getUVScale(mat, type);
         textures.push_back(texture);
     }
     return textures;

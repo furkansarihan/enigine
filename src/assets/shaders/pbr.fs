@@ -59,6 +59,15 @@ uniform sampler2D texture_ao1;
 uniform sampler2D texture_opacity1;
 uniform sampler2D texture_unknown1;
 
+uniform vec2 uvScale_texture_diffuse1;
+uniform vec2 uvScale_texture_metal1;
+uniform vec2 uvScale_texture_normal1;
+uniform vec2 uvScale_texture_height1;
+uniform vec2 uvScale_texture_rough1;
+uniform vec2 uvScale_texture_ao1;
+uniform vec2 uvScale_texture_opacity1;
+uniform vec2 uvScale_texture_unknown1;
+
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
@@ -316,8 +325,18 @@ void main()
 
     vec2 pTexCoords = TexCoords * uvScale;
 
+    // uv scale per texture
+    vec2 pTexCoords_diffuse = pTexCoords * uvScale_texture_diffuse1;
+    vec2 pTexCoords_metal = pTexCoords * uvScale_texture_metal1;
+    vec2 pTexCoords_normal = pTexCoords * uvScale_texture_normal1;
+    // vec2 pTexCoords_height = pTexCoords * uvScale_texture_height1;
+    vec2 pTexCoords_rough = pTexCoords * uvScale_texture_rough1;
+    vec2 pTexCoords_ao = pTexCoords * uvScale_texture_ao1;
+    vec2 pTexCoords_opacity = pTexCoords * uvScale_texture_opacity1;
+    vec2 pTexCoords_unknown = pTexCoords * uvScale_texture_unknown1;
+
     if (material.albedoMap) {
-        vec4 diffuse = texture(texture_diffuse1, pTexCoords);
+        vec4 diffuse = texture(texture_diffuse1, pTexCoords_diffuse);
         albedo = diffuse.rgb;
         albedo *= material.albedo.rgb; // TODO: validate
         opacity = diffuse.a; // TODO: validate
@@ -328,7 +347,7 @@ void main()
 
     // TODO: validate
     if (material.opacityMap) {
-        opacity *= texture(texture_opacity1, pTexCoords).r;
+        opacity *= texture(texture_opacity1, pTexCoords_opacity).r;
     } else {
         opacity *= material.opacity;
     }
@@ -338,23 +357,23 @@ void main()
 
     if (material.aoRoughMetalMap) {
         // TODO: individual present
-        vec3 merged = texture(texture_unknown1, pTexCoords).rgb;
+        vec3 merged = texture(texture_unknown1, pTexCoords_unknown).rgb;
         ao = 1.0; // TODO: useAOMAP
         roughness = merged.g * material.roughness;
         metallic = merged.b * material.metallic;
     } else {
         if (material.aoMap) {
-            ao = texture(texture_ao1, pTexCoords).r;
+            ao = texture(texture_ao1, pTexCoords_ao).r;
         } else {
             ao = 1.0;
         }
         if (material.roughMap) {
-            roughness = texture(texture_rough1, pTexCoords).r * material.roughness;
+            roughness = texture(texture_rough1, pTexCoords_rough).r * material.roughness;
         } else {
             roughness = material.roughness;
         }
         if (material.metalMap) {
-            metallic = texture(texture_metal1, pTexCoords).r * material.metallic;
+            metallic = texture(texture_metal1, pTexCoords_metal).r * material.metallic;
         } else {
             metallic = material.metallic;
         }
@@ -364,7 +383,7 @@ void main()
     vec3 V = normalize(camPos - WorldPos);
 
     if (material.normalMap) {
-        vec3 tangentNormal = texture(texture_normal1, pTexCoords).xyz * 2.0 - 1.0;
+        vec3 tangentNormal = texture(texture_normal1, pTexCoords_normal).xyz * 2.0 - 1.0;
         // TODO: pom tangent and bitangent?
         mat3 TBN = mat3(
             Tangent,
