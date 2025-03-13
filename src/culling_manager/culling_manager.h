@@ -2,18 +2,18 @@
 #define culling_manager_hpp
 
 #include <fstream>
-#include <string>
-#include <sstream>
 #include <iostream>
-#include <vector>
 #include <map>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "btBulletDynamicsCommon.h"
 #include <glm/glm.hpp>
 
-#include "../utils/bullet_glm.h"
-#include "../physics_world/debug_drawer/debug_drawer.h"
 #include "../camera/camera.h"
+#include "../physics_world/debug_drawer/debug_drawer.h"
+#include "../utils/bullet_glm.h"
 
 struct SelectedObject
 {
@@ -40,6 +40,11 @@ public:
     std::vector<SelectedObject> getObjects(glm::vec3 rayFrom, glm::vec3 rayTo);
     std::vector<SelectedObject> getObjects(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
 
+    // frustum culling
+    glm::vec4 m_planes[6];
+    void calculatePlanes(glm::mat4 viewProjection);
+    bool inFrustum(const glm::vec3 &aabbMin, const glm::vec3 &aabbMax, const glm::vec3 &viewPos);
+
 private:
     btDefaultCollisionConfiguration *m_collisionConfiguration;
     btCollisionDispatcher *m_dispatcher;
@@ -49,11 +54,6 @@ private:
 
     void init();
     btCollisionObject *createCollisionObject(void *id, btCollisionShape *shape, const glm::mat4 &modelMatrix);
-
-    // frustum culling
-    glm::vec4 m_planes[6];
-    bool inFrustum(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos);
-    void calculatePlanes(glm::mat4 viewProjection);
 };
 
 #endif /* culling_manager_hpp */

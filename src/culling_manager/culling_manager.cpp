@@ -173,8 +173,10 @@ std::vector<SelectedObject> CullingManager::getObjects(glm::vec3 from, glm::vec3
     }
 
     // Sort selected objects by squared distance
-    std::sort(selectedObjects.begin(), selectedObjects.end(), [&from](const SelectedObject &a, const SelectedObject &b)
-              { return glm::length(a.hitPointWorld - from) < glm::length(b.hitPointWorld - from); });
+    std::sort(
+        selectedObjects.begin(),
+        selectedObjects.end(),
+        [&from](const SelectedObject &a, const SelectedObject &b) { return glm::length2(a.hitPointWorld - from) < glm::length2(b.hitPointWorld - from); });
 
     return selectedObjects;
 }
@@ -219,7 +221,7 @@ std::vector<SelectedObject> CullingManager::getObjects(glm::vec3 aabbMin, glm::v
     return visibleObjects;
 }
 
-bool CullingManager::inFrustum(glm::vec3 aabbMin, glm::vec3 aabbMax, glm::vec3 viewPos)
+bool CullingManager::inFrustum(const glm::vec3 &aabbMin, const glm::vec3 &aabbMax, const glm::vec3 &viewPos)
 {
     for (int i = 0; i < 6; ++i)
     {

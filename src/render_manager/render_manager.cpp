@@ -251,7 +251,7 @@ void RenderManager::setupFrame(GLFWwindow *window)
     m_shadowManager->setupLightAabb(objectAabbs);
 
     // TODO: variable size
-    std::vector<float> &frustumDistances = m_shadowManager->m_frustumDistances;
+    const std::vector<float> &frustumDistances = m_shadowManager->m_frustumDistances;
     for (int i = 0; i < frustumDistances.size(); i++)
     {
         m_frustumDistances[i] = frustumDistances[i];
@@ -264,7 +264,7 @@ void RenderManager::renderDepth()
     // TODO: frustum culling per split
     for (int i = 0; i < m_shadowManager->m_splitCount; i++)
     {
-        int frustumIndex = i;
+        m_frustumIndex = i;
         m_shadowmapManager->bindTextureArray(i);
         m_depthP = m_shadowManager->m_depthPMatrices[i];
         m_depthVP = m_depthP * m_depthViewMatrix;
@@ -299,7 +299,7 @@ void RenderManager::renderDepth()
         {
             RenderSource *source = m_visiblePbrSources[i];
 
-            if (!inShadowFrustum(source, frustumIndex))
+            if (!inShadowFrustum(source, m_frustumIndex))
                 continue;
 
             depthShader.use();
@@ -310,7 +310,7 @@ void RenderManager::renderDepth()
         {
             RenderSource *source = m_visiblePbrAnimSources[i];
 
-            if (!inShadowFrustum(source, frustumIndex))
+            if (!inShadowFrustum(source, m_frustumIndex))
                 continue;
 
             if (source->animator)

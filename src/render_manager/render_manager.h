@@ -281,6 +281,7 @@ public:
     glm::vec3 m_cullViewPos;
 
     // updated for each cascade
+    int m_frustumIndex;
     glm::mat4 m_depthP;
     glm::mat4 m_depthVP;
     glm::vec3 m_depthNearPlaneCenter;
