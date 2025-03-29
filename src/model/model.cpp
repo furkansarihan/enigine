@@ -33,6 +33,10 @@ Model::Model(Model *model, int meshIndex)
         transmissionMeshes.push_back(mesh);
 }
 
+Model::Model()
+{
+}
+
 Model::~Model()
 {
     // TODO: delete when?
@@ -92,13 +96,7 @@ void Model::loadModel(std::string const &path)
 
     // read file via ASSIMP
     m_scene = m_importer->ReadFile(path,
-                                   aiProcess_JoinIdenticalVertices |
-                                       aiProcess_ImproveCacheLocality |
-                                       aiProcess_OptimizeGraph |
-                                       aiProcess_RemoveComponent |
-                                       aiProcess_Triangulate |
-                                       aiProcess_FlipUVs |
-                                       aiProcess_CalcTangentSpace |
+                                   aiProcess_FlipUVs |
                                        aiProcess_GenBoundingBoxes);
 
     // check for errors
@@ -150,6 +148,7 @@ void Model::processNode(aiNode *node, glm::mat4 parentTransform)
         mesh->offset = transform;
 
         // TODO: negative scale?
+        // TODO: new obb to aabb - define as obb?
         glm::vec4 aabbMin = transform * glm::vec4(mesh->aabbMin, 1.f);
         glm::vec4 aabbMax = transform * glm::vec4(mesh->aabbMax, 1.f);
 

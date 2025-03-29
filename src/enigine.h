@@ -43,6 +43,7 @@
 #include "render_manager/render_manager.h"
 #include "transform/transform.h"
 #include "update_manager/update_manager.h"
+#include "timer/timer.h"
 
 class Enigine
 {

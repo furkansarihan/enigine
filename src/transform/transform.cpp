@@ -21,25 +21,25 @@ eTransform::~eTransform()
 {
 }
 
-void eTransform::setPosition(glm::vec3 position)
+void eTransform::setPosition(const glm::vec3 &position)
 {
     m_position = position;
     updateModelMatrix();
 }
 
-void eTransform::setRotation(glm::quat rotation)
+void eTransform::setRotation(const glm::quat &rotation)
 {
     m_rotation = rotation;
     updateModelMatrix();
 }
 
-void eTransform::setScale(glm::vec3 scale)
+void eTransform::setScale(const glm::vec3 &scale)
 {
     m_scale = scale;
     updateModelMatrix();
 }
 
-void eTransform::setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 scale)
+void eTransform::setTransform(const glm::vec3 &position, const glm::quat &rotation, const glm::vec3 &scale)
 {
     m_position = position;
     m_rotation = rotation;
@@ -48,7 +48,7 @@ void eTransform::setTransform(glm::vec3 position, glm::quat rotation, glm::vec3 
 }
 
 // TODO: remove?
-void eTransform::setModelMatrix(glm::mat4 model)
+void eTransform::setModelMatrix(const glm::mat4 &model)
 {
     m_model = model;
 }

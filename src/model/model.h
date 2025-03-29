@@ -35,6 +35,7 @@ class Model
 public:
     Model(ResourceManager *resourceManager, std::string const &path, bool isCopyMaterial);
     Model(Model *model, int meshIndex);
+    Model();
     ~Model();
 
     std::vector<Mesh *> meshes;

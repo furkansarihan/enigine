@@ -9,6 +9,7 @@
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>

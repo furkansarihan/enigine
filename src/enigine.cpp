@@ -66,10 +66,11 @@ int Enigine::init()
     // Create window with graphics context
     // TODO: EnigineBuilder()
     window = glfwCreateWindow(1280, 720, "enigine", NULL, NULL);
+    // window = glfwCreateWindow(1920, 1080, "enigine", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0);
 
     bool err = glewInit() != GLEW_OK;
 
@@ -149,27 +150,37 @@ int Enigine::init()
 
 void Enigine::start()
 {
+    Timer &timer = systemMonitorUI->m_timer;
+
     while (!glfwWindowShouldClose(window))
     {
+        timer.start("root");
         // Calculate deltaTime
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
         // Poll events
+        timer.start("glfwPollEvents");
         glfwPollEvents();
+        timer.stop("glfwPollEvents");
 
         // Process input
         mainCamera->processInput(window, deltaTime);
 
         // Update Physics
+        timer.start("physicsWorld");
         physicsWorld->update(deltaTime);
+        timer.stop("physicsWorld");
 
         // Update updatables
         // TODO: optimize not visible
+        timer.start("updateManager");
         updateManager->update(deltaTime);
+        timer.stop("updateManager");
 
         // Update audio listener
+        timer.start("soundEngine");
         soundEngine->setListenerPosition(mainCamera->position.x, mainCamera->position.y, mainCamera->position.z);
         std::vector<float> listenerOrientation;
         listenerOrientation.push_back(mainCamera->front.x);
@@ -179,17 +190,32 @@ void Enigine::start()
         listenerOrientation.push_back(mainCamera->up.y);
         listenerOrientation.push_back(mainCamera->up.z);
         soundEngine->setListenerOrientation(&listenerOrientation);
+        timer.stop("soundEngine");
 
         // render manager - start
+        timer.start("renderManager::all");
+        timer.start("renderManager::setupFrame");
         renderManager->setupFrame(window);
+        timer.stop("renderManager::setupFrame");
         // TODO: transform manager?
+        timer.start("renderManager::updateTransforms");
         renderManager->updateTransforms();
+        timer.stop("renderManager::updateTransforms");
+        timer.start("renderManager::renderDepth");
         renderManager->renderDepth();
+        timer.stop("renderManager::renderDepth");
+        timer.start("renderManager::renderOpaque");
         renderManager->renderOpaque();
+        timer.stop("renderManager::renderOpaque");
+        timer.start("renderManager::renderSSAO");
         renderManager->renderSSAO();
+        timer.stop("renderManager::renderSSAO");
+        timer.start("renderManager::renderDeferredShading");
         renderManager->renderDeferredShading();
+        timer.stop("renderManager::renderDeferredShading");
 
         // Update Debug Drawer
+        timer.start("debugDrawer");
         debugDrawer->getLines().clear();
         physicsWorld->m_dynamicsWorld->debugDrawWorld();
 
@@ -216,20 +242,34 @@ void Enigine::start()
         renderUI->drawSelectedSource(renderManager->simpleShader, mvp);
         renderUI->drawSelectedNormals(renderManager->lineShader, mvp, vbo, vao, ebo);
         renderUI->drawSelectedArmature(renderManager->simpleShader);
+        timer.stop("debugDrawer");
 
         // render manager - end
+        timer.start("renderManager::renderBlend");
         renderManager->renderBlend();
+        timer.stop("renderManager::renderBlend");
+        timer.start("renderManager::renderTransmission");
         renderManager->renderTransmission();
+        timer.stop("renderManager::renderTransmission");
+        timer.start("renderManager::renderPostProcess");
         renderManager->renderPostProcess();
+        timer.stop("renderManager::renderPostProcess");
 
         // TODO: renderManager->renderAfterPostProcess(); ?
         // Shadowmap debug - should be called after post process
         shadowmapUI->drawShadowmap(renderManager->textureArrayShader, renderManager->m_screenW, renderManager->m_screenH, renderManager->quad_vao);
+        timer.stop("renderManager::all");
 
         // Render UI
+        timer.start("rootUI");
         rootUI->render();
+        timer.stop("rootUI");
 
         // Swap buffers
+        timer.start("glfwSwapBuffers");
         glfwSwapBuffers(window);
+        timer.stop("glfwSwapBuffers");
+
+        timer.stop("root");
     }
 }

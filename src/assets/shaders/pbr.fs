@@ -323,7 +323,7 @@ void main()
     vec3 albedo;
     float ao, roughness, metallic, opacity;
 
-    vec2 pTexCoords = TexCoords * uvScale;
+    vec2 pTexCoords = TexCoords * material.uvScale;
 
     // uv scale per texture
     vec2 pTexCoords_diffuse = pTexCoords * uvScale_texture_diffuse1;

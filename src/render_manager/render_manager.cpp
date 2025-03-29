@@ -213,6 +213,9 @@ void RenderManager::setupFrame(GLFWwindow *window)
         m_debugCamera->front = m_camera->front;
         m_debugCamera->right = m_camera->right;
         m_debugCamera->up = m_camera->up;
+        m_debugCamera->fov = m_camera->fov;
+        m_debugCamera->m_near = m_camera->m_near;
+        m_debugCamera->m_far = m_camera->m_far;
     }
 
     // setup shadowmap
