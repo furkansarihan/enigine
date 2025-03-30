@@ -1,9 +1,8 @@
 #include "model.h"
 
-Model::Model(ResourceManager *resourceManager, std::string const &path, bool isCopyMaterial)
+Model::Model(ResourceManager *resourceManager, std::string const &path)
     : m_resourceManager(resourceManager),
-      m_path(path),
-      m_isCopyMaterial(isCopyMaterial)
+      m_path(path)
 {
     m_importer = new Assimp::Importer();
 
@@ -16,8 +15,7 @@ Model::Model(Model *model, int meshIndex)
       aabbMin(model->meshes[meshIndex]->aabbMin),
       aabbMax(model->meshes[meshIndex]->aabbMax),
       m_directory(model->m_directory),
-      gammaCorrection(model->gammaCorrection),
-      m_isCopyMaterial(model->m_isCopyMaterial)
+      gammaCorrection(model->gammaCorrection)
 {
     if (model->meshes.size() <= meshIndex || meshIndex < 0)
     {
@@ -238,12 +236,10 @@ Material *Model::loadMaterial(aiMaterial *material)
 {
     // return same material if exist
     std::string materialName = material->GetName().C_Str();
-    if (!m_isCopyMaterial)
-    {
-        auto it = m_resourceManager->m_materials.find(materialName);
-        if (it != m_resourceManager->m_materials.end())
-            return it->second;
-    }
+    std::string materialKey = m_path + ":" + materialName;
+    auto it = m_resourceManager->m_materials.find(materialName);
+    if (it != m_resourceManager->m_materials.end())
+        return it->second;
 
     // TODO: merge detection for ao-rought-metal - validate unknown_map
     // TODO: transmission - thickness map
@@ -346,10 +342,7 @@ Material *Model::loadMaterial(aiMaterial *material)
         mat.parallaxMapScaleMode = 1.0;
     }
 
-    if (m_isCopyMaterial)
-        m_resourceManager->m_copyMaterials.push_back(&mat);
-    else
-        m_resourceManager->m_materials[materialName] = &mat;
+    m_resourceManager->m_materials[materialKey] = &mat;
 
     return &mat;
 }

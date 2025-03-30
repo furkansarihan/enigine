@@ -33,7 +33,7 @@ struct BoneInfo
 class Model
 {
 public:
-    Model(ResourceManager *resourceManager, std::string const &path, bool isCopyMaterial);
+    Model(ResourceManager *resourceManager, std::string const &path);
     Model(Model *model, int meshIndex);
     Model();
     ~Model();
@@ -46,7 +46,6 @@ public:
     std::string m_path;
     std::string m_directory;
     bool gammaCorrection;
-    bool m_isCopyMaterial;
 
     std::map<std::string, BoneInfo> m_boneInfoMap;
     int m_boneCounter = 0;

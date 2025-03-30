@@ -43,7 +43,7 @@ Model *ResourceManager::getModelFullPath(const std::string &fullPath, bool isCop
     }
 
     // TODO: reuse vao option for copy model
-    Model *model = new Model(this, fullPath, isCopy);
+    Model *model = new Model(this, fullPath);
     if (!isCopy)
         m_models[fullPath] = model;
 
