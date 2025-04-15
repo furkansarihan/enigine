@@ -188,6 +188,15 @@ public:
     virtual void renderColor() = 0;
 };
 
+class ForwardRenderable
+{
+public:
+    virtual ~ForwardRenderable() {}
+
+    virtual void renderDepth() = 0;
+    virtual void renderColor() = 0;
+};
+
 class TransparentRenderable
 {
 public:
@@ -233,6 +242,7 @@ public:
     std::vector<RenderSource *> m_visiblePbrSources;
     std::vector<RenderSource *> m_visiblePbrAnimSources;
     std::vector<Renderable *> m_renderables;
+    std::vector<ForwardRenderable *> m_forwardRenderables;
     std::vector<TransparentRenderable *> m_transparentRenderables;
 
     std::vector<RenderSource *> m_pbrSources;

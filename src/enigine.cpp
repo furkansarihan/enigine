@@ -214,6 +214,11 @@ void Enigine::start()
         renderManager->renderDeferredShading();
         timer.stop("renderManager::renderDeferredShading");
 
+        timer.start("renderManager::renderForward");
+        for (int i = 0; i < renderManager->m_forwardRenderables.size(); i++)
+            renderManager->m_forwardRenderables[i]->renderColor();
+        timer.stop("renderManager::renderForward");
+
         // Update Debug Drawer
         timer.start("debugDrawer");
         debugDrawer->getLines().clear();

@@ -4,8 +4,6 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalShadow;
 layout (location = 2) out vec3 gAlbedo;
 layout (location = 3) out vec3 gAoRoughMetal;
-layout (location = 4) out vec3 gViewPosition;
-layout (location = 5) out vec3 gViewNormal;
 
 in vec2 TexCoords;
 in vec3 WorldPos;
@@ -347,7 +345,6 @@ void main()
 
     // TODO: pom view space position and normal?
     vec3 N;
-    vec3 ViewN;
     if (material.normalMap) {
         vec3 tangentNormal = texture(texture_normal1, pTexCoords_normal).xyz * 2.0 - 1.0;
         // TODO: pom tangent and bitangent?
@@ -357,10 +354,8 @@ void main()
             pNormal
         );
         N = normalize(TBN * tangentNormal);
-        ViewN = normalize(ViewTBN * tangentNormal);
     } else {
         N = normalize(pNormal);
-        ViewN = normalize(ViewNormal);
     }
 
     gPosition = pWorldPos;
@@ -369,8 +364,6 @@ void main()
     gAoRoughMetal.r = ao;
     gAoRoughMetal.g = roughness;
     gAoRoughMetal.b = metallic;
-    gViewPosition = ViewPos;
-    gViewNormal = ViewN;
 
     // TODO: debug frustumIndex
     // if (frustumIndex == 0) {

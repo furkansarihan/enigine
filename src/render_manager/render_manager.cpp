@@ -476,11 +476,11 @@ void RenderManager::renderSSAO()
     shaderSSAO.setVec2("noiseScale", glm::vec2(m_screenW, m_screenH) / (float)m_ssao->noiseSize);
 
     glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gViewPosition"), 0);
-    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gViewPosition);
+    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gPosition"), 0);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gPosition);
     glActiveTexture(GL_TEXTURE0 + 1);
-    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gViewNormal"), 1);
-    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gViewNormal);
+    glUniform1i(glGetUniformLocation(shaderSSAO.id, "gNormal"), 1);
+    glBindTexture(GL_TEXTURE_2D, m_gBuffer->m_gNormalShadow);
 
     glActiveTexture(GL_TEXTURE0 + 2);
     glUniform1i(glGetUniformLocation(shaderSSAO.id, "texNoise"), 2);

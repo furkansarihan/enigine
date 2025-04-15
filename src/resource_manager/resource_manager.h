@@ -2,9 +2,8 @@
 #define resource_manager_hpp
 
 #include <string>
-#include <iostream>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 class Model;
 #include "../model/model.h"

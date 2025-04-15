@@ -1,7 +1,6 @@
 #include "render_ui.h"
 
 #include <glm/gtc/type_ptr.hpp>
-#include <filesystem>
 
 RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, ResourceManager *resourceManager)
     : m_inputManager(inputManager),
@@ -15,9 +14,9 @@ RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, Res
       m_drawNormals(false),
       m_normalSize(0.01f),
       m_drawNormalSource(nullptr),
-      m_drawArmature(false),
-      m_drawArmatureInFront(false),
-      m_boneScale(5.f),
+      m_drawArmature(true),
+      m_drawArmatureInFront(true),
+      m_boneScale(0.2f),
       m_followDistance(8.f),
       m_followOffset(glm::vec3(0.f, 2.f, 0.f))
 {
@@ -33,6 +32,7 @@ RenderUI::RenderUI(InputManager *inputManager, RenderManager *renderManager, Res
 
 void RenderUI::render()
 {
+    // if (!ImGui::CollapsingHeader("Render##RenderUI::render", ImGuiTreeNodeFlags_None))
     if (!ImGui::CollapsingHeader("Render##RenderUI::render", ImGuiTreeNodeFlags_DefaultOpen))
         return;
 
@@ -431,6 +431,9 @@ void RenderUI::renderRenderSource(RenderSource *source)
         }
     }
 
+    if (source->model != nullptr)
+        ss << " - " << source->model->m_path;
+
     if (ImGui::Selectable(ss.str().c_str(), m_selectedSource == source))
     {
         if (m_selectedSource == source)
@@ -518,12 +521,15 @@ void RenderUI::renderLightSources()
     if (!ImGui::TreeNode("Point Light Sources"))
         return;
 
-    ImGui::BeginTable("PointLightsTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+    ImGui::BeginTable("PointLightsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
     // Table header
     ImGui::TableSetupColumn("Point Light Index");
+    ImGui::TableSetupColumn("Radius");
+    ImGui::TableSetupColumn("Intensity");
     ImGui::TableSetupColumn("Linear");
     ImGui::TableSetupColumn("Quadratic");
+    ImGui::TableSetupColumn("Position");
     ImGui::TableHeadersRow();
 
     // Checkbox and input fields
@@ -534,15 +540,22 @@ void RenderUI::renderLightSources()
         LightSource &light = m_renderManager->m_pointLights[i];
 
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("m_pointLights: %d", i);
+        ImGui::Text("%d", i);
 
         ImGui::TableSetColumnIndex(1);
-        ImGui::SetNextItemWidth(-1);
-        ImGui::InputFloat(("##Linear" + std::to_string(i)).c_str(), &light.linear);
+        ImGui::DragFloat(("##Radius" + std::to_string(i)).c_str(), &light.radius);
 
         ImGui::TableSetColumnIndex(2);
-        ImGui::SetNextItemWidth(-1);
-        ImGui::InputFloat(("##Quadratic" + std::to_string(i)).c_str(), &light.quadratic);
+        ImGui::DragFloat(("##Intensity" + std::to_string(i)).c_str(), &light.intensity);
+
+        ImGui::TableSetColumnIndex(3);
+        ImGui::DragFloat(("##Linear" + std::to_string(i)).c_str(), &light.linear);
+
+        ImGui::TableSetColumnIndex(4);
+        ImGui::DragFloat(("##Quadratic" + std::to_string(i)).c_str(), &light.quadratic);
+
+        ImGui::TableSetColumnIndex(5);
+        ImGui::DragFloat3(("##Position" + std::to_string(i)).c_str(), &light.position.x, 0.01f);
     }
 
     ImGui::EndTable();
@@ -552,6 +565,7 @@ void RenderUI::renderLightSources()
 
 void RenderUI::renderDebug()
 {
+    // if (!ImGui::TreeNode("Debug##RenderUI::renderDebug", ImGuiTreeNodeFlags_DefaultOpen))
     if (!ImGui::TreeNode("Debug##RenderUI::renderDebug"))
         return;
 
@@ -584,10 +598,10 @@ void RenderUI::renderGBuffer()
     float width = m_renderManager->m_gBuffer->m_width;
     float height = m_renderManager->m_gBuffer->m_height;
     float aspectRatio = width / height;
-    float desiredWidth = 200.0f;
-    float desiredHeight = desiredWidth / aspectRatio;
+    float desiredHeight = m_desiredWidth / aspectRatio;
+    ImVec2 size(m_desiredWidth, desiredHeight);
 
-    ImVec2 size(desiredWidth, desiredHeight);
+    ImGui::DragFloat("Width", &m_desiredWidth, 2.f, 1.f, 1080.f);
 
     // Begin the table
     ImGui::BeginTable("G-Buffer-Table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
@@ -612,13 +626,6 @@ void RenderUI::renderGBuffer()
 
     ImGui::TableSetColumnIndex(3);
     ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gAoRoughMetal)), size, uv0, uv1);
-
-    ImGui::TableNextRow();
-    ImGui::TableSetColumnIndex(0);
-    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gViewPosition)), size, uv0, uv1);
-
-    ImGui::TableSetColumnIndex(1);
-    ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(m_renderManager->m_gBuffer->m_gViewNormal)), size, uv0, uv1);
 
     // End the table
     ImGui::EndTable();
@@ -685,8 +692,8 @@ void RenderUI::renderPostProcess()
     ImGui::DragFloat("m_contrastBright", &m_renderManager->m_postProcess->m_contrastBright, 0.01f);
     ImGui::DragFloat("m_contrastDark", &m_renderManager->m_postProcess->m_contrastDark, 0.01f);
     //
-    ImGui::DragFloat("fogMaxDist", &m_renderManager->fogMaxDist, 100.0f);
-    ImGui::DragFloat("fogMinDist", &m_renderManager->fogMinDist, 100.0f);
+    ImGui::DragFloat("fogMaxDist", &m_renderManager->fogMaxDist, 1.0f);
+    ImGui::DragFloat("fogMinDist", &m_renderManager->fogMinDist, 1.0f);
     ImGui::ColorEdit4("fogColor", &m_renderManager->fogColor[0]);
     // TODO: directional light source
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_NoTreePushOnOpen))

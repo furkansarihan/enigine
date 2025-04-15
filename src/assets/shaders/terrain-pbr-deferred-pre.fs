@@ -4,8 +4,6 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalShadow;
 layout (location = 2) out vec3 gAlbedo;
 layout (location = 3) out vec3 gAoRoughMetal;
-layout (location = 4) out vec3 gViewPosition;
-layout (location = 5) out vec3 gViewNormal;
 
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -460,7 +458,6 @@ void main()
     vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
 
     vec3 N = getNormalFromMap(T, tangentNormal, pNormal);
-    vec3 ViewN = getNormalFromMap(T, tangentNormal, pViewNormal);
 
     gPosition = pWorldPos;
     gNormalShadow = vec4(N, getVisibility(pWorldPos, pNormal));
@@ -469,8 +466,6 @@ void main()
     gAoRoughMetal.r = sampleTex(texture_ao1, hs, pTexCoords).r;
     gAoRoughMetal.g = sampleTex(texture_rough1, hs, pTexCoords).r;
     gAoRoughMetal.b = 0.0; // TODO: ?
-    gViewPosition = pViewPos;
-    gViewNormal = normalize(ViewN);
 
     // TODO: 
     // if (ShowCascade) {

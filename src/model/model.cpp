@@ -94,7 +94,8 @@ void Model::loadModel(std::string const &path)
 
     // read file via ASSIMP
     m_scene = m_importer->ReadFile(path,
-                                   aiProcess_FlipUVs |
+                                   aiProcessPreset_TargetRealtime_MaxQuality |
+                                       aiProcess_FlipUVs |
                                        aiProcess_GenBoundingBoxes);
 
     // check for errors
@@ -237,7 +238,7 @@ Material *Model::loadMaterial(aiMaterial *material)
     // return same material if exist
     std::string materialName = material->GetName().C_Str();
     std::string materialKey = m_path + ":" + materialName;
-    auto it = m_resourceManager->m_materials.find(materialName);
+    auto it = m_resourceManager->m_materials.find(materialKey);
     if (it != m_resourceManager->m_materials.end())
         return it->second;
 
@@ -276,7 +277,7 @@ Material *Model::loadMaterial(aiMaterial *material)
     std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
-    Material &mat = *(new Material(materialName, textures));
+    Material *mat = new Material(materialName, textures);
 
     // material properties
     for (unsigned int i = 0; i < material->mNumProperties; i++)
@@ -288,40 +289,40 @@ Material *Model::loadMaterial(aiMaterial *material)
         // TODO: enum instead of direct string?
         if (propertyName == "$clr.diffuse")
         {
-            mat.albedo = *reinterpret_cast<glm::vec4 *>(property->mData);
+            mat->albedo = *reinterpret_cast<glm::vec4 *>(property->mData);
         }
         else if (propertyName == "$mat.roughnessFactor")
         {
-            mat.roughness = *reinterpret_cast<float *>(property->mData);
+            mat->roughness = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.metallicFactor")
         {
-            mat.metallic = *reinterpret_cast<float *>(property->mData);
+            mat->metallic = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.transmission.factor")
         {
-            mat.transmission = *reinterpret_cast<float *>(property->mData);
+            mat->transmission = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.opacity")
         {
-            mat.opacity = *reinterpret_cast<float *>(property->mData);
+            mat->opacity = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$clr.emissive")
         {
-            mat.emissiveColor = *reinterpret_cast<glm::vec4 *>(property->mData);
+            mat->emissiveColor = *reinterpret_cast<glm::vec4 *>(property->mData);
         }
         // TODO: update to assimp 5.3.1
         else if (propertyName == "$mat.emissiveIntensity")
         {
-            mat.emissiveStrength = *reinterpret_cast<float *>(property->mData);
+            mat->emissiveStrength = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.volume.thicknessFactor")
         {
-            mat.thickness = *reinterpret_cast<float *>(property->mData);
+            mat->thickness = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.refracti")
         {
-            mat.ior = *reinterpret_cast<float *>(property->mData);
+            mat->ior = *reinterpret_cast<float *>(property->mData);
         }
         else if (propertyName == "$mat.blend")
         {
@@ -330,21 +331,21 @@ Material *Model::loadMaterial(aiMaterial *material)
     }
 
     // predicted blend mode
-    if (mat.transmission > 0.f || mat.opacity < 1.f)
-        mat.blendMode = MaterialBlendMode::alphaBlend;
+    if (mat->transmission > 0.f || mat->opacity < 1.f)
+        mat->blendMode = MaterialBlendMode::alphaBlend;
 
     // default parallax map properties
     if (!heightMaps.empty())
     {
-        mat.parallaxMapMidLevel = 0.5;
-        mat.parallaxMapScale = 0.05;
-        mat.parallaxMapSampleCount = 16.0;
-        mat.parallaxMapScaleMode = 1.0;
+        mat->parallaxMapMidLevel = 0.5;
+        mat->parallaxMapScale = 0.05;
+        mat->parallaxMapSampleCount = 16.0;
+        mat->parallaxMapScaleMode = 1.0;
     }
 
-    m_resourceManager->m_materials[materialKey] = &mat;
+    m_resourceManager->m_materials[materialKey] = mat;
 
-    return &mat;
+    return mat;
 }
 
 glm::vec2 getUVScale(aiMaterial *material, aiTextureType type)

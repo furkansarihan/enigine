@@ -20,7 +20,6 @@ public:
     unsigned int m_fbo;
     unsigned int m_rboDepth;
     unsigned int m_gPosition, m_gNormalShadow, m_gAlbedo, m_gAoRoughMetal;
-    unsigned int m_gViewPosition, m_gViewNormal;
 
     int m_width;
     int m_height;

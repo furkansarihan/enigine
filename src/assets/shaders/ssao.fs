@@ -4,8 +4,8 @@ out float FragColor;
 
 in vec2 TexCoords;
 
-uniform sampler2D gViewPosition;
-uniform sampler2D gViewNormal;
+uniform sampler2D gPosition;
+uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
 uniform vec3 samples[64];
@@ -22,9 +22,14 @@ uniform mat4 view;
 void main()
 {
     // get input for SSAO algorithm
-    vec3 fragPos = texture(gViewPosition, TexCoords).xyz;
-    vec3 normal = normalize(texture(gViewNormal, TexCoords).rgb);
+    vec3 fragPos = texture(gPosition, TexCoords).xyz;
+    vec3 normal = normalize(texture(gNormal, TexCoords).rgb);
     vec3 randomVec = normalize(texture(texNoise, TexCoords * noiseScale).xyz);
+
+    // Transform fragPos from world space to view space
+    fragPos = (view * vec4(fragPos, 1.0)).xyz;
+    // Transform normal from world space to view space
+    normal = normalize(mat3(view) * normal);
 
     // create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
@@ -45,7 +50,7 @@ void main()
         offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
         
         // get sample depth
-        float sampleDepth = texture(gViewPosition, offset.xy).z; // get depth value of kernel sample
+        float sampleDepth = (view * texture(gPosition, offset.xy)).z; // get depth value of kernel sample
         
         // range check & accumulate
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));

@@ -1,8 +1,8 @@
 #ifndef resource_ui_hpp
 #define resource_ui_hpp
 
-#include "../base_ui.h"
 #include "../../resource_manager/resource_manager.h"
+#include "../base_ui.h"
 
 class ResourceUI : public BaseUI
 {
@@ -18,8 +18,8 @@ public:
     void render() override;
     void renderModels();
     void renderTextures();
-    void renderMaterial(Model *model, Material &material, int index);
-    void renderTexture(const Texture &texture);
+    bool renderMaterial(Material &material);
+    void renderTexture(Texture &texture);
 };
 
 #endif /* resource_ui_hpp */

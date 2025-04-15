@@ -39,6 +39,8 @@ public:
     // camera follow
     float m_followDistance;
     glm::vec3 m_followOffset;
+    // G-Buffer
+    float m_desiredWidth = 200.0f;
 
     void render() override;
     void update(float deltaTime) override;
