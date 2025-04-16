@@ -15,7 +15,10 @@ ResourceManager::~ResourceManager()
     m_models.clear();
 
     for (auto &pair : m_textures)
-        glDeleteTextures(1, &pair.second.id);
+    {
+        glDeleteTextures(1, &pair.second->id);
+        delete pair.second;
+    }
     m_textures.clear();
 
     for (auto &pair : m_materials)
@@ -59,38 +62,41 @@ void ResourceManager::disposeModel(std::string fullPath)
     m_models.erase(fullPath);
 }
 
-Texture ResourceManager::textureFromMemory(const TextureParams &params, const std::string &key,
-                                           void *buffer, unsigned int bufferSize)
+Texture *ResourceManager::textureFromMemory(
+    const TextureParams &params,
+    const std::string &key,
+    void *buffer,
+    unsigned int bufferSize)
 {
     if (m_textures.find(key) != m_textures.end())
         return m_textures[key];
 
     unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    Texture texture;
+    Texture *texture = new Texture();
     // TODO: data type?
     void *data;
     if (params.dataType == TextureDataType::UnsignedByte)
     {
         data = stbi_load_from_memory((const stbi_uc *)buffer,
                                      bufferSize,
-                                     &texture.width,
-                                     &texture.height,
-                                     &texture.nrComponents, 0);
+                                     &texture->width,
+                                     &texture->height,
+                                     &texture->nrComponents, 0);
     }
     else
     {
         // TODO: data type?
         data = stbi_loadf_from_memory((const stbi_uc *)buffer,
                                       bufferSize,
-                                      &texture.width,
-                                      &texture.height,
-                                      &texture.nrComponents, 0);
+                                      &texture->width,
+                                      &texture->height,
+                                      &texture->nrComponents, 0);
     }
 
     if (data)
     {
-        loadTexture(texture, params, data);
+        loadTexture(*texture, params, data);
         stbi_image_free(data);
     }
     else
@@ -104,35 +110,37 @@ Texture ResourceManager::textureFromMemory(const TextureParams &params, const st
     return texture;
 }
 
-Texture ResourceManager::textureFromFile(const TextureParams &params, const std::string &key,
-                                         const std::string &path)
+Texture *ResourceManager::textureFromFile(
+    const TextureParams &params,
+    const std::string &key,
+    const std::string &path)
 {
     if (m_textures.find(key) != m_textures.end())
         return m_textures[key];
 
     unsigned int start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    Texture texture;
+    Texture *texture = new Texture();
     void *data;
     if (params.dataType == TextureDataType::UnsignedByte)
     {
         data = stbi_load(path.c_str(),
-                         &texture.width,
-                         &texture.height,
-                         &texture.nrComponents, 0);
+                         &texture->width,
+                         &texture->height,
+                         &texture->nrComponents, 0);
     }
     else
     {
         // TODO: data type?
         data = stbi_loadf(path.c_str(),
-                          &texture.width,
-                          &texture.height,
-                          &texture.nrComponents, 0);
+                          &texture->width,
+                          &texture->height,
+                          &texture->nrComponents, 0);
     }
 
     if (data)
     {
-        loadTexture(texture, params, data);
+        loadTexture(*texture, params, data);
         stbi_image_free(data);
     }
     else
@@ -147,9 +155,9 @@ Texture ResourceManager::textureFromFile(const TextureParams &params, const std:
     return texture;
 }
 
-Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering)
+Texture *ResourceManager::getTextureArray(std::vector<std::string> texturePaths, bool anisotropicFiltering)
 {
-    Texture texture;
+    Texture *texture = new Texture();
     int nrTextures = texturePaths.size();
     int twidth[nrTextures];
     int theight[nrTextures];
@@ -175,11 +183,11 @@ Texture ResourceManager::getTextureArray(std::vector<std::string> texturePaths, 
     float tHeight = theight[0];
     int tNrComponents = tnrComponents[0];
 
-    texture.width = tWidth;
-    texture.height = tHeight;
-    texture.nrComponents = tNrComponents;
-    loadTextureArray(texture, tdata);
-    std::cout << "ResourceManager: loaded texture: " << texture.id << std::endl;
+    texture->width = tWidth;
+    texture->height = tHeight;
+    texture->nrComponents = tNrComponents;
+    loadTextureArray(*texture, tdata);
+    std::cout << "ResourceManager: loaded texture: " << texture->id << std::endl;
 
     for (int i = 0; i < nrTextures; i++)
         stbi_image_free(tdata[i]);
@@ -308,6 +316,17 @@ void ResourceManager::loadTexture(Texture &texture, const TextureParams &params,
 
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, texture.width, texture.height, 0, format, dataType, data);
 
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    updateTexture(texture, params);
+}
+
+void ResourceManager::updateTexture(Texture &texture, const TextureParams &params)
+{
+    glBindTexture(GL_TEXTURE_2D, texture.id);
+
+    texture.params = params;
+
     // min filter
     if (params.generateMipmaps)
     {
@@ -372,5 +391,5 @@ void ResourceManager::setupAnisotropicFiltering(float maxAnisotropy)
 
     float amount = std::min(maxAnisotropy, maxSupported);
 
-    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, amount);
 }

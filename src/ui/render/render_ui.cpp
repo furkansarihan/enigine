@@ -143,7 +143,7 @@ void RenderUI::updateEnvironmentTexture(std::string path)
     TextureParams textureParams;
     textureParams.dataType = TextureDataType::Float32;
     // textureParams.generateMipmaps = true;
-    Texture envTexture = m_resourceManager->textureFromFile(textureParams, path, path);
+    Texture *envTexture = m_resourceManager->textureFromFile(textureParams, path, path);
     m_renderManager->updateEnvironmentTexture(envTexture);
 }
 

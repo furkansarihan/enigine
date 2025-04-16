@@ -23,7 +23,7 @@ public:
     int m_prefilterSize;
     int m_brdfLutSize;
 
-    Texture m_environmentTexture;
+    Texture *m_environmentTexture;
 
     unsigned int captureFBO, captureRBO;
 

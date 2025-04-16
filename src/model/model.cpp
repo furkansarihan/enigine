@@ -248,33 +248,33 @@ Material *Model::loadMaterial(aiMaterial *material)
     // TODO: material properties for use_ao-metal-rough map
     // TODO: opacity map - fix
 
-    std::vector<Texture> textures;
+    std::vector<Texture *> textures;
     // 1. diffuse maps
-    std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+    std::vector<Texture *> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
     // 2. specular maps
-    std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+    std::vector<Texture *> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
     // 3. normal maps
-    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
+    std::vector<Texture *> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
     textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
     // 4. height maps
-    std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_height");
+    std::vector<Texture *> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_height");
     textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
     // 5. roughness maps
-    std::vector<Texture> rougnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_rough");
+    std::vector<Texture *> rougnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_rough");
     textures.insert(textures.end(), rougnessMaps.begin(), rougnessMaps.end());
     // 6. ambient occlusion maps
-    std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_ao");
+    std::vector<Texture *> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_ao");
     textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     // 7. metalness maps
-    std::vector<Texture> metalMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metal");
+    std::vector<Texture *> metalMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metal");
     textures.insert(textures.end(), metalMaps.begin(), metalMaps.end());
     // 8. opacity maps
-    std::vector<Texture> opacityMaps = loadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity");
+    std::vector<Texture *> opacityMaps = loadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity");
     textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
     // unknown maps
-    std::vector<Texture> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
+    std::vector<Texture *> unknownMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_unknown");
     textures.insert(textures.end(), unknownMaps.begin(), unknownMaps.end());
 
     Material *mat = new Material(materialName, textures);
@@ -371,16 +371,16 @@ glm::vec2 getUVScale(aiMaterial *material, aiTextureType type)
     return uvScale;
 }
 
-std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
+std::vector<Texture *> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
 {
-    std::vector<Texture> textures;
+    std::vector<Texture *> textures;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
         aiString str;
         mat->GetTexture(type, i, &str);
 
         std::string texturePath = std::string(str.C_Str());
-        Texture texture;
+        Texture *texture;
 
         TextureParams textureParams;
         textureParams.generateMipmaps = true;
@@ -402,8 +402,8 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
             texture = m_resourceManager->textureFromFile(textureParams, path, path);
         }
 
-        texture.type = typeName;
-        texture.uvScale = getUVScale(mat, type);
+        texture->type = typeName;
+        texture->uvScale = getUVScale(mat, type);
         textures.push_back(texture);
     }
     return textures;

@@ -7,12 +7,12 @@ void ResourceUI::render()
     if (!ImGui::CollapsingHeader("Resource", ImGuiTreeNodeFlags_NoTreePushOnOpen))
         return;
 
-    renderModels();
-    /* for (auto &it : m_resourceManager->m_materials)
+    // renderModels();
+    for (auto &it : m_resourceManager->m_materials)
     {
         Material *material = it.second;
         renderMaterial(*material);
-    } */
+    }
     renderTextures();
 }
 
@@ -46,10 +46,12 @@ void ResourceUI::renderTextures()
     if (!ImGui::TreeNode("Textures"))
         return;
 
+    // TODO: select texture
+
     for (auto &it : m_resourceManager->m_textures)
     {
-        Texture &texture = it.second;
-        renderTexture(texture);
+        Texture *texture = it.second;
+        renderTexture(*texture);
     }
 
     ImGui::TreePop();
@@ -94,11 +96,11 @@ bool ResourceUI::renderMaterial(Material &material)
     {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        renderTexture(texture);
+        renderTexture(*texture);
         ImGui::TableNextColumn();
-        ImGui::Text("%d", texture.nrComponents);
+        ImGui::Text("%d", texture->nrComponents);
         ImGui::TableNextColumn();
-        ImGui::Text("%s", texture.type.c_str());
+        ImGui::Text("%s", texture->type.c_str());
     }
     ImGui::EndTable();
 
@@ -108,6 +110,73 @@ bool ResourceUI::renderMaterial(Material &material)
     return alphaUpdated;
 }
 
+bool TextureParamsUI(TextureParams &params)
+{
+    ImGui::PushID(&params);
+
+    bool changed = false;
+
+    // Wrap Mode S
+    const char *wrapModeLabels[] = {"Clamp to Edge", "Clamp to Border", "Repeat"};
+    int wrapModeS = static_cast<int>(params.wrapModeS);
+    if (ImGui::Combo("Wrap Mode S", &wrapModeS, wrapModeLabels, IM_ARRAYSIZE(wrapModeLabels)))
+    {
+        params.wrapModeS = static_cast<TextureWrapMode>(wrapModeS);
+        changed = true;
+    }
+
+    // Wrap Mode T
+    int wrapModeT = static_cast<int>(params.wrapModeT);
+    if (ImGui::Combo("Wrap Mode T", &wrapModeT, wrapModeLabels, IM_ARRAYSIZE(wrapModeLabels)))
+    {
+        params.wrapModeT = static_cast<TextureWrapMode>(wrapModeT);
+        changed = true;
+    }
+
+    // Min Filter
+    const char *minFilterLabels[] = {"Nearest", "Linear"};
+    int minFilter = static_cast<int>(params.minFilter);
+    if (ImGui::Combo("Min Filter", &minFilter, minFilterLabels, IM_ARRAYSIZE(minFilterLabels)))
+    {
+        params.minFilter = static_cast<TextureFilterMode>(minFilter);
+        changed = true;
+    }
+
+    // Mag Filter
+    const char *magFilterLabels[] = {"Nearest", "Linear"};
+    int magFilter = static_cast<int>(params.magFilter);
+    if (ImGui::Combo("Mag Filter", &magFilter, magFilterLabels, IM_ARRAYSIZE(magFilterLabels)))
+    {
+        params.magFilter = static_cast<TextureFilterMode>(magFilter);
+        changed = true;
+    }
+
+    // Anisotropic Filtering
+    if (ImGui::Checkbox("Anisotropic Filtering", &params.anisotropicFiltering))
+        changed = true;
+
+    // Max Anisotropy
+    if (params.anisotropicFiltering)
+    {
+        if (ImGui::SliderFloat("Max Anisotropy", &params.maxAnisotropy, 1.0f, 16.0f, "%.1f"))
+            changed = true;
+    }
+
+    // Generate Mipmaps
+    if (ImGui::Checkbox("Generate Mipmaps", &params.generateMipmaps))
+        changed = true;
+
+    // TODO:
+    // Data Type (read-only, for display purposes)
+    // const char *dataTypeLabels[] = {"Unsigned Byte", "Float", "Half Float", "Int", "Unsigned Int"};
+    // int dataType = static_cast<int>(params.dataType);
+    // ImGui::Combo("Data Type", &dataType, dataTypeLabels, IM_ARRAYSIZE(dataTypeLabels));
+
+    ImGui::PopID();
+
+    return changed;
+}
+
 void ResourceUI::renderTexture(Texture &texture)
 {
     float aspectRatio = static_cast<float>(texture.width) / static_cast<float>(texture.height);
@@ -115,5 +184,12 @@ void ResourceUI::renderTexture(Texture &texture)
     float desiredHeight = desiredWidth / aspectRatio;
     ImVec2 size(desiredWidth, desiredHeight);
 
+    ImGui::PushID(&texture);
     ImGui::Image(reinterpret_cast<void *>(static_cast<uintptr_t>(texture.id)), size);
+
+    TextureParams newParams = texture.params;
+    if (TextureParamsUI(newParams))
+        m_resourceManager->updateTexture(texture, newParams);
+
+    ImGui::PopID();
 }

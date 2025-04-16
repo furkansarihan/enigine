@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "../material/material.h"
 #include "../shader/shader.h"
 
 #define MAX_BONE_PER_VERTEX 4
@@ -16,51 +17,6 @@ struct Vertex
     glm::vec3 bitangent;
     int boneIDs[MAX_BONE_PER_VERTEX];
     float weights[MAX_BONE_PER_VERTEX];
-};
-
-struct Texture
-{
-    unsigned int id;
-    int width, height, nrComponents;
-    std::string type; // TODO: change
-    glm::vec2 uvScale = glm::vec2(1.f);
-};
-
-enum MaterialBlendMode
-{
-    opaque,
-    alphaBlend,
-};
-
-// TODO: same instance inside model
-class Material
-{
-public:
-    std::string name;
-    std::vector<Texture> textures;
-
-    MaterialBlendMode blendMode;
-
-    glm::vec2 uvScale;
-    glm::vec4 albedo;
-    float roughness;
-    float metallic;
-    float transmission;
-    float opacity;
-    float ior;
-    // emissive
-    glm::vec4 emissiveColor;
-    float emissiveStrength;
-    // volume
-    float thickness;
-
-    // parallax occlusion mapping
-    float parallaxMapMidLevel;
-    float parallaxMapScale;
-    float parallaxMapSampleCount;
-    float parallaxMapScaleMode;
-
-    Material(const std::string &name, std::vector<Texture> &textures);
 };
 
 class Mesh

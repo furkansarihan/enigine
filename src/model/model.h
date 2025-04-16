@@ -2,24 +2,26 @@
 #define model_hpp
 
 #include <fstream>
-#include <string>
-#include <sstream>
 #include <iostream>
 #include <map>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
-#include "../shader/shader.h"
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+
 #include "../mesh/mesh.h"
+#include "../shader/shader.h"
+#include "../utils/assimp_to_glm.h"
+
 class ResourceManager;
 #include "../resource_manager/resource_manager.h"
-#include "../utils/assimp_to_glm.h"
 
 struct BoneInfo
 {
@@ -63,7 +65,7 @@ private:
     void processNode(aiNode *node, glm::mat4 parentTransform);
     Mesh *processMesh(aiMesh *mesh);
     Material *loadMaterial(aiMaterial *material);
-    std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);
+    std::vector<Texture *> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);
     void setVertexBoneDataToDefault(Vertex &vertex);
     void setVertexBoneData(Vertex &vertex, int boneID, float weight);
     void extractBoneWeightForVertices(std::vector<Vertex> &vertices, aiMesh *mesh);

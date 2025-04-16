@@ -325,7 +325,7 @@ public:
     void renderTransmission();
     void renderPostProcess();
 
-    void updateEnvironmentTexture(const Texture &newTexture);
+    void updateEnvironmentTexture(Texture *newTexture);
 
     void addSource(RenderSource *source);
     void removeSource(RenderSource *source);

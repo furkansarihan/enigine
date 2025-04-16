@@ -98,7 +98,7 @@ RenderManager::~RenderManager()
 
 // TODO: default gradient environment map
 
-void RenderManager::updateEnvironmentTexture(const Texture &newTexture)
+void RenderManager::updateEnvironmentTexture(Texture *newTexture)
 {
     m_pbrManager->m_environmentTexture = newTexture;
     m_pbrManager->setupCubemap(cube, hdrToCubemapShader);

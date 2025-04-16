@@ -20,7 +20,7 @@ int main()
     std::string path = resourceManager->m_executablePath + "/assets/hdris/qwantani_puresky.hdr";
     TextureParams textureParams;
     textureParams.dataType = TextureDataType::Float32;
-    Texture envTexture = resourceManager->textureFromFile(textureParams, path, path);
+    Texture *envTexture = resourceManager->textureFromFile(textureParams, path, path);
     renderManager->updateEnvironmentTexture(envTexture);
     renderManager->m_shadowManager->m_lightPos = glm::normalize(glm::vec3(0.693f, 0.51f, 0.51f));
 

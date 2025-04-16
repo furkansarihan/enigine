@@ -52,7 +52,7 @@ void PbrManager::setupCubemap(Model *cube, Shader &hdrToCubemapShader)
     hdrToCubemapShader.setInt("equirectangularMap", 0);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(hdrToCubemapShader.id, "equirectangularMap"), 0);
-    glBindTexture(GL_TEXTURE_2D, m_environmentTexture.id);
+    glBindTexture(GL_TEXTURE_2D, m_environmentTexture->id);
 
     glViewport(0, 0, m_cubemapFaceSize, m_cubemapFaceSize);
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);

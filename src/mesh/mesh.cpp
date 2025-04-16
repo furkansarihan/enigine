@@ -11,27 +11,6 @@ Mesh::Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned 
     setupMesh();
 }
 
-Material::Material(const std::string &name, std::vector<Texture> &textures)
-    : name(name),
-      textures(textures),
-      blendMode(MaterialBlendMode::opaque),
-      uvScale(glm::vec2(1.f)),
-      albedo(glm::vec4(1.f)),
-      metallic(0.f),
-      roughness(0.f),
-      transmission(0.f),
-      opacity(1.f),
-      ior(1.45f),
-      emissiveColor(glm::vec4(0.f)),
-      emissiveStrength(0.f),
-      thickness(0.f),
-      parallaxMapMidLevel(0.f),
-      parallaxMapScale(0.f),
-      parallaxMapSampleCount(0.f),
-      parallaxMapScaleMode(0.f)
-{
-}
-
 Mesh::~Mesh()
 {
     glDeleteVertexArrays(1, &VAO);
@@ -82,7 +61,7 @@ void Mesh::bindTextures(Shader shader)
         glActiveTexture(GL_TEXTURE0 + i);
 
         std::string number;
-        std::string name = material->textures[i].type;
+        std::string name = material->textures[i]->type;
         if (name == "texture_diffuse")
             number = std::to_string(diffuseNr++);
         else if (name == "texture_specular")
@@ -103,9 +82,9 @@ void Mesh::bindTextures(Shader shader)
             number = std::to_string(unknownNr++);
 
         glUniform1i(glGetUniformLocation(shader.id, (name + number).c_str()), i);
-        glBindTexture(GL_TEXTURE_2D, material->textures[i].id);
+        glBindTexture(GL_TEXTURE_2D, material->textures[i]->id);
 
-        shader.setVec2("uvScale_" + name + number, material->textures[i].uvScale);
+        shader.setVec2("uvScale_" + name + number, material->textures[i]->uvScale);
     }
 
     shader.setBool("material.albedoMap", diffuseNr > 1);
