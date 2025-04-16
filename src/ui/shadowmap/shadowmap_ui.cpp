@@ -16,7 +16,11 @@ void ShadowmapUI::render()
     m_shadowManager->m_lightPos = glm::normalize(m_shadowManager->m_lightPos);
     // m_shadowManager->m_camera->front = glm::normalize(m_shadowManager->m_camera->front);
     ImGui::DragFloat("camNear", &m_shadowManager->m_near, 1);
-    ImGui::DragFloat("camFar", &m_shadowManager->m_far, 1, 26, 10000);
+    ImGui::DragFloat("camFar", &m_shadowManager->m_far, 1, 1, 10000);
+
+    int size = m_shadowmapManager->getSize();
+    if (ImGui::DragInt("Shadowmap Size", &size, 128, 128, 4096))
+        m_shadowmapManager->updateSize(size);
 }
 
 void ShadowmapUI::drawFrustum(Shader &simpleShader, glm::mat4 mvp, unsigned int c_vbo, unsigned int c_vao, unsigned int c_ebo)

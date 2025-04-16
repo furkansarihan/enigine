@@ -76,3 +76,18 @@ void ShadowmapManager::bindTextureArray(int index)
     // No color output for shadow map
     glDrawBuffer(GL_NONE);
 }
+
+void ShadowmapManager::updateSize(int size)
+{
+    if (m_shadowmapSize == size)
+        return;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferObject);
+
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glDeleteTextures(1, &m_textureArray);
+
+    m_shadowmapSize = size;
+
+    createTextureArray();
+}

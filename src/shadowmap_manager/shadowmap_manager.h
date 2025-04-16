@@ -1,13 +1,7 @@
 #ifndef shadowmap_manager_hpp
 #define shadowmap_manager_hpp
 
-#include <fstream>
-#include <string>
 #include <sstream>
-#include <iostream>
-#include <vector>
-#include <map>
-
 #include <GL/glew.h>
 
 class ShadowmapManager
@@ -20,6 +14,12 @@ public:
 
     void bindFramebuffer();
     void bindTextureArray(int index);
+    void updateSize(int size);
+
+    int getSize()
+    {
+        return m_shadowmapSize;
+    }
 
 private:
     GLuint m_framebufferObject;
