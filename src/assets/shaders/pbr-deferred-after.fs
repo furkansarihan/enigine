@@ -85,7 +85,7 @@ void main()
     vec4 normalShadow = texture(gNormalShadow, TexCoords);
     vec3 N = normalShadow.xyz;
     float shadow = normalShadow.w;
-    vec3 albedo = pow(texture(gAlbedo, TexCoords).rgb, vec3(2.2));
+    vec3 albedoRaw = pow(texture(gAlbedo, TexCoords).rgb, vec3(2.2));
     vec3 aoRoughMetal = texture(gAoRoughMetal, TexCoords).rgb;
     float ao = aoRoughMetal.r;
     float roughness = aoRoughMetal.g;
@@ -93,6 +93,11 @@ void main()
     float ssao = texture(ssaoSampler, TexCoords).r;
 
     ao = min(ao, ssao);
+
+    // separate albedo into PBR albedo (clamped for physical correctness) 
+    // and emissive component (for bloom)
+    vec3 albedo = min(albedoRaw, vec3(1.0));
+    vec3 emissive = max(albedoRaw - vec3(1.0), vec3(0.0));
 
     vec3 V = normalize(camPos - WorldPos);
 
@@ -155,7 +160,8 @@ void main()
     
     vec3 ambient = (kD * diffuse + specular) * ao; 
 
-    vec3 color = ambient + Lo * shadow;
+    // add emissive component for bloom
+    vec3 color = ambient + Lo * shadow + emissive;
 
     FragColor = vec4(color, 1.0);
 
