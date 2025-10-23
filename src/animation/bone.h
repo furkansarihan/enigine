@@ -1,14 +1,11 @@
 #ifndef bone_hpp
 #define bone_hpp
 
-#include <iostream>
+#include <assimp/anim.h>
 #include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <assimp/scene.h>
-
-#include "../utils/assimp_to_glm.h"
 
 struct KeyVec3
 {
@@ -41,6 +38,8 @@ public:
     float m_blendFactor = 1.0f;
 
     Bone(const std::string &name, int ID, const aiNodeAnim *channel);
+    Bone(const std::string &name, int id, const glm::mat4 &localTransform);
+
     ~Bone();
     void update(float animationTime);
     void updatePose();

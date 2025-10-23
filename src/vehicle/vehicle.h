@@ -46,7 +46,7 @@ enum HingeState
     count
 };
 
-enum DoorState
+enum class DoorState
 {
     open,
     closed

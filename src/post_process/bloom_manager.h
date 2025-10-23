@@ -1,11 +1,6 @@
 #ifndef bloom_manager_hpp
 #define bloom_manager_hpp
 
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <iostream>
-
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 

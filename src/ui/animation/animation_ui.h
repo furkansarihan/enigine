@@ -14,6 +14,7 @@ public:
     AnimationUI(Animator *animator);
 
     Animation *m_selectedAnimation;
+    std::vector<std::string> m_boneNames;
 
     void render() override;
 

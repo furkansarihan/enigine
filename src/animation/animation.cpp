@@ -9,7 +9,7 @@ Animation::Animation(const std::string &animationName, Model *model)
     assert(scene && scene->mRootNode);
     // std::cout << "Animation: mNumAnimations: " << scene->mNumAnimations << std::endl;
 
-    aiAnimation *animation;
+    aiAnimation *animation = nullptr;
     for (int i = 0; i < scene->mNumAnimations; i++)
     {
         auto anim = scene->mAnimations[i];
@@ -39,6 +39,30 @@ Animation::Animation(const std::string &animationName, Model *model)
     m_ticksPerSecond = animation->mTicksPerSecond;
     readHierarchy(m_rootNode, scene->mRootNode);
     readBones(animation, *model);
+}
+
+Animation::Animation(Model *model)
+{
+    const aiScene *scene = model->m_scene;
+    assert(scene && scene->mRootNode);
+
+    m_name = "empty";
+    m_ticksPerSecond = 30;
+    m_duration = 1.0;
+
+    m_boneInfoMap = model->m_boneInfoMap;
+
+    m_rootNode = new AssimpNodeData();
+    readHierarchy(m_rootNode, scene->mRootNode);
+
+    for (auto const &[boneName, boneInfo] : m_boneInfoMap)
+    {
+        if (m_assimpNodes.find(boneName) != m_assimpNodes.end())
+        {
+            AssimpNodeData *node = m_assimpNodes[boneName];
+            m_bones[boneName] = new Bone(boneName, boneInfo.id, node->transformation);
+        }
+    }
 }
 
 Animation::~Animation()
@@ -85,9 +109,10 @@ void Animation::readBones(const aiAnimation *animation, Model &model)
         // std::cout << "readBones: mNumRotationKeys: " << channel->mNodeName.C_Str() << ": " << channel->mNumRotationKeys << std::endl;
         // std::cout << "readBones: mNumScalingKeys: " << channel->mNodeName.C_Str() << ": " << channel->mNumScalingKeys << std::endl;
 
+        // TODO: ?
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
-            std::cout << "Animation: readBones: missing bone found" << std::endl;
+            std::cout << "Animation: readBones: missing bone found: " << boneName << std::endl;
             boneInfoMap[boneName].id = boneCount;
             boneCount++;
         }

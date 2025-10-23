@@ -194,7 +194,7 @@ public:
     virtual ~ForwardRenderable() {}
 
     virtual void renderDepth() = 0;
-    virtual void renderColor() = 0;
+    virtual void renderForward() = 0;
 };
 
 class TransparentRenderable

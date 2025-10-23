@@ -1,19 +1,16 @@
 #ifndef animation_hpp
 #define animation_hpp
 
-#include <vector>
-#include <string>
 #include <map>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <assimp/scene.h>
-#include "btBulletDynamicsCommon.h"
 
-#include "bone.h"
 #include "../model/model.h"
-#include "../utils/assimp_to_glm.h"
+#include "bone.h"
 
 struct AssimpNodeData
 {
@@ -37,6 +34,7 @@ public:
     std::unordered_map<std::string, float> m_blendMask;
 
     Animation(const std::string &animationName, Model *model);
+    Animation(Model *model);
     ~Animation();
     Bone *getBone(const std::string &name);
     void readBones(const aiAnimation *animation, Model &model);

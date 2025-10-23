@@ -2,8 +2,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <assimp/scene.h>
+#include <glm/gtx/matrix_decompose.hpp>
 
+#include "../utils/assimp_to_glm.h"
 #include "bone.h"
 
 Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
@@ -42,6 +43,34 @@ Bone::Bone(const std::string &name, int ID, const aiNodeAnim *channel)
         key.value = AssimpToGLM::getGLMVec3(scale);
         m_scales.push_back(key);
     }
+}
+
+Bone::Bone(const std::string &name, int id, const glm::mat4 &localTransform)
+    : m_name(name),
+      m_ID(id)
+{
+    glm::vec3 scale;
+    glm::quat rotation;
+    glm::vec3 translation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+
+    glm::decompose(localTransform, scale, rotation, translation, skew, perspective);
+
+    m_positions.resize(1);
+    m_positions[0].value = translation;
+    m_positions[0].timestamp = 0.0f;
+    m_numPositions = 1;
+
+    m_rotations.resize(1);
+    m_rotations[0].value = rotation;
+    m_rotations[0].timestamp = 0.0f;
+    m_numRotations = 1;
+
+    m_scales.resize(1);
+    m_scales[0].value = scale;
+    m_scales[0].timestamp = 0.0f;
+    m_numScalings = 1;
 }
 
 Bone::~Bone()

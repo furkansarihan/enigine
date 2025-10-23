@@ -7,7 +7,8 @@
 #include "../shader/shader.h"
 
 #define MAX_BONE_PER_VERTEX 4
-
+namespace enigine
+{
 struct Vertex
 {
     glm::vec3 position;
@@ -18,12 +19,17 @@ struct Vertex
     int boneIDs[MAX_BONE_PER_VERTEX];
     float weights[MAX_BONE_PER_VERTEX];
 };
+} // namespace enigine
+using namespace enigine;
 
 class Mesh
 {
 public:
     // Constructors
     Mesh(std::string name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, glm::vec3 aabbMin, glm::vec3 aabbMax, Material *material);
+    Mesh()
+    {
+    }
     ~Mesh();
     // Attributes
     unsigned int VAO, VBO, EBO;
@@ -38,7 +44,6 @@ public:
     void draw(Shader shader);
     void drawInstanced(Shader shader, int instanceCount);
 
-private:
     void setupMesh();
     void bindTextures(Shader shader);
     void unbindTextures(Shader shader);

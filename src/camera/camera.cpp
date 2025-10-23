@@ -38,6 +38,15 @@ glm::mat4 Camera::getProjectionMatrix(float width, float height)
     }
 }
 
+float Camera::processAxisInput(float axisValue)
+{
+    const float DEADZONE = 0.1;
+    if (std::abs(axisValue) < DEADZONE)
+        return 0.0f;
+
+    return axisValue;
+}
+
 // TODO: EditorCamera
 void Camera::processInput(GLFWwindow *window, float deltaTime)
 {
@@ -79,6 +88,17 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
         lastX = xpos;
         lastY = ypos;
         processMouseMovement(xoffset, yoffset, true);
+    }
+
+    GLFWgamepadstate state;
+    int result = glfwGetGamepadState(GLFW_JOYSTICK_1, &state);
+    if (result)
+    {
+        float axisValueX = processAxisInput(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X]);
+        float axisValueY = -processAxisInput(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+
+        float speed = 8.f;
+        processMouseMovement(axisValueX * speed, axisValueY * speed, true);
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)

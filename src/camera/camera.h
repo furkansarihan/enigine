@@ -1,12 +1,6 @@
 #ifndef camera_hpp
 #define camera_hpp
 
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <vector>
-
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -33,7 +27,7 @@ class Camera
 {
 public:
     // Contructors
-    Camera(glm::vec3 position, glm::vec3 up, float near = 0.1f, float far = 20000.0f);
+    Camera(glm::vec3 position, glm::vec3 up, float near = 0.1f, float far = 200.0f);
     ~Camera();
     // Camera Attributes
     glm::vec3 position;
@@ -60,6 +54,7 @@ public:
     glm::mat4 getViewMatrix(glm::vec3 worldOrigin);
     glm::mat4 getProjectionMatrix(float width, float height);
     void processInput(GLFWwindow *window, float deltaTime);
+    float processAxisInput(float axisValue);
     void processKeyboard(Camera_Movement direction, float deltaTime);
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true);
     void updateFrustumPoints(float width, float height);

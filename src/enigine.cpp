@@ -203,6 +203,8 @@ void Enigine::start()
         timer.stop("renderManager::updateTransforms");
         timer.start("renderManager::renderDepth");
         renderManager->renderDepth();
+        for (int i = 0; i < renderManager->m_forwardRenderables.size(); i++)
+            renderManager->m_forwardRenderables[i]->renderDepth();
         timer.stop("renderManager::renderDepth");
         timer.start("renderManager::renderOpaque");
         renderManager->renderOpaque();
@@ -216,7 +218,7 @@ void Enigine::start()
 
         timer.start("renderManager::renderForward");
         for (int i = 0; i < renderManager->m_forwardRenderables.size(); i++)
-            renderManager->m_forwardRenderables[i]->renderColor();
+            renderManager->m_forwardRenderables[i]->renderForward();
         timer.stop("renderManager::renderForward");
 
         // Update Debug Drawer
