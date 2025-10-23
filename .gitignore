@@ -37,12 +37,16 @@ tmp/
 CMakeUserPresets.json
 
 # IDE
-.vscode/*
+**/.vscode/*
 .idea/*
 .project
 .pydevproject
 .settings/*
 .ropeproject/*
+
+# LLDB
+**/.cache/*
+compile_commands.json
 
 # ImGui
 imgui.ini

@@ -1,0 +1,4 @@
+BasedOnStyle: Microsoft
+PackConstructorInitializers: Never
+ColumnLimit: 0
+AccessModifierOffset: -4
